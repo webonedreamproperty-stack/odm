@@ -1,0 +1,86 @@
+import type { ComponentType, SVGProps } from 'react';
+
+export type IconComponent = ComponentType<
+  SVGProps<SVGSVGElement> & {
+    size?: number | string;
+    color?: string;
+    strokeWidth?: number | string;
+    className?: string;
+  }
+>;
+
+export interface ThemeColors {
+  background: string;
+  cardBackground: string;
+  text: string;
+  muted: string;
+  stampActive: string;
+  stampInactive: string;
+  iconActive: string;
+  iconInactive: string;
+  button: string;
+  buttonText: string;
+  border: string;
+}
+
+export interface Template {
+  id: string;
+  name: string;
+  description: string;
+  rewardName: string;
+  tagline?: string; // Custom instruction text e.g. "Buy 10 get 1 free"
+  backgroundImage?: string; // URL for background
+  backgroundOpacity?: number; // 0-100
+  logoImage?: string; // URL for custom brand logo
+  showLogo?: boolean; // Toggle for main logo visibility
+  titleSize?: string; // Optional custom font size class for the title
+  icon: IconComponent;
+  colors: ThemeColors;
+  totalStamps: number;
+  social?: SocialLinks;
+}
+
+export interface SocialLinks {
+  instagram?: string;
+  facebook?: string;
+  tiktok?: string;
+  x?: string;
+  youtube?: string;
+  website?: string;
+}
+
+export type StoredTemplate = Omit<Template, 'icon'> & {
+  iconKey: string;
+};
+
+export interface Transaction {
+  id: string;
+  type: 'stamp_add' | 'stamp_remove' | 'redeem' | 'issued';
+  amount: number;
+  date: string; // Formatted string for display
+  timestamp: number; // For sorting
+  title: string;
+  remarks?: string;
+}
+
+export interface IssuedCard {
+  id: string; // Internal ID
+  uniqueId: string; // Public UUID for link
+  campaignId: string;
+  campaignName: string;
+  stamps: number;
+  lastVisit: string;
+  status: 'Active' | 'Redeemed'; // New status field
+  completedDate?: string; // Date when redeemed
+  history: Transaction[]; // Log of all actions
+  templateSnapshot?: StoredTemplate; // Campaign design at issue time
+}
+
+export interface Customer {
+  id: string;
+  name: string;
+  email: string;
+  mobile?: string;
+  status: 'Active' | 'Inactive';
+  cards: IssuedCard[];
+}
