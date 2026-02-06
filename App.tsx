@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { LoyaltyCard } from './components/LoyaltyCard';
 import { CardEditor } from './components/CardEditor';
-import { Sidebar } from './components/Sidebar';
+import { Sidebar, NAV_ITEMS, SidebarContent } from './components/Sidebar';
 import { MyCards } from './components/MyCards';
 import { IssuedCardsPage } from './components/IssuedCardsPage';
 import { CustomerDirectory } from './components/CustomerDirectory';
@@ -11,7 +11,7 @@ import { AnalyticsPage } from './components/AnalyticsPage';
 import { Template, Customer, IssuedCard, StoredTemplate } from './types';
 import { INITIAL_CUSTOMERS } from './data/mockData';
 import { templates } from './data/templates';
-import { HashRouter, Routes, Route, Outlet, useParams, useNavigate, Navigate, useSearchParams } from 'react-router-dom';
+import { HashRouter, Routes, Route, Outlet, useParams, useNavigate, Navigate, useSearchParams, useLocation } from 'react-router-dom';
 import { Lock } from 'lucide-react';
 import { fromStoredTemplate, resolveCardTemplate, toStoredTemplate } from './lib/templateSerialization';
 import { cn } from './lib/utils';
@@ -188,10 +188,57 @@ const EditorWrapper: React.FC<{ onSave: (t: Template) => void, templates: Templa
 
 // Layout Component including Sidebar
 const DashboardLayout: React.FC = () => {
+    const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+    const location = useLocation();
+
+    const activeTitle = NAV_ITEMS.find((item) => item.path === location.pathname)?.label ?? "Dashboard";
+
     return (
         <div className="flex min-h-screen bg-background font-sans">
             <Sidebar />
             <main className="flex-1 overflow-hidden h-screen relative">
+                <div className="md:hidden sticky top-0 z-40 flex items-center justify-between px-4 py-3 border-b bg-white/90 backdrop-blur-sm">
+                    <button
+                        className="h-10 w-10 inline-flex items-center justify-center rounded-full border border-amber-100 bg-white shadow-sm"
+                        onClick={() => setIsMobileNavOpen(true)}
+                        aria-label="Open navigation menu"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+                        </svg>
+                    </button>
+                    <div className="text-sm font-semibold">{activeTitle}</div>
+                    <div className="h-10 w-10" />
+                </div>
+
+                <div className={cn(
+                    "fixed inset-0 z-50 md:hidden transition-opacity duration-200",
+                    isMobileNavOpen ? "opacity-100" : "pointer-events-none opacity-0"
+                )}>
+                    <div
+                        className="absolute inset-0 bg-black/40"
+                        onClick={() => setIsMobileNavOpen(false)}
+                    />
+                    <div className={cn(
+                        "absolute left-0 top-0 h-full w-72 bg-card shadow-2xl border-r transition-transform duration-200",
+                        isMobileNavOpen ? "translate-x-0" : "-translate-x-full"
+                    )}>
+                        <div className="flex items-center justify-between px-4 py-4 border-b">
+                            <span className="text-sm font-semibold">Menu</span>
+                            <button
+                                className="h-9 w-9 inline-flex items-center justify-center rounded-full border border-slate-200"
+                                onClick={() => setIsMobileNavOpen(false)}
+                                aria-label="Close navigation menu"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M18 6L6 18" />
+                                </svg>
+                            </button>
+                        </div>
+                        <SidebarContent onNavigate={() => setIsMobileNavOpen(false)} />
+                    </div>
+                </div>
+
                 <Outlet />
             </main>
         </div>
