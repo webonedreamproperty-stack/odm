@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Table,
   TableBody,
@@ -9,7 +9,7 @@ import {
 } from "./ui/table";
 import { Button } from "./ui/button";
 import { 
-    Plus, Search, CreditCard, MonitorPlay, MoreHorizontal, Trash, ExternalLink, Lock
+    Plus, Search, CreditCard, MonitorPlay, MoreHorizontal, Trash, ExternalLink, Lock, QrCode
 } from "lucide-react";
 import {
     DropdownMenu,
@@ -26,6 +26,7 @@ import { IssueCardDialog } from './IssueCardDialog';
 import { resolveCardTemplate, toStoredTemplate } from '../lib/templateSerialization';
 import { useAuth } from './AuthProvider';
 import { buildPublicCardUrl } from '../lib/links';
+import { ScanQrDialog } from './ScanQrDialog';
 
 interface IssuedCardsPageProps {
   customers: Customer[];
@@ -41,6 +42,13 @@ export const IssuedCardsPage: React.FC<IssuedCardsPageProps> = ({ customers, cam
   // Dialog & Kiosk States
   const [isIssueOpen, setIsIssueOpen] = useState(false);
   const [activeKioskData, setActiveKioskData] = useState<{customer: Customer, card: IssuedCard, template: Template} | null>(null);
+  const [isScanOpen, setIsScanOpen] = useState(false);
+
+  useEffect(() => {
+      const handler = () => setIsScanOpen(true);
+      window.addEventListener('open-qr-scan', handler);
+      return () => window.removeEventListener('open-qr-scan', handler);
+  }, []);
 
   // Pre-selection for dialog
   const [preSelectedCampaign, setPreSelectedCampaign] = useState<Template | null>(null);
@@ -171,6 +179,37 @@ export const IssuedCardsPage: React.FC<IssuedCardsPageProps> = ({ customers, cam
       return newCard;
   };
 
+  const extractCardId = (value: string) => {
+      let raw = value.trim();
+      if (!raw) return "";
+      try {
+          const url = new URL(raw);
+          const parts = url.pathname.split('/').filter(Boolean);
+          raw = parts[parts.length - 1] ?? raw;
+      } catch {
+          // Not a URL, fall through.
+      }
+      raw = raw.replace(/^#/, '');
+      raw = raw.replace(/\/+$/, '');
+      const segments = raw.split('/').filter(Boolean);
+      return segments[segments.length - 1] ?? raw;
+  };
+
+  const handleScanResult = (value: string) => {
+      const cardId = extractCardId(value);
+      if (!cardId) return false;
+      for (const customer of customers) {
+          const found = customer.cards.find((card) => card.uniqueId === cardId);
+          if (found) {
+              const template = resolveCardTemplate(found, campaigns);
+              if (!template) return false;
+              setActiveKioskData({ customer, card: found, template });
+              return true;
+          }
+      }
+      return false;
+  };
+
   // Flatten logic
   const flatList = customers.flatMap(c => c.cards.map(card => ({ customer: c, card })));
   
@@ -208,6 +247,7 @@ export const IssuedCardsPage: React.FC<IssuedCardsPageProps> = ({ customers, cam
             actorName={currentUser?.businessName ?? "Owner"}
             actorRole={currentUser?.role ?? "owner"}
             actorId={currentUser?.id}
+            onScanRequest={() => setIsScanOpen(true)}
         />
       )}
 
@@ -222,20 +262,31 @@ export const IssuedCardsPage: React.FC<IssuedCardsPageProps> = ({ customers, cam
           preSelectedCustomer={preSelectedCustomer}
       />
 
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <ScanQrDialog
+          isOpen={isScanOpen}
+          onClose={() => setIsScanOpen(false)}
+          onDetected={handleScanResult}
+      />
+
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
             <h1 className="text-3xl font-bold tracking-tight text-foreground">Issued Cards</h1>
             <p className="text-muted-foreground">Monitor active cards and open Kiosk Mode for stamping.</p>
         </div>
-        <div className="flex flex-col items-end gap-2">
-            <Button onClick={openIssueWizard} className="gap-2 shadow-sm rounded-full px-6" disabled={!canIssue}>
-                <Plus size={16} /> Issue New Card
+        <div className="flex flex-col sm:flex-row items-end sm:items-center gap-3">
+            <Button variant="outline" className="gap-2 rounded-full" onClick={() => setIsScanOpen(true)}>
+                <QrCode size={16} /> Scan QR
             </Button>
-            {!canIssue && (
-                <div className="text-xs text-amber-600 flex items-center gap-2">
-                    <Lock size={12} /> Verify your email to issue cards.
-                </div>
-            )}
+            <div className="flex flex-col items-end gap-2">
+                <Button onClick={openIssueWizard} className="gap-2 shadow-sm rounded-full px-6" disabled={!canIssue}>
+                    <Plus size={16} /> Issue New Card
+                </Button>
+                {!canIssue && (
+                    <div className="text-xs text-amber-600 flex items-center gap-2">
+                        <Lock size={12} /> Verify your email to issue cards.
+                    </div>
+                )}
+            </div>
         </div>
       </div>
 

@@ -191,7 +191,7 @@ const DashboardLayout: React.FC = () => {
 
     return (
         <div className="flex min-h-screen bg-background font-sans">
-            <Sidebar />
+            <Sidebar onScanQr={() => window.dispatchEvent(new Event('open-qr-scan'))} />
             <main className="flex-1 overflow-hidden h-screen relative flex flex-col">
                 <div className="md:hidden sticky top-0 z-40 flex items-center justify-between px-4 py-3 border-b bg-white/90 backdrop-blur-sm">
                     <button
@@ -231,7 +231,13 @@ const DashboardLayout: React.FC = () => {
                                 </svg>
                             </button>
                         </div>
-                        <SidebarContent onNavigate={() => setIsMobileNavOpen(false)} />
+                        <SidebarContent
+                            onNavigate={() => setIsMobileNavOpen(false)}
+                            onScanQr={() => {
+                                window.dispatchEvent(new Event('open-qr-scan'));
+                                setIsMobileNavOpen(false);
+                            }}
+                        />
                     </div>
                 </div>
 

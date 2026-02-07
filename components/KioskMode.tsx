@@ -5,7 +5,7 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "./ui/dialog";
-import { X, Plus, Gift, History, User, CreditCard, ChevronLeft, Minus, Lock, CheckCircle, RefreshCcw, Hash } from 'lucide-react';
+import { X, Plus, Gift, History, User, CreditCard, ChevronLeft, Minus, Lock, CheckCircle, RefreshCcw, Hash, QrCode } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 interface KioskModeProps {
@@ -20,6 +20,7 @@ interface KioskModeProps {
   actorId?: string;
   actorName: string;
   actorRole: 'owner' | 'staff';
+  onScanRequest?: () => void;
 }
 
 // Helper to create timestamped transaction
@@ -63,7 +64,8 @@ export const KioskMode: React.FC<KioskModeProps> = ({
   allowRedeem,
   actorId,
   actorName,
-  actorRole
+  actorRole,
+  onScanRequest
 }) => {
   const [isAnimating, setIsAnimating] = useState(false);
   
@@ -198,9 +200,16 @@ export const KioskMode: React.FC<KioskModeProps> = ({
                     <p className="text-xs text-muted-foreground mt-1">Kiosk Mode</p>
                 </div>
             </div>
-            <div className="text-right hidden md:block">
-                <p className="text-sm font-medium">Balance</p>
-                <p className="text-2xl font-bold text-primary">{card.stamps} <span className="text-muted-foreground text-base font-normal">/ {template.totalStamps}</span></p>
+            <div className="text-right hidden md:flex items-center gap-3">
+                <div>
+                    <p className="text-sm font-medium">Balance</p>
+                    <p className="text-2xl font-bold text-primary">{card.stamps} <span className="text-muted-foreground text-base font-normal">/ {template.totalStamps}</span></p>
+                </div>
+                {onScanRequest && (
+                    <Button variant="outline" size="sm" className="gap-2 rounded-full" onClick={onScanRequest}>
+                        <QrCode size={14} /> Scan QR
+                    </Button>
+                )}
             </div>
         </div>
 

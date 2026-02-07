@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, Users, CreditCard, Settings, LogOut, PlusCircle, Wallet, History } from 'lucide-react';
+import { LayoutDashboard, Users, CreditCard, Settings, LogOut, PlusCircle, Wallet, History, QrCode } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { Button } from './ui/button';
 import { NavLink, useNavigate } from 'react-router-dom';
@@ -7,6 +7,7 @@ import { useAuth } from './AuthProvider';
 
 interface SidebarProps {
   className?: string;
+  onScanQr?: () => void;
 }
 
 export const NAV_ITEMS = [
@@ -18,7 +19,7 @@ export const NAV_ITEMS = [
   { path: '/settings', label: 'Settings', icon: Settings, roles: ['owner'] },
 ];
 
-export const SidebarContent: React.FC<{ onNavigate?: () => void }> = ({ onNavigate }) => {
+export const SidebarContent: React.FC<{ onNavigate?: () => void; onScanQr?: () => void }> = ({ onNavigate, onScanQr }) => {
   const navigate = useNavigate();
   const { currentUser, currentOwner, isStaff, logout } = useAuth();
 
@@ -52,6 +53,19 @@ export const SidebarContent: React.FC<{ onNavigate?: () => void }> = ({ onNaviga
               )}
             </NavLink>
           ))}
+          {isStaff && (
+            <Button
+              variant="default"
+              className="w-full justify-start gap-2 mt-2"
+              onClick={() => {
+                onScanQr?.();
+                onNavigate?.();
+              }}
+            >
+              <QrCode size={20} />
+              Scan QR Code
+            </Button>
+          )}
         </div>
       </div>
       {!isStaff && (
@@ -95,10 +109,10 @@ export const SidebarContent: React.FC<{ onNavigate?: () => void }> = ({ onNaviga
   );
 };
 
-export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ className, onScanQr }) => {
   return (
     <div className={cn("pb-12 min-h-screen w-64 border-r bg-card hidden md:block", className)}>
-      <SidebarContent />
+      <SidebarContent onScanQr={onScanQr} />
     </div>
   );
 };
