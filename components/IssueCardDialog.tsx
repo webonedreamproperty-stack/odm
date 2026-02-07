@@ -4,8 +4,9 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
-import { Search, CreditCard, ChevronRight, UserPlus, CheckCircle2, User, ArrowLeft, Copy, ExternalLink, QrCode } from "lucide-react";
-import { cn } from '../lib/utils';
+import { Search, CreditCard, ChevronRight, UserPlus, CheckCircle2, User, ArrowLeft, Copy, ExternalLink } from "lucide-react";
+import { useAuth } from './AuthProvider';
+import { buildPublicCardUrl } from '../lib/links';
 
 interface IssueCardDialogProps {
     isOpen: boolean;
@@ -26,6 +27,8 @@ export const IssueCardDialog: React.FC<IssueCardDialogProps> = ({
     preSelectedCampaign = null,
     preSelectedCustomer = null
 }) => {
+    const { currentOwner } = useAuth();
+    const slug = currentOwner?.slug ?? "";
     // State
     const [step, setStep] = useState<'campaign' | 'customer' | 'new-customer' | 'review' | 'success'>('campaign');
     const [searchQuery, setSearchQuery] = useState("");
@@ -33,6 +36,8 @@ export const IssueCardDialog: React.FC<IssueCardDialogProps> = ({
     const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
     const [newCustomerData, setNewCustomerData] = useState({ name: '', email: '', mobile: '' });
     const [createdCard, setCreatedCard] = useState<IssuedCard | null>(null);
+    const publicUrl = createdCard ? buildPublicCardUrl(slug, createdCard.uniqueId) : "";
+    const displayUrl = publicUrl.length > 42 ? `${publicUrl.slice(0, 42)}...` : publicUrl;
 
     // Initial load effect
     React.useEffect(() => {
@@ -89,15 +94,14 @@ export const IssueCardDialog: React.FC<IssueCardDialogProps> = ({
     };
 
     const handleCopyLink = () => {
-        if (!createdCard) return;
-        const url = `${window.location.origin}${window.location.pathname}#/card/${createdCard.uniqueId}`;
-        navigator.clipboard.writeText(url);
+        if (!publicUrl) return;
+        navigator.clipboard.writeText(publicUrl);
         alert("Link copied to clipboard!");
     };
 
     const handleOpenLink = () => {
-        if (!createdCard) return;
-        window.open(`#/card/${createdCard.uniqueId}`, '_blank');
+        if (!publicUrl) return;
+        window.open(publicUrl, '_blank');
     };
 
     return (
@@ -189,7 +193,7 @@ export const IssueCardDialog: React.FC<IssueCardDialogProps> = ({
                         <div className="flex flex-col items-center justify-center h-full p-6 space-y-6 animate-fade-in">
                             <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
                                 <img 
-                                    src={`https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(`${window.location.origin}${window.location.pathname}#/card/${createdCard.uniqueId}`)}`} 
+                                    src={`https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(publicUrl)}`} 
                                     alt="QR Code" 
                                     className="w-72 h-72 object-contain"
                                 />
@@ -199,7 +203,7 @@ export const IssueCardDialog: React.FC<IssueCardDialogProps> = ({
                                 <div className="flex items-center gap-2">
                                     <Input 
                                         readOnly 
-                                        value={`${window.location.origin}/#/card/${createdCard.uniqueId.slice(0,8)}...`} 
+                                        value={displayUrl || publicUrl} 
                                         className="text-xs font-mono bg-muted/50"
                                     />
                                     <Button size="icon" variant="outline" onClick={handleCopyLink}><Copy size={14} /></Button>

@@ -10,9 +10,10 @@ import { Label } from "./ui/label";
 interface CustomerDirectoryProps {
   customers: Customer[];
   setCustomers: React.Dispatch<React.SetStateAction<Customer[]>>;
+  readOnly?: boolean;
 }
 
-export const CustomerDirectory: React.FC<CustomerDirectoryProps> = ({ customers, setCustomers }) => {
+export const CustomerDirectory: React.FC<CustomerDirectoryProps> = ({ customers, setCustomers, readOnly = false }) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [isAddOpen, setIsAddOpen] = useState(false);
@@ -50,9 +51,11 @@ export const CustomerDirectory: React.FC<CustomerDirectoryProps> = ({ customers,
                 <h1 className="text-3xl font-bold tracking-tight text-foreground">Customers</h1>
                 <p className="text-muted-foreground">Manage your customer database.</p>
             </div>
-            <Button onClick={() => { setFormData({name: '', email: '', mobile: ''}); setIsAddOpen(true); }} className="gap-2 rounded-full shadow-sm">
-                <UserPlus size={16} /> Add Customer
-            </Button>
+            {!readOnly && (
+                <Button onClick={() => { setFormData({name: '', email: '', mobile: ''}); setIsAddOpen(true); }} className="gap-2 rounded-full shadow-sm">
+                    <UserPlus size={16} /> Add Customer
+                </Button>
+            )}
         </div>
 
         <div className="flex items-center space-x-2 bg-white px-3 py-2 rounded-lg border w-full max-w-sm shadow-sm">
@@ -101,13 +104,15 @@ export const CustomerDirectory: React.FC<CustomerDirectoryProps> = ({ customers,
                                     </span>
                                 </TableCell>
                                 <TableCell className="text-right">
+                                {!readOnly && (
                                     <Button 
-                                        variant="ghost" 
-                                        size="sm" 
-                                        onClick={() => { setEditingCustomer(customer); setFormData({name: customer.name, email: customer.email, mobile: customer.mobile || ''}) }}
-                                    >
-                                        <Edit size={16} className="text-muted-foreground" />
-                                    </Button>
+                                            variant="ghost" 
+                                            size="sm" 
+                                            onClick={() => { setEditingCustomer(customer); setFormData({name: customer.name, email: customer.email, mobile: customer.mobile || ''}) }}
+                                        >
+                                            <Edit size={16} className="text-muted-foreground" />
+                                        </Button>
+                                )}
                                 </TableCell>
                             </TableRow>
                         ))
@@ -117,7 +122,7 @@ export const CustomerDirectory: React.FC<CustomerDirectoryProps> = ({ customers,
         </div>
 
         {/* Edit Dialog */}
-        <Dialog open={!!editingCustomer} onOpenChange={(o) => !o && setEditingCustomer(null)}>
+        <Dialog open={!readOnly && !!editingCustomer} onOpenChange={(o) => !o && setEditingCustomer(null)}>
             <DialogContent>
                 <DialogHeader><DialogTitle>Edit Customer</DialogTitle></DialogHeader>
                 <div className="space-y-4 py-4">
@@ -132,7 +137,7 @@ export const CustomerDirectory: React.FC<CustomerDirectoryProps> = ({ customers,
         </Dialog>
 
          {/* Add Dialog */}
-         <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
+         <Dialog open={!readOnly && isAddOpen} onOpenChange={setIsAddOpen}>
             <DialogContent>
                 <DialogHeader><DialogTitle>Add Customer</DialogTitle></DialogHeader>
                 <div className="space-y-4 py-4">

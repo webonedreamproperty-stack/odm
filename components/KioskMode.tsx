@@ -15,10 +15,21 @@ interface KioskModeProps {
   onClose: () => void;
   onUpdateCard: (customerId: string, cardId: string, updates: Partial<IssuedCard>) => void;
   onIssueNew: (customer: Customer, template: Template) => void;
+  canIssue: boolean;
+  allowRedeem: boolean;
+  actorId?: string;
+  actorName: string;
+  actorRole: 'owner' | 'staff';
 }
 
 // Helper to create timestamped transaction
-const createTransaction = (type: Transaction['type'], amount: number, title: string, remarks?: string): Transaction => {
+const createTransaction = (
+    type: Transaction['type'],
+    amount: number,
+    title: string,
+    remarks?: string,
+    actor?: { id?: string; name: string; role: 'owner' | 'staff' }
+): Transaction => {
     const now = new Date();
     return {
         id: `tx-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
@@ -34,7 +45,10 @@ const createTransaction = (type: Transaction['type'], amount: number, title: str
         }),
         timestamp: now.getTime(),
         title,
-        remarks
+        remarks,
+        actorId: actor?.id,
+        actorName: actor?.name,
+        actorRole: actor?.role
     };
 };
 
@@ -44,7 +58,12 @@ export const KioskMode: React.FC<KioskModeProps> = ({
   template,
   onClose,
   onUpdateCard,
-  onIssueNew
+  onIssueNew,
+  canIssue,
+  allowRedeem,
+  actorId,
+  actorName,
+  actorRole
 }) => {
   const [isAnimating, setIsAnimating] = useState(false);
   
@@ -53,7 +72,7 @@ export const KioskMode: React.FC<KioskModeProps> = ({
   const [redemptionRemarks, setRedemptionRemarks] = useState("");
 
   const canAdd = card.status === 'Active' && card.stamps < template.totalStamps;
-  const canRedeem = card.status === 'Active' && card.stamps >= template.totalStamps;
+  const canRedeem = allowRedeem && card.status === 'Active' && card.stamps >= template.totalStamps;
   const canRemove = card.status === 'Active' && card.stamps > 0;
   const isLocked = card.status === 'Redeemed';
 
@@ -73,7 +92,7 @@ export const KioskMode: React.FC<KioskModeProps> = ({
 
   const performAddStamp = () => {
       setIsAnimating(true);
-      const tx = createTransaction('stamp_add', 1, 'Stamp Collected');
+      const tx = createTransaction('stamp_add', 1, 'Stamp Collected', undefined, { id: actorId, name: actorName, role: actorRole });
       
       onUpdateCard(customer.id, card.id, { 
           stamps: card.stamps + 1,
@@ -84,7 +103,7 @@ export const KioskMode: React.FC<KioskModeProps> = ({
   };
 
   const performRemoveStamp = () => {
-      const tx = createTransaction('stamp_remove', -1, 'Stamp Removed', 'Manual Correction');
+      const tx = createTransaction('stamp_remove', -1, 'Stamp Removed', 'Manual Correction', { id: actorId, name: actorName, role: actorRole });
       
       onUpdateCard(customer.id, card.id, { 
           stamps: Math.max(0, card.stamps - 1),
@@ -93,7 +112,7 @@ export const KioskMode: React.FC<KioskModeProps> = ({
   };
 
   const performRedeem = () => {
-      const tx = createTransaction('redeem', 0, 'Reward Redeemed', redemptionRemarks);
+      const tx = createTransaction('redeem', 0, 'Reward Redeemed', redemptionRemarks, { id: actorId, name: actorName, role: actorRole });
 
       // Lock the card by setting status to Redeemed
       onUpdateCard(customer.id, card.id, { 
@@ -104,6 +123,7 @@ export const KioskMode: React.FC<KioskModeProps> = ({
   };
 
   const handleIssueNext = () => {
+      if (!canIssue) return;
       onClose(); // Close kiosk
       // Small delay to allow close animation then trigger parent wizard
       setTimeout(() => onIssueNew(customer, template), 100);
@@ -202,9 +222,12 @@ export const KioskMode: React.FC<KioskModeProps> = ({
                             This card has been completed and redeemed on {card.completedDate || 'today'}. To continue collecting stamps, issue a new card.
                         </p>
                     </div>
-                    <Button size="lg" onClick={handleIssueNext} className="h-14 px-8 text-lg rounded-full gap-2 shadow-lg animate-bounce-short">
+                    <Button size="lg" onClick={handleIssueNext} className="h-14 px-8 text-lg rounded-full gap-2 shadow-lg animate-bounce-short" disabled={!canIssue}>
                         <RefreshCcw size={20} /> Issue New Card
                     </Button>
+                    {!canIssue && (
+                        <div className="text-xs text-amber-600">Verify your email to issue cards.</div>
+                    )}
                 </div>
             ) : (
                 // ACTIVE STATE ACTIONS
@@ -230,27 +253,39 @@ export const KioskMode: React.FC<KioskModeProps> = ({
                     </button>
 
                     {/* Redeem Button */}
-                    <button
-                        onClick={() => setConfirmAction('redeem')}
-                        disabled={!canRedeem}
-                        className={cn(
-                            "group relative flex flex-col items-center justify-center gap-4 h-64 rounded-3xl border-2 transition-all duration-200",
-                            !canRedeem 
-                                ? "border-muted bg-muted/20 opacity-50 cursor-not-allowed" 
-                                : "border-purple-200 bg-purple-50 hover:bg-purple-100 hover:border-purple-500 hover:shadow-lg active:scale-[0.98]"
-                        )}
-                    >
-                        <div className={cn(
-                            "w-20 h-20 rounded-full flex items-center justify-center shadow-md group-hover:scale-110 transition-transform duration-300",
-                            canRedeem ? "bg-purple-600 text-white" : "bg-muted text-muted-foreground"
-                        )}>
-                            <Gift size={40} strokeWidth={3} />
+                    {allowRedeem ? (
+                        <button
+                            onClick={() => setConfirmAction('redeem')}
+                            disabled={!canRedeem}
+                            className={cn(
+                                "group relative flex flex-col items-center justify-center gap-4 h-64 rounded-3xl border-2 transition-all duration-200",
+                                !canRedeem 
+                                    ? "border-muted bg-muted/20 opacity-50 cursor-not-allowed" 
+                                    : "border-purple-200 bg-purple-50 hover:bg-purple-100 hover:border-purple-500 hover:shadow-lg active:scale-[0.98]"
+                            )}
+                        >
+                            <div className={cn(
+                                "w-20 h-20 rounded-full flex items-center justify-center shadow-md group-hover:scale-110 transition-transform duration-300",
+                                canRedeem ? "bg-purple-600 text-white" : "bg-muted text-muted-foreground"
+                            )}>
+                                <Gift size={40} strokeWidth={3} />
+                            </div>
+                            <div className="text-center">
+                                <span className={cn("text-2xl font-bold block", canRedeem ? "text-purple-700" : "text-muted-foreground")}>Redeem Reward</span>
+                                <span className="text-sm text-muted-foreground">{template.rewardName}</span>
+                            </div>
+                        </button>
+                    ) : (
+                        <div className="group relative flex flex-col items-center justify-center gap-4 h-64 rounded-3xl border-2 border-dashed border-muted bg-muted/10">
+                            <div className="w-20 h-20 rounded-full bg-muted text-muted-foreground flex items-center justify-center shadow-md">
+                                <Lock size={36} strokeWidth={2.5} />
+                            </div>
+                            <div className="text-center">
+                                <span className="text-2xl font-bold block text-muted-foreground">Redeem</span>
+                                <span className="text-sm text-muted-foreground">Owner only</span>
+                            </div>
                         </div>
-                        <div className="text-center">
-                            <span className={cn("text-2xl font-bold block", canRedeem ? "text-purple-700" : "text-muted-foreground")}>Redeem Reward</span>
-                            <span className="text-sm text-muted-foreground">{template.rewardName}</span>
-                        </div>
-                    </button>
+                    )}
                 </div>
             )}
 

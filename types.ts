@@ -61,6 +61,9 @@ export interface Transaction {
   timestamp: number; // For sorting
   title: string;
   remarks?: string;
+  actorId?: string;
+  actorName?: string;
+  actorRole?: UserRole;
 }
 
 export interface IssuedCard {
@@ -83,4 +86,21 @@ export interface Customer {
   mobile?: string;
   status: 'Active' | 'Inactive';
   cards: IssuedCard[];
+}
+
+export type AccountStatus = 'unverified' | 'verified';
+export type UserRole = 'owner' | 'staff';
+export type AccessStatus = 'active' | 'disabled';
+
+export interface User {
+  id: string;
+  businessName: string;
+  email: string;
+  password: string;
+  slug?: string;
+  role: UserRole;
+  ownerId?: string;
+  status: AccountStatus;
+  access: AccessStatus;
+  createdAt: string;
 }

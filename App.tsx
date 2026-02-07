@@ -8,47 +8,43 @@ import { CustomerDirectory } from './components/CustomerDirectory';
 import { TemplatesGallery } from './components/TemplatesGallery';
 import { TransactionsPage } from './components/TransactionsPage';
 import { AnalyticsPage } from './components/AnalyticsPage';
-import { Template, Customer, IssuedCard, StoredTemplate } from './types';
+import { Template, Customer, IssuedCard } from './types';
 import { INITIAL_CUSTOMERS } from './data/mockData';
 import { templates } from './data/templates';
-import { HashRouter, Routes, Route, Outlet, useParams, useNavigate, Navigate, useSearchParams, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Outlet, useParams, useNavigate, Navigate, useSearchParams, useLocation } from 'react-router-dom';
 import { Lock } from 'lucide-react';
-import { fromStoredTemplate, resolveCardTemplate, toStoredTemplate } from './lib/templateSerialization';
+import { resolveCardTemplate, toStoredTemplate } from './lib/templateSerialization';
 import { cn } from './lib/utils';
-
-const STORAGE_KEYS = {
-  campaigns: 'cookees.campaigns.v1',
-  customers: 'cookees.customers.v1'
-};
+import { AuthProvider, useAuth } from './components/AuthProvider';
+import { RequireAuth } from './components/RequireAuth';
+import { RequireRole } from './components/RequireRole';
+import { LoginPage } from './components/LoginPage';
+import { SignupPage } from './components/SignupPage';
+import { StaffLoginPage } from './components/StaffLoginPage';
+import { VerifyBanner } from './components/VerifyBanner';
+import { findUserBySlug } from './lib/authStorage';
+import { loadUserCampaigns, loadUserCustomers, saveUserCampaigns, saveUserCustomers } from './lib/userData';
+import { SettingsPage } from './components/SettingsPage';
 
 const DEFAULT_CREATED_CARDS: Template[] = [
   { ...templates[0], id: 'camp-001' },
   { ...templates[2], id: 'camp-002' }
 ];
 
-const loadFromStorage = <T,>(key: string): T | null => {
-  if (typeof window === 'undefined') return null;
-  try {
-    const raw = window.localStorage.getItem(key);
-    if (!raw) return null;
-    return JSON.parse(raw) as T;
-  } catch {
-    return null;
-  }
-};
-
-const saveToStorage = <T,>(key: string, value: T) => {
-  if (typeof window === 'undefined') return;
-  try {
-    window.localStorage.setItem(key, JSON.stringify(value));
-  } catch {
-    // Swallow storage errors (quota, privacy modes, etc.)
-  }
-};
-
 // Wrapper for Public Card View to handle params logic
-const PublicCardWrapper: React.FC<{ customers: Customer[]; templates: Template[] }> = ({ customers, templates }) => {
-    const { uniqueId } = useParams<{ uniqueId: string }>();
+const PublicCardWrapper: React.FC = () => {
+    const { slug, uniqueId } = useParams<{ slug: string; uniqueId: string }>();
+    if (!slug || !uniqueId) {
+        return <div className="h-screen flex items-center justify-center text-muted-foreground">Card not found.</div>;
+    }
+
+    const owner = findUserBySlug(slug);
+    if (!owner) {
+        return <div className="h-screen flex items-center justify-center text-muted-foreground">Stampverse not found.</div>;
+    }
+
+    const customers = loadUserCustomers(owner.id) ?? [];
+    const templates = loadUserCampaigns(owner.id) ?? [];
     
     // Find customer and specific card
     let foundCustomer: Customer | undefined;
@@ -196,7 +192,7 @@ const DashboardLayout: React.FC = () => {
     return (
         <div className="flex min-h-screen bg-background font-sans">
             <Sidebar />
-            <main className="flex-1 overflow-hidden h-screen relative">
+            <main className="flex-1 overflow-hidden h-screen relative flex flex-col">
                 <div className="md:hidden sticky top-0 z-40 flex items-center justify-between px-4 py-3 border-b bg-white/90 backdrop-blur-sm">
                     <button
                         className="h-10 w-10 inline-flex items-center justify-center rounded-full border border-amber-100 bg-white shadow-sm"
@@ -239,25 +235,29 @@ const DashboardLayout: React.FC = () => {
                     </div>
                 </div>
 
-                <Outlet />
+                <VerifyBanner />
+                <div className="flex-1 overflow-hidden">
+                    <Outlet />
+                </div>
             </main>
         </div>
     );
 }
 
-const App: React.FC = () => {
-  const [createdCards, setCreatedCards] = useState<Template[]>(() => {
-    const stored = loadFromStorage<StoredTemplate[]>(STORAGE_KEYS.campaigns);
-    if (!stored || stored.length === 0) return DEFAULT_CREATED_CARDS;
-    return stored.map(fromStoredTemplate);
-  });
-  
-  const [customers, setCustomers] = useState<Customer[]>(() => {
-    const stored = loadFromStorage<Customer[]>(STORAGE_KEYS.customers);
-    return stored && stored.length > 0 ? stored : INITIAL_CUSTOMERS;
-  });
-
+const AppRoutes: React.FC = () => {
+  const { currentOwner, isStaff } = useAuth();
+  const [createdCards, setCreatedCards] = useState<Template[]>(DEFAULT_CREATED_CARDS);
+  const [customers, setCustomers] = useState<Customer[]>(INITIAL_CUSTOMERS);
   const hasBackfilledSnapshots = useRef(false);
+
+  useEffect(() => {
+    if (!currentOwner) return;
+    hasBackfilledSnapshots.current = false;
+    const storedCampaigns = loadUserCampaigns(currentOwner.id);
+    const storedCustomers = loadUserCustomers(currentOwner.id);
+    setCreatedCards(storedCampaigns ?? DEFAULT_CREATED_CARDS);
+    setCustomers(storedCustomers ?? INITIAL_CUSTOMERS);
+  }, [currentOwner?.id]);
 
   useEffect(() => {
     if (hasBackfilledSnapshots.current) return;
@@ -282,12 +282,14 @@ const App: React.FC = () => {
   }, [createdCards, customers]);
 
   useEffect(() => {
-    saveToStorage(STORAGE_KEYS.campaigns, createdCards.map(toStoredTemplate));
-  }, [createdCards]);
+    if (!currentOwner) return;
+    saveUserCampaigns(currentOwner.id, createdCards);
+  }, [currentOwner?.id, createdCards]);
 
   useEffect(() => {
-    saveToStorage(STORAGE_KEYS.customers, customers);
-  }, [customers]);
+    if (!currentOwner) return;
+    saveUserCustomers(currentOwner.id, customers);
+  }, [currentOwner?.id, customers]);
 
   const handleSaveCard = (template: Template) => {
     const isNew = !createdCards.find(c => c.id === template.id);
@@ -306,28 +308,49 @@ const App: React.FC = () => {
   };
 
   return (
-    <HashRouter>
-        <Routes>
-            {/* Public Routes */}
-            <Route path="/card/:uniqueId" element={<PublicCardWrapper customers={customers} templates={createdCards} />} />
-            
-            {/* Full Screen App Routes */}
-            <Route path="/active/:cardId" element={<ActiveCardWrapper templates={createdCards} />} />
-            <Route path="/preview/:templateId" element={<PreviewWrapper />} />
-            <Route path="/editor/:id" element={<EditorWrapper onSave={handleSaveCard} templates={createdCards} />} />
+    <Routes>
+        {/* Public Routes */}
+        <Route path="/:slug/staff" element={<StaffLoginPage />} />
+        <Route path="/:slug/:uniqueId" element={<PublicCardWrapper />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/signup" element={<SignupPage />} />
 
-            {/* Dashboard Routes with Sidebar */}
-            <Route element={<DashboardLayout />}>
-                <Route path="/" element={<MyCards cards={createdCards} onDeleteCard={handleDeleteCard} />} />
-                <Route path="/issued-cards" element={<IssuedCardsPage customers={customers} campaigns={createdCards} setCustomers={setCustomers} />} />
-                <Route path="/transactions" element={<TransactionsPage customers={customers} />} />
-                <Route path="/customers" element={<CustomerDirectory customers={customers} setCustomers={setCustomers} />} />
-                <Route path="/gallery" element={<TemplatesGallery />} />
-                <Route path="/analytics" element={<AnalyticsPage customers={customers} campaigns={createdCards} />} />
-                <Route path="/settings" element={<div className="flex items-center justify-center h-full text-muted-foreground">Settings Coming Soon</div>} />
+        {/* Authenticated Routes */}
+        <Route element={<RequireAuth />}>
+            <Route element={<RequireRole allowed={["owner"]} />}>
+                <Route path="/active/:cardId" element={<ActiveCardWrapper templates={createdCards} />} />
+                <Route path="/preview/:templateId" element={<PreviewWrapper />} />
+                <Route path="/editor/:id" element={<EditorWrapper onSave={handleSaveCard} templates={createdCards} />} />
             </Route>
-        </Routes>
-    </HashRouter>
+
+            <Route element={<DashboardLayout />}>
+                <Route element={<RequireRole allowed={["owner"]} />}>
+                    <Route path="/" element={<MyCards cards={createdCards} onDeleteCard={handleDeleteCard} />} />
+                    <Route path="/gallery" element={<TemplatesGallery />} />
+                    <Route path="/analytics" element={<AnalyticsPage customers={customers} campaigns={createdCards} />} />
+                    <Route path="/transactions" element={<TransactionsPage customers={customers} />} />
+                    <Route path="/settings" element={<SettingsPage />} />
+                </Route>
+
+                <Route element={<RequireRole allowed={["owner", "staff"]} />}>
+                    <Route path="/issued-cards" element={<IssuedCardsPage customers={customers} campaigns={createdCards} setCustomers={setCustomers} />} />
+                    <Route path="/customers" element={<CustomerDirectory customers={customers} setCustomers={setCustomers} readOnly={isStaff} />} />
+                </Route>
+            </Route>
+        </Route>
+
+        <Route path="*" element={<Navigate to="/" />} />
+    </Routes>
+  );
+};
+
+const App: React.FC = () => {
+  return (
+    <AuthProvider>
+      <BrowserRouter>
+        <AppRoutes />
+      </BrowserRouter>
+    </AuthProvider>
   );
 };
 

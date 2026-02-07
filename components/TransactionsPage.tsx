@@ -145,13 +145,14 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({ customers })
                         <TableHead>Customer</TableHead>
                         <TableHead>Campaign / Card ID</TableHead>
                         <TableHead>Action</TableHead>
+                        <TableHead>By</TableHead>
                         <TableHead className="text-right">Remarks</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
                     {filteredTransactions.length === 0 ? (
                         <TableRow>
-                            <TableCell colSpan={5} className="text-center h-32 text-muted-foreground flex-col gap-2">
+                            <TableCell colSpan={6} className="text-center h-32 text-muted-foreground flex-col gap-2">
                                 <div className="flex justify-center mb-2"><History size={24} className="opacity-20"/></div>
                                 No transactions found matching your filters.
                             </TableCell>
@@ -182,6 +183,16 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({ customers })
                                     )}>
                                         {getIcon(tx.type)}
                                         {getLabel(tx.type)}
+                                    </div>
+                                </TableCell>
+                                <TableCell>
+                                    <div className="flex flex-col">
+                                        <span className="text-sm font-medium">
+                                            {tx.actorName || "Owner"}
+                                        </span>
+                                        <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                                            {tx.actorRole === "staff" ? "Staff" : "Owner"}
+                                        </span>
                                     </div>
                                 </TableCell>
                                 <TableCell className="text-right text-sm text-muted-foreground max-w-[200px] truncate">

@@ -28,6 +28,7 @@
 body {
   background-color: hsl(var(--background));
   color: hsl(var(--foreground));
+  font-family: "DM Sans", sans-serif;
 }
 
 /* Utility to hide scrollbar but keep functionality */

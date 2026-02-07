@@ -1,0 +1,21 @@
+<svg width="320" height="240" viewBox="0 0 320 240" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    .stroke { stroke: #14121a; stroke-width: 12; stroke-linecap: round; stroke-linejoin: round; }
+  </style>
+  <rect x="16" y="20" width="288" height="200" rx="18" class="stroke"/>
+  <rect x="60" y="78" width="90" height="96" rx="8" class="stroke"/>
+  <path d="M105 78V174" class="stroke"/>
+  <path d="M60 78H150" class="stroke"/>
+  <path d="M60 96L105 128L150 96" class="stroke"/>
+  <path d="M60 116L105 148L150 116" class="stroke"/>
+  <path d="M105 62C96 52 78 50 72 62" class="stroke"/>
+  <path d="M105 62C114 52 132 50 138 62" class="stroke"/>
+  <circle cx="210" cy="78" r="12" class="stroke"/>
+  <path d="M204 78L209 83L216 72" class="stroke"/>
+  <circle cx="252" cy="78" r="12" class="stroke"/>
+  <path d="M246 78L251 83L258 72" class="stroke"/>
+  <circle cx="210" cy="120" r="12" class="stroke"/>
+  <circle cx="252" cy="120" r="12" class="stroke"/>
+  <circle cx="210" cy="162" r="12" class="stroke"/>
+  <circle cx="252" cy="162" r="12" class="stroke"/>
+</svg>

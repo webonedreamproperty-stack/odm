@@ -35,6 +35,8 @@ import {
 import { cn } from "../lib/utils";
 import { Customer, Template, IssuedCard, Transaction } from '../types';
 import { IssueCardDialog } from './IssueCardDialog';
+import { useAuth } from './AuthProvider';
+import { buildPublicCardUrl } from '../lib/links';
 
 interface CustomersPageProps {
   customers: Customer[];
@@ -54,6 +56,7 @@ const formatPhoneNumber = (value: string) => {
 
 export const CustomersPage: React.FC<CustomersPageProps> = ({ customers, campaigns, setCustomers }) => {
   const [searchQuery, setSearchQuery] = useState("");
+  const { currentUser, currentOwner } = useAuth();
   
   // Dialog States
   const [isIssueOpen, setIsIssueOpen] = useState(false);
@@ -94,6 +97,9 @@ export const CustomersPage: React.FC<CustomersPageProps> = ({ customers, campaig
 
   const handleIssueCard = (campaign: Template, customer: Customer | null, newCustomerData: {name: string, email: string, mobile: string}): IssuedCard => {
       let targetCustomer = customer;
+      const actorName = currentUser?.businessName ?? "Owner";
+      const actorRole = currentUser?.role ?? "owner";
+      const actorId = currentUser?.id;
 
       if (!targetCustomer) {
           const newId = `cust-${Date.now()}`;
@@ -121,7 +127,10 @@ export const CustomersPage: React.FC<CustomersPageProps> = ({ customers, campaig
               hour12: true 
           }),
           timestamp: now.getTime(),
-          title: "Card Issued"
+          title: "Card Issued",
+          actorName,
+          actorRole,
+          actorId
       };
 
       const newCard: IssuedCard = {
@@ -191,7 +200,10 @@ export const CustomersPage: React.FC<CustomersPageProps> = ({ customers, campaig
             hour12: true 
         }),
         timestamp: now.getTime(),
-        title: txTitle
+        title: txTitle,
+        actorName: currentUser?.businessName ?? "Owner",
+        actorRole: currentUser?.role ?? "owner",
+        actorId: currentUser?.id
     };
 
     const updatedCard = { 
@@ -242,7 +254,10 @@ export const CustomersPage: React.FC<CustomersPageProps> = ({ customers, campaig
             }),
             timestamp: now.getTime(),
             title: 'Stamp Removed',
-            remarks: 'Manual correction'
+            remarks: 'Manual correction',
+            actorName: currentUser?.businessName ?? "Owner",
+            actorRole: currentUser?.role ?? "owner",
+            actorId: currentUser?.id
         };
 
         const updatedCard = { 
@@ -367,7 +382,11 @@ export const CustomersPage: React.FC<CustomersPageProps> = ({ customers, campaig
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-48">
                                 <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                <DropdownMenuItem onClick={() => window.open(`#/card/${card.uniqueId}`, '_blank')} className="cursor-pointer">
+                                <DropdownMenuItem onClick={() => {
+                                    const slug = currentOwner?.slug;
+                                    if (!slug) return;
+                                    window.open(buildPublicCardUrl(slug, card.uniqueId), '_blank');
+                                }} className="cursor-pointer">
                                     <ExternalLink className="mr-2 h-4 w-4" /> Public View
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />

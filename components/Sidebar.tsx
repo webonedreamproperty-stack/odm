@@ -3,22 +3,24 @@ import { LayoutDashboard, Users, CreditCard, Settings, LogOut, PlusCircle, Walle
 import { cn } from '../lib/utils';
 import { Button } from './ui/button';
 import { NavLink, useNavigate } from 'react-router-dom';
+import { useAuth } from './AuthProvider';
 
 interface SidebarProps {
   className?: string;
 }
 
 export const NAV_ITEMS = [
-  { path: '/', label: 'Campaigns', icon: CreditCard },
-  { path: '/issued-cards', label: 'Issued Cards', icon: Wallet },
-  { path: '/transactions', label: 'Transactions', icon: History },
-  { path: '/customers', label: 'Customers', icon: Users },
-  { path: '/analytics', label: 'Analytics', icon: LayoutDashboard },
-  { path: '/settings', label: 'Settings', icon: Settings },
+  { path: '/', label: 'Campaigns', icon: CreditCard, roles: ['owner'] },
+  { path: '/issued-cards', label: 'Issued Cards', icon: Wallet, roles: ['owner', 'staff'] },
+  { path: '/transactions', label: 'Transactions', icon: History, roles: ['owner'] },
+  { path: '/customers', label: 'Customers', icon: Users, roles: ['owner', 'staff'] },
+  { path: '/analytics', label: 'Analytics', icon: LayoutDashboard, roles: ['owner'] },
+  { path: '/settings', label: 'Settings', icon: Settings, roles: ['owner'] },
 ];
 
 export const SidebarContent: React.FC<{ onNavigate?: () => void }> = ({ onNavigate }) => {
   const navigate = useNavigate();
+  const { currentUser, currentOwner, isStaff, logout } = useAuth();
 
   const handleNavigate = (path: string) => {
     navigate(path);
@@ -28,11 +30,16 @@ export const SidebarContent: React.FC<{ onNavigate?: () => void }> = ({ onNaviga
   return (
     <div className="space-y-4 py-4 h-full relative">
       <div className="px-3 py-2">
-        <h2 className="mb-2 px-4 text-lg font-semibold tracking-tight">
-          Loyalty App
-        </h2>
+        <div className="mb-2 px-4 flex items-center gap-3">
+          <img
+            src="/stampverse.svg"
+            alt="Stampverse logo"
+            className="h-8 w-auto"
+          />
+          <span className="text-lg font-semibold tracking-tight">Stampverse</span>
+        </div>
         <div className="space-y-1">
-          {NAV_ITEMS.map((item) => (
+          {NAV_ITEMS.filter((item) => item.roles.includes(isStaff ? 'staff' : 'owner')).map((item) => (
             <NavLink to={item.path} key={item.path} onClick={onNavigate}>
               {({ isActive }) => (
                 <Button
@@ -47,23 +54,39 @@ export const SidebarContent: React.FC<{ onNavigate?: () => void }> = ({ onNaviga
           ))}
         </div>
       </div>
-      <div className="px-3 py-2">
-        <h2 className="mb-2 px-4 text-lg font-semibold tracking-tight">
-          Actions
-        </h2>
-        <div className="space-y-1">
-           <Button 
-              variant="default" 
-              className="w-full justify-start gap-2"
-              onClick={() => handleNavigate('/gallery')}
-           >
-              <PlusCircle size={20} />
-              Create New Campaign
-           </Button>
+      {!isStaff && (
+        <div className="px-3 py-2">
+          <h2 className="mb-2 px-4 text-lg font-semibold tracking-tight">
+            Actions
+          </h2>
+          <div className="space-y-1">
+             <Button 
+                variant="default" 
+                className="w-full justify-start gap-2"
+                onClick={() => handleNavigate('/gallery')}
+             >
+                <PlusCircle size={20} />
+                Create New Campaign
+             </Button>
+          </div>
         </div>
-      </div>
-      <div className="absolute bottom-4 left-4 right-4">
-         <Button variant="ghost" className="w-full justify-start gap-2 text-muted-foreground hover:text-destructive">
+      )}
+      <div className="absolute bottom-4 left-4 right-4 space-y-3">
+         {currentUser && (
+          <div className="rounded-2xl border bg-white px-3 py-2 text-xs text-muted-foreground shadow-sm">
+              <div className="font-semibold text-foreground">{currentUser.businessName}</div>
+              <div className="font-mono">@{currentOwner?.slug ?? "staff"}</div>
+              {isStaff && <div className="text-[10px] uppercase tracking-widest mt-1">Staff Access</div>}
+          </div>
+         )}
+         <Button
+            variant="ghost"
+            className="w-full justify-start gap-2 text-muted-foreground hover:text-destructive"
+            onClick={() => {
+              logout();
+              navigate("/login");
+            }}
+         >
             <LogOut size={20} />
             Log Out
          </Button>

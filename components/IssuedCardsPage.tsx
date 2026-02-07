@@ -24,6 +24,8 @@ import { Customer, Template, IssuedCard, Transaction } from '../types';
 import { KioskMode } from './KioskMode';
 import { IssueCardDialog } from './IssueCardDialog';
 import { resolveCardTemplate, toStoredTemplate } from '../lib/templateSerialization';
+import { useAuth } from './AuthProvider';
+import { buildPublicCardUrl } from '../lib/links';
 
 interface IssuedCardsPageProps {
   customers: Customer[];
@@ -33,6 +35,8 @@ interface IssuedCardsPageProps {
 
 export const IssuedCardsPage: React.FC<IssuedCardsPageProps> = ({ customers, campaigns, setCustomers }) => {
   const [searchQuery, setSearchQuery] = useState("");
+  const { currentOwner, isVerified, isStaff, currentUser } = useAuth();
+  const canIssue = isVerified;
   
   // Dialog & Kiosk States
   const [isIssueOpen, setIsIssueOpen] = useState(false);
@@ -85,12 +89,14 @@ export const IssuedCardsPage: React.FC<IssuedCardsPageProps> = ({ customers, cam
 
   // Called from Kiosk Mode when "Issue New Card" is clicked
   const handleKioskIssueNew = (customer: Customer, template: Template) => {
+      if (!canIssue) return;
       setPreSelectedCampaign(template);
       setPreSelectedCustomer(customer);
       setIsIssueOpen(true);
   };
 
   const openIssueWizard = () => {
+      if (!canIssue) return;
       setPreSelectedCampaign(null);
       setPreSelectedCustomer(null);
       setIsIssueOpen(true);
@@ -98,6 +104,9 @@ export const IssuedCardsPage: React.FC<IssuedCardsPageProps> = ({ customers, cam
 
   const handleIssueCard = (campaign: Template, customer: Customer | null, newCustomerData: {name: string, email: string, mobile: string}): IssuedCard => {
       let targetCustomer = customer;
+      const actorName = currentUser?.businessName ?? "Owner";
+      const actorRole = currentUser?.role ?? "owner";
+      const actorId = currentUser?.id;
 
       if (!targetCustomer) {
           const newId = `cust-${Date.now()}`;
@@ -125,7 +134,10 @@ export const IssuedCardsPage: React.FC<IssuedCardsPageProps> = ({ customers, cam
               hour12: true 
           }),
           timestamp: now.getTime(),
-          title: "Card Issued"
+          title: "Card Issued",
+          actorName,
+          actorRole,
+          actorId
       };
 
       const newCard: IssuedCard = {
@@ -191,6 +203,11 @@ export const IssuedCardsPage: React.FC<IssuedCardsPageProps> = ({ customers, cam
             onClose={() => setActiveKioskData(null)}
             onUpdateCard={handleUpdateCard}
             onIssueNew={handleKioskIssueNew}
+            canIssue={canIssue}
+            allowRedeem={true}
+            actorName={currentUser?.businessName ?? "Owner"}
+            actorRole={currentUser?.role ?? "owner"}
+            actorId={currentUser?.id}
         />
       )}
 
@@ -210,9 +227,16 @@ export const IssuedCardsPage: React.FC<IssuedCardsPageProps> = ({ customers, cam
             <h1 className="text-3xl font-bold tracking-tight text-foreground">Issued Cards</h1>
             <p className="text-muted-foreground">Monitor active cards and open Kiosk Mode for stamping.</p>
         </div>
-        <Button onClick={openIssueWizard} className="gap-2 shadow-sm rounded-full px-6">
-            <Plus size={16} /> Issue New Card
-        </Button>
+        <div className="flex flex-col items-end gap-2">
+            <Button onClick={openIssueWizard} className="gap-2 shadow-sm rounded-full px-6" disabled={!canIssue}>
+                <Plus size={16} /> Issue New Card
+            </Button>
+            {!canIssue && (
+                <div className="text-xs text-amber-600 flex items-center gap-2">
+                    <Lock size={12} /> Verify your email to issue cards.
+                </div>
+            )}
+        </div>
       </div>
 
       <div className="flex items-center space-x-2 bg-white px-3 py-2 rounded-lg border w-full max-w-sm shadow-sm focus-within:ring-2 focus-within:ring-ring">
@@ -316,16 +340,22 @@ export const IssuedCardsPage: React.FC<IssuedCardsPageProps> = ({ customers, cam
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end">
                                         <DropdownMenuLabel>Manage Card</DropdownMenuLabel>
-                                        <DropdownMenuItem onClick={() => window.open(`#/card/${card.uniqueId}`, '_blank')}>
+                                        <DropdownMenuItem onClick={() => {
+                                            const slug = currentOwner?.slug;
+                                            if (!slug) return;
+                                            window.open(buildPublicCardUrl(slug, card.uniqueId), '_blank');
+                                        }}>
                                             <ExternalLink className="mr-2 h-4 w-4" /> Public Link
                                         </DropdownMenuItem>
                                         <DropdownMenuSeparator />
-                                        <DropdownMenuItem 
-                                            className="text-red-600"
-                                            onClick={() => handleRevokeCard(customer.id, card.id)}
-                                        >
-                                            <Trash className="mr-2 h-4 w-4" /> Revoke
-                                        </DropdownMenuItem>
+                                        {!isStaff && (
+                                            <DropdownMenuItem 
+                                                className="text-red-600"
+                                                onClick={() => handleRevokeCard(customer.id, card.id)}
+                                            >
+                                                <Trash className="mr-2 h-4 w-4" /> Revoke
+                                            </DropdownMenuItem>
+                                        )}
                                     </DropdownMenuContent>
                                 </DropdownMenu>
                             </TableCell>
