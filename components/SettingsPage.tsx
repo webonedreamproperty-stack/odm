@@ -6,14 +6,22 @@ import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { useAuth } from "./AuthProvider";
 import { buildStaffPortalUrl } from "../lib/links";
+import { useNavigate } from "react-router-dom";
+
+const DELETE_CONFIRMATION = "DELETE";
 
 export const SettingsPage: React.FC = () => {
-  const { staffAccounts, createStaff, updateStaffPin, setStaffAccess, currentOwner } = useAuth();
+  const navigate = useNavigate();
+  const { staffAccounts, createStaff, updateStaffPin, setStaffAccess, currentOwner, deleteAccount } = useAuth();
   const [form, setForm] = useState({ name: "", email: "", pin: "" });
   const [error, setError] = useState("");
   const [resetTarget, setResetTarget] = useState<{ id: string; name: string } | null>(null);
   const [resetPin, setResetPin] = useState("");
   const [resetError, setResetError] = useState("");
+  const [isDeleteStepOneOpen, setIsDeleteStepOneOpen] = useState(false);
+  const [isDeleteStepTwoOpen, setIsDeleteStepTwoOpen] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [deleteError, setDeleteError] = useState("");
 
   const handleCreate = (event: React.FormEvent) => {
     event.preventDefault();
@@ -38,8 +46,26 @@ export const SettingsPage: React.FC = () => {
     setResetTarget(null);
   };
 
+  const handleDeleteFinal = () => {
+    setDeleteError("");
+    if (deleteConfirmText.trim().toUpperCase() !== DELETE_CONFIRMATION) {
+      setDeleteError(`Type ${DELETE_CONFIRMATION} to confirm account deletion.`);
+      return;
+    }
+
+    const result = deleteAccount();
+    if (!result.ok) {
+      setDeleteError(result.error);
+      return;
+    }
+
+    setIsDeleteStepTwoOpen(false);
+    setDeleteConfirmText("");
+    navigate("/signup");
+  };
+
   return (
-    <div className="p-8 space-y-8 animate-fade-in h-full flex flex-col bg-gray-50/50">
+    <div className="p-8 space-y-8 animate-fade-in h-full overflow-y-auto flex flex-col bg-gray-50/50">
       <div className="space-y-2">
         <h1 className="text-3xl font-bold tracking-tight text-foreground">Settings</h1>
         <p className="text-muted-foreground">Manage your Stampee team and access.</p>
@@ -181,6 +207,31 @@ export const SettingsPage: React.FC = () => {
         </div>
       </section>
 
+      <section className="rounded-3xl border border-rose-200 bg-rose-50 p-6 shadow-sm space-y-4">
+        <div className="space-y-1">
+          <h2 className="text-xl font-semibold text-rose-900">Danger Zone</h2>
+          <p className="text-sm text-rose-800/90">
+            Delete your owner account, all staff logins, and all campaign/customer data for this business.
+          </p>
+        </div>
+        <div className="rounded-2xl border border-rose-200 bg-white/70 px-4 py-3 text-xs text-rose-800">
+          This action is permanent and cannot be undone.
+        </div>
+        <div>
+          <Button
+            type="button"
+            variant="destructive"
+            onClick={() => {
+              setDeleteError("");
+              setDeleteConfirmText("");
+              setIsDeleteStepOneOpen(true);
+            }}
+          >
+            Delete Account
+          </Button>
+        </div>
+      </section>
+
       <Dialog open={!!resetTarget} onOpenChange={(open) => !open && setResetTarget(null)}>
         <DialogContent>
           <DialogHeader>
@@ -203,6 +254,78 @@ export const SettingsPage: React.FC = () => {
               Cancel
             </Button>
             <Button onClick={handleReset}>Update PIN</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isDeleteStepOneOpen} onOpenChange={setIsDeleteStepOneOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Account: Step 1 of 2</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 text-sm text-muted-foreground">
+            <p>
+              You are about to delete <span className="font-semibold text-foreground">{currentOwner?.businessName}</span>.
+            </p>
+            <p>This will remove owner access, all staff accounts, campaigns, and customer history.</p>
+            <p className="text-rose-600 font-medium">This action cannot be undone.</p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDeleteStepOneOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                setIsDeleteStepOneOpen(false);
+                setDeleteError("");
+                setDeleteConfirmText("");
+                setIsDeleteStepTwoOpen(true);
+              }}
+            >
+              Continue
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={isDeleteStepTwoOpen}
+        onOpenChange={(open) => {
+          setIsDeleteStepTwoOpen(open);
+          if (!open) {
+            setDeleteConfirmText("");
+            setDeleteError("");
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Account: Step 2 of 2</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Type <span className="font-mono font-semibold text-foreground">{DELETE_CONFIRMATION}</span> to permanently
+              delete this account.
+            </p>
+            <Input
+              value={deleteConfirmText}
+              onChange={(event) => setDeleteConfirmText(event.target.value)}
+              placeholder={DELETE_CONFIRMATION}
+            />
+            {deleteError && <div className="text-sm text-rose-600">{deleteError}</div>}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDeleteStepTwoOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteFinal}
+              disabled={deleteConfirmText.trim().toUpperCase() !== DELETE_CONFIRMATION}
+            >
+              Permanently Delete
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

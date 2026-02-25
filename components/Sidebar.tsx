@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, Users, CreditCard, Settings, LogOut, PlusCircle, Wallet, History, QrCode, Moon, Sun } from 'lucide-react';
+import { LayoutDashboard, Users, CreditCard, Settings, LogOut, PlusCircle, Wallet, History, QrCode } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { Button } from './ui/button';
 import { NavLink, useNavigate } from 'react-router-dom';
@@ -8,15 +8,11 @@ import { useAuth } from './AuthProvider';
 interface SidebarProps {
   className?: string;
   onScanQr?: () => void;
-  isDarkMode?: boolean;
-  onToggleDarkMode?: () => void;
 }
 
 interface SidebarContentProps {
   onNavigate?: () => void;
   onScanQr?: () => void;
-  isDarkMode?: boolean;
-  onToggleDarkMode?: () => void;
 }
 
 export const NAV_ITEMS = [
@@ -28,7 +24,7 @@ export const NAV_ITEMS = [
   { path: '/settings', label: 'Settings', icon: Settings, roles: ['owner'] },
 ];
 
-export const SidebarContent: React.FC<SidebarContentProps> = ({ onNavigate, onScanQr, isDarkMode, onToggleDarkMode }) => {
+export const SidebarContent: React.FC<SidebarContentProps> = ({ onNavigate, onScanQr }) => {
   const navigate = useNavigate();
   const { currentUser, currentOwner, isStaff, logout } = useAuth();
 
@@ -101,16 +97,6 @@ export const SidebarContent: React.FC<SidebarContentProps> = ({ onNavigate, onSc
               {isStaff && <div className="text-[10px] uppercase tracking-widest mt-1">Staff Access</div>}
           </div>
          )}
-         {onToggleDarkMode && (
-          <Button
-            variant="outline"
-            className="w-full justify-start gap-2"
-            onClick={onToggleDarkMode}
-          >
-            {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
-            {isDarkMode ? "Light Mode" : "Dark Mode"}
-          </Button>
-         )}
          <Button
             variant="ghost"
             className="w-full justify-start gap-2 text-muted-foreground hover:text-destructive"
@@ -127,10 +113,10 @@ export const SidebarContent: React.FC<SidebarContentProps> = ({ onNavigate, onSc
   );
 };
 
-export const Sidebar: React.FC<SidebarProps> = ({ className, onScanQr, isDarkMode, onToggleDarkMode }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ className, onScanQr }) => {
   return (
     <div className={cn("hidden min-h-screen w-72 border-r border-border/80 bg-card pb-8 md:block", className)}>
-      <SidebarContent onScanQr={onScanQr} isDarkMode={isDarkMode} onToggleDarkMode={onToggleDarkMode} />
+      <SidebarContent onScanQr={onScanQr} />
     </div>
   );
 };

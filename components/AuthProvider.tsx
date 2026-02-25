@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useMemo, useState } from "
 import { User } from "../types";
 import { clearSession, loadSession, loadUsers, saveSession, saveUsers } from "../lib/authStorage";
 import { isSlugValid, normalizeSlug } from "../lib/slug";
+import { deleteUserData } from "../lib/userData";
 
 type AuthResult = { ok: true; user?: User } | { ok: false; error: string };
 
@@ -28,6 +29,7 @@ interface AuthContextValue {
   }) => AuthResult;
   updateStaffPin: (staffId: string, pin: string) => AuthResult;
   setStaffAccess: (staffId: string, access: "active" | "disabled") => void;
+  deleteAccount: () => AuthResult;
   logout: () => void;
   verifyAccount: () => void;
   isSlugAvailable: (slug: string) => boolean;
@@ -256,6 +258,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     );
   };
 
+  const deleteAccount = (): AuthResult => {
+    if (!currentOwner || currentUser?.role !== "owner") {
+      return { ok: false, error: "Only owners can delete the account." };
+    }
+
+    const ownerId = currentOwner.id;
+    setUsers((prev) =>
+      prev.filter((user) => user.id !== ownerId && user.ownerId !== ownerId)
+    );
+    deleteUserData(ownerId);
+    setCurrentUser(null);
+    return { ok: true };
+  };
+
   const isSlugAvailable = (slug: string) => {
     const normalized = normalizeSlug(slug);
     if (!normalized || !isSlugValid(normalized)) return false;
@@ -277,6 +293,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       createStaff,
       updateStaffPin,
       setStaffAccess,
+      deleteAccount,
       logout,
       verifyAccount,
       isSlugAvailable,

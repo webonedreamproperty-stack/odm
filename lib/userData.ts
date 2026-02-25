@@ -1,5 +1,5 @@
 import { Customer, StoredTemplate, Template } from "../types";
-import { loadFromStorage, saveToStorage } from "./storage";
+import { loadFromStorage, removeFromStorage, saveToStorage } from "./storage";
 import { fromStoredTemplate, toStoredTemplate } from "./templateSerialization";
 
 const campaignsKey = (userId: string) => `cookees.${userId}.campaigns.v1`;
@@ -23,4 +23,9 @@ export const loadUserCustomers = (userId: string): Customer[] | null => {
 
 export const saveUserCustomers = (userId: string, customers: Customer[]) => {
   saveToStorage(customersKey(userId), customers);
+};
+
+export const deleteUserData = (userId: string) => {
+  removeFromStorage(campaignsKey(userId));
+  removeFromStorage(customersKey(userId));
 };

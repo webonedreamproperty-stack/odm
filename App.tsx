@@ -30,8 +30,6 @@ const DEFAULT_CREATED_CARDS: Template[] = [
   { ...templates[0], id: 'camp-001' },
   { ...templates[2], id: 'camp-002' }
 ];
-const DASHBOARD_THEME_KEY = 'cookees.dashboard.theme.v1';
-
 // Wrapper for Public Card View to handle params logic
 const PublicCardWrapper: React.FC = () => {
     const { slug, uniqueId } = useParams<{ slug: string; uniqueId: string }>();
@@ -186,27 +184,14 @@ const EditorWrapper: React.FC<{ onSave: (t: Template) => void, templates: Templa
 // Layout Component including Sidebar
 const DashboardLayout: React.FC = () => {
     const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
-    const [isDashboardDark, setIsDashboardDark] = useState<boolean>(() => {
-        if (typeof window === 'undefined') return false;
-        return window.localStorage.getItem(DASHBOARD_THEME_KEY) === 'dark';
-    });
     const location = useLocation();
 
     const activeTitle = NAV_ITEMS.find((item) => item.path === location.pathname)?.label ?? "Dashboard";
 
-    useEffect(() => {
-        if (typeof window === 'undefined') return;
-        window.localStorage.setItem(DASHBOARD_THEME_KEY, isDashboardDark ? 'dark' : 'light');
-    }, [isDashboardDark]);
-
-    const toggleTheme = () => setIsDashboardDark((prev) => !prev);
-
     return (
-        <div className={cn("flex min-h-screen bg-background text-foreground font-sans", isDashboardDark && "dashboard-dark")}>
+        <div className="flex min-h-screen bg-background text-foreground font-sans">
             <Sidebar
                 onScanQr={() => window.dispatchEvent(new Event('open-qr-scan'))}
-                isDarkMode={isDashboardDark}
-                onToggleDarkMode={toggleTheme}
             />
             <main className="flex-1 overflow-hidden h-screen relative flex flex-col">
                 <div className="md:hidden sticky top-0 z-40 flex items-center justify-between border-b border-border/80 bg-card/95 px-4 py-3 backdrop-blur-sm">
@@ -253,8 +238,6 @@ const DashboardLayout: React.FC = () => {
                                 window.dispatchEvent(new Event('open-qr-scan'));
                                 setIsMobileNavOpen(false);
                             }}
-                            isDarkMode={isDashboardDark}
-                            onToggleDarkMode={toggleTheme}
                         />
                     </div>
                 </div>
