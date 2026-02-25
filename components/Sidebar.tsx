@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, Users, CreditCard, Settings, LogOut, PlusCircle, Wallet, History, QrCode } from 'lucide-react';
+import { LayoutDashboard, Users, CreditCard, Settings, LogOut, PlusCircle, Wallet, History, QrCode, Moon, Sun } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { Button } from './ui/button';
 import { NavLink, useNavigate } from 'react-router-dom';
@@ -8,6 +8,15 @@ import { useAuth } from './AuthProvider';
 interface SidebarProps {
   className?: string;
   onScanQr?: () => void;
+  isDarkMode?: boolean;
+  onToggleDarkMode?: () => void;
+}
+
+interface SidebarContentProps {
+  onNavigate?: () => void;
+  onScanQr?: () => void;
+  isDarkMode?: boolean;
+  onToggleDarkMode?: () => void;
 }
 
 export const NAV_ITEMS = [
@@ -19,7 +28,7 @@ export const NAV_ITEMS = [
   { path: '/settings', label: 'Settings', icon: Settings, roles: ['owner'] },
 ];
 
-export const SidebarContent: React.FC<{ onNavigate?: () => void; onScanQr?: () => void }> = ({ onNavigate, onScanQr }) => {
+export const SidebarContent: React.FC<SidebarContentProps> = ({ onNavigate, onScanQr, isDarkMode, onToggleDarkMode }) => {
   const navigate = useNavigate();
   const { currentUser, currentOwner, isStaff, logout } = useAuth();
 
@@ -29,23 +38,22 @@ export const SidebarContent: React.FC<{ onNavigate?: () => void; onScanQr?: () =
   };
 
   return (
-    <div className="space-y-4 py-4 h-full relative">
+    <div className="relative h-full space-y-8 py-8">
       <div className="px-3 py-2">
-        <div className="mb-2 px-4 flex items-center gap-3">
+        <div className="mb-6 px-4 flex items-center gap-3">
           <img
-            src="/stampverse.svg"
-            alt="Stampverse logo"
-            className="h-8 w-auto"
+            src="/stampee.svg"
+            alt="Stampee logo"
+            className="h-12 w-auto"
           />
-          <span className="text-lg font-semibold tracking-tight">Stampverse</span>
         </div>
-        <div className="space-y-1">
+        <div className="space-y-2">
           {NAV_ITEMS.filter((item) => item.roles.includes(isStaff ? 'staff' : 'owner')).map((item) => (
             <NavLink to={item.path} key={item.path} onClick={onNavigate}>
               {({ isActive }) => (
                 <Button
                   variant={isActive ? "secondary" : "ghost"}
-                  className="w-full justify-start gap-2 mb-1"
+                  className="w-full justify-start gap-2"
                 >
                   <item.icon size={20} />
                   {item.label}
@@ -70,10 +78,10 @@ export const SidebarContent: React.FC<{ onNavigate?: () => void; onScanQr?: () =
       </div>
       {!isStaff && (
         <div className="px-3 py-2">
-          <h2 className="mb-2 px-4 text-lg font-semibold tracking-tight">
+          <h2 className="mb-3 px-4 text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
             Actions
           </h2>
-          <div className="space-y-1">
+          <div className="space-y-2">
              <Button 
                 variant="default" 
                 className="w-full justify-start gap-2"
@@ -87,11 +95,21 @@ export const SidebarContent: React.FC<{ onNavigate?: () => void; onScanQr?: () =
       )}
       <div className="absolute bottom-4 left-4 right-4 space-y-3">
          {currentUser && (
-          <div className="rounded-2xl border bg-white px-3 py-2 text-xs text-muted-foreground shadow-sm">
+          <div className="rounded-lg border border-border/80 bg-card px-3 py-3 text-xs text-muted-foreground shadow-subtle">
               <div className="font-semibold text-foreground">{currentUser.businessName}</div>
               <div className="font-mono">@{currentOwner?.slug ?? "staff"}</div>
               {isStaff && <div className="text-[10px] uppercase tracking-widest mt-1">Staff Access</div>}
           </div>
+         )}
+         {onToggleDarkMode && (
+          <Button
+            variant="outline"
+            className="w-full justify-start gap-2"
+            onClick={onToggleDarkMode}
+          >
+            {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
+            {isDarkMode ? "Light Mode" : "Dark Mode"}
+          </Button>
          )}
          <Button
             variant="ghost"
@@ -109,10 +127,10 @@ export const SidebarContent: React.FC<{ onNavigate?: () => void; onScanQr?: () =
   );
 };
 
-export const Sidebar: React.FC<SidebarProps> = ({ className, onScanQr }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ className, onScanQr, isDarkMode, onToggleDarkMode }) => {
   return (
-    <div className={cn("pb-12 min-h-screen w-64 border-r bg-card hidden md:block", className)}>
-      <SidebarContent onScanQr={onScanQr} />
+    <div className={cn("hidden min-h-screen w-72 border-r border-border/80 bg-card pb-8 md:block", className)}>
+      <SidebarContent onScanQr={onScanQr} isDarkMode={isDarkMode} onToggleDarkMode={onToggleDarkMode} />
     </div>
   );
 };

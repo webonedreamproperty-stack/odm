@@ -12,8 +12,8 @@ module.exports = {
   theme: {
     extend: {
       fontFamily: {
-        sans: ["DM Sans", "sans-serif"],
-        display: ["Space Grotesk", "sans-serif"],
+        sans: ["-apple-system", "BlinkMacSystemFont", "\"SF Pro Text\"", "\"Segoe UI\"", "sans-serif"],
+        display: ["-apple-system", "BlinkMacSystemFont", "\"SF Pro Display\"", "\"Segoe UI\"", "sans-serif"],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -55,15 +55,19 @@ module.exports = {
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
       },
+      boxShadow: {
+        subtle: "0 1px 2px rgba(15, 23, 42, 0.06), 0 10px 28px rgba(15, 23, 42, 0.05)",
+        panel: "0 1px 2px rgba(15, 23, 42, 0.05), 0 12px 34px rgba(15, 23, 42, 0.06)",
+      },
       animation: {
-        "bounce-short": "bounce-short 0.5s ease-in-out 1",
-        "accordion-down": "accordion-down 0.2s ease-out",
-        "accordion-up": "accordion-up 0.2s ease-out",
-        "fade-in": "fade-in 0.5s ease-out forwards",
-        "fade-in-0": "fade-in-0 0.2s ease-out forwards",
-        "zoom-in-95": "zoom-in-95 0.2s ease-out forwards",
-        "zoom-in-95-center": "zoom-in-95-center 0.2s ease-out forwards",
-        "zoom-out-95-center": "zoom-out-95-center 0.2s ease-out forwards",
+        "bounce-short": "bounce-short 0.2s ease-out 1",
+        "accordion-down": "accordion-down 0.18s ease-out",
+        "accordion-up": "accordion-up 0.18s ease-out",
+        "fade-in": "fade-in 0.18s ease-out forwards",
+        "fade-in-0": "fade-in-0 0.16s ease-out forwards",
+        "zoom-in-95": "zoom-in-95 0.18s ease-out forwards",
+        "zoom-in-95-center": "zoom-in-95-center 0.18s ease-out forwards",
+        "zoom-out-95-center": "zoom-out-95-center 0.18s ease-out forwards",
       },
       keyframes: {
         "bounce-short": {

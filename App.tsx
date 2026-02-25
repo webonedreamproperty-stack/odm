@@ -30,6 +30,7 @@ const DEFAULT_CREATED_CARDS: Template[] = [
   { ...templates[0], id: 'camp-001' },
   { ...templates[2], id: 'camp-002' }
 ];
+const DASHBOARD_THEME_KEY = 'cookees.dashboard.theme.v1';
 
 // Wrapper for Public Card View to handle params logic
 const PublicCardWrapper: React.FC = () => {
@@ -40,7 +41,7 @@ const PublicCardWrapper: React.FC = () => {
 
     const owner = findUserBySlug(slug);
     if (!owner) {
-        return <div className="h-screen flex items-center justify-center text-muted-foreground">Stampverse not found.</div>;
+        return <div className="h-screen flex items-center justify-center text-muted-foreground">Stampee not found.</div>;
     }
 
     const customers = loadUserCustomers(owner.id) ?? [];
@@ -71,7 +72,7 @@ const PublicCardWrapper: React.FC = () => {
     const isRedeemed = foundCard.status === 'Redeemed';
 
     return (
-        <div className="min-h-screen w-full bg-gray-100 relative flex flex-col items-center justify-center animate-fade-in">
+        <div className="min-h-screen w-full bg-background relative flex flex-col items-center justify-center animate-fade-in">
              <div className="w-full min-h-[100dvh] flex items-center justify-center p-0 relative">
                 <div className={cn(
                     "w-full h-[100dvh] md:w-full md:h-[100dvh] md:rounded-none md:shadow-none md:ring-0",
@@ -185,17 +186,32 @@ const EditorWrapper: React.FC<{ onSave: (t: Template) => void, templates: Templa
 // Layout Component including Sidebar
 const DashboardLayout: React.FC = () => {
     const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+    const [isDashboardDark, setIsDashboardDark] = useState<boolean>(() => {
+        if (typeof window === 'undefined') return false;
+        return window.localStorage.getItem(DASHBOARD_THEME_KEY) === 'dark';
+    });
     const location = useLocation();
 
     const activeTitle = NAV_ITEMS.find((item) => item.path === location.pathname)?.label ?? "Dashboard";
 
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        window.localStorage.setItem(DASHBOARD_THEME_KEY, isDashboardDark ? 'dark' : 'light');
+    }, [isDashboardDark]);
+
+    const toggleTheme = () => setIsDashboardDark((prev) => !prev);
+
     return (
-        <div className="flex min-h-screen bg-background font-sans">
-            <Sidebar onScanQr={() => window.dispatchEvent(new Event('open-qr-scan'))} />
+        <div className={cn("flex min-h-screen bg-background text-foreground font-sans", isDashboardDark && "dashboard-dark")}>
+            <Sidebar
+                onScanQr={() => window.dispatchEvent(new Event('open-qr-scan'))}
+                isDarkMode={isDashboardDark}
+                onToggleDarkMode={toggleTheme}
+            />
             <main className="flex-1 overflow-hidden h-screen relative flex flex-col">
-                <div className="md:hidden sticky top-0 z-40 flex items-center justify-between px-4 py-3 border-b bg-white/90 backdrop-blur-sm">
+                <div className="md:hidden sticky top-0 z-40 flex items-center justify-between border-b border-border/80 bg-card/95 px-4 py-3 backdrop-blur-sm">
                     <button
-                        className="h-10 w-10 inline-flex items-center justify-center rounded-full border border-amber-100 bg-white shadow-sm"
+                        className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-border/80 bg-background shadow-subtle"
                         onClick={() => setIsMobileNavOpen(true)}
                         aria-label="Open navigation menu"
                     >
@@ -216,13 +232,13 @@ const DashboardLayout: React.FC = () => {
                         onClick={() => setIsMobileNavOpen(false)}
                     />
                     <div className={cn(
-                        "absolute left-0 top-0 h-full w-72 bg-card shadow-2xl border-r transition-transform duration-200",
+                        "absolute left-0 top-0 h-full w-72 border-r border-border/80 bg-card shadow-panel transition-transform duration-200",
                         isMobileNavOpen ? "translate-x-0" : "-translate-x-full"
                     )}>
                         <div className="flex items-center justify-between px-4 py-4 border-b">
                             <span className="text-sm font-semibold">Menu</span>
                             <button
-                                className="h-9 w-9 inline-flex items-center justify-center rounded-full border border-slate-200"
+                                className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border/80"
                                 onClick={() => setIsMobileNavOpen(false)}
                                 aria-label="Close navigation menu"
                             >
@@ -237,6 +253,8 @@ const DashboardLayout: React.FC = () => {
                                 window.dispatchEvent(new Event('open-qr-scan'));
                                 setIsMobileNavOpen(false);
                             }}
+                            isDarkMode={isDashboardDark}
+                            onToggleDarkMode={toggleTheme}
                         />
                     </div>
                 </div>

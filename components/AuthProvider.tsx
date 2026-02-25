@@ -166,7 +166,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const loginDemo = () => {
-    const demoEmail = "demo@stampverse.com";
+    const demoEmail = "demo@stampee.com";
     const demoUser = users.find((user) => user.email === demoEmail);
     if (demoUser) {
       setCurrentUser(demoUser);

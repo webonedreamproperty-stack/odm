@@ -9,24 +9,24 @@ export const VerifyBanner: React.FC = () => {
   if (!currentOwner || isVerified) return null;
 
   return (
-    <div className="mx-6 mt-6 rounded-3xl border border-amber-100 bg-gradient-to-r from-amber-50 via-lime-50 to-cyan-50 p-5 shadow-sm">
+    <div className="mx-6 mt-6 rounded-lg border border-border/80 bg-card p-5 shadow-subtle">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div className="flex items-start gap-3">
-          <div className="h-11 w-11 rounded-2xl bg-white shadow flex items-center justify-center text-amber-600">
+          <div className="flex h-11 w-11 items-center justify-center rounded-lg border border-border/80 bg-background text-foreground shadow-subtle">
             <MailOpen size={22} />
           </div>
           <div>
-            <div className="text-sm uppercase tracking-[0.2em] text-amber-700 font-semibold">
+            <div className="text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
               Verify to issue cards
             </div>
-            <div className="text-base font-semibold text-slate-900 mt-1">
-              Your Stampverse is ready. Confirm your email to start issuing cards.
+            <div className="mt-1 text-base font-semibold text-foreground">
+              Your Stampee is ready. Confirm your email to start issuing cards.
             </div>
           </div>
         </div>
         <Button
           onClick={verifyAccount}
-          className="rounded-full h-11 px-6 text-base shadow-md"
+          className="h-11 px-6 text-base"
         >
           <CheckCircle2 className="mr-2" size={18} />
           Verify email

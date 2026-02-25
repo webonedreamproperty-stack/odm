@@ -53,7 +53,7 @@ export const SignupPage: React.FC = () => {
 
   return (
     <AuthLayout
-      title="Claim your Stampverse"
+      title="Claim your Stampee"
       subtitle="Reserve your space, craft your loyalty universe, and share your signature link."
       badge="New universe"
     >
@@ -93,7 +93,7 @@ export const SignupPage: React.FC = () => {
           />
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-3">
+        <div className="space-y-3 rounded-lg border border-border/80 bg-muted/35 p-4">
           <div className="flex items-center justify-between">
             <Label>Claim your slug</Label>
             {normalizedSlug && (
@@ -105,41 +105,41 @@ export const SignupPage: React.FC = () => {
               </Badge>
             )}
           </div>
-          <div className="flex items-center gap-2 bg-white rounded-xl border border-slate-200 px-3 py-2">
-            <span className="text-xs font-semibold text-slate-500">stampverse.com/</span>
+          <div className="flex items-center gap-2 rounded-md border border-border/80 bg-background px-3 py-2 shadow-subtle">
+            <span className="text-xs font-semibold text-muted-foreground">stampee.com/</span>
             <input
               value={normalizedSlug}
               onChange={(event) => {
                 setSlugTouched(true);
                 setSlugInput(event.target.value);
               }}
-              className="flex-1 bg-transparent outline-none font-mono text-sm text-slate-900"
+              className="flex-1 bg-transparent font-mono text-sm text-foreground outline-none"
               placeholder="yourbrand"
               required
             />
           </div>
-          <div className="text-xs text-slate-500">
+          <div className="text-xs text-muted-foreground">
             {slugHint} Use lowercase letters, numbers, and hyphens.
           </div>
         </div>
 
         {error && (
-          <div className="rounded-xl bg-rose-50 text-rose-700 px-4 py-3 text-sm border border-rose-200">
+          <div className="rounded-md border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive">
             {error}
           </div>
         )}
 
         <Button
           type="submit"
-          className="w-full rounded-full h-12 text-base"
+          className="h-12 w-full text-base"
           disabled={!slugAvailable}
         >
-          Claim Stampverse
+          Claim Stampee
         </Button>
 
-        <div className="text-sm text-center text-slate-600">
+        <div className="text-center text-sm text-muted-foreground">
           Already have an account?{" "}
-          <Link to="/login" className="font-semibold text-slate-900 underline">
+          <Link to="/login" className="font-semibold text-foreground underline">
             Log in
           </Link>
         </div>

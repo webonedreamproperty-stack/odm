@@ -34,7 +34,7 @@ export const LoginPage: React.FC = () => {
 
   return (
     <AuthLayout
-      title="Welcome back to your Stampverse"
+      title="Welcome back to your Stampee"
       subtitle="Log in to keep your loyalty universe humming."
       badge="Member access"
     >
@@ -56,7 +56,7 @@ export const LoginPage: React.FC = () => {
           <Input
             value={password}
             onChange={(event) => setPassword(event.target.value)}
-            placeholder="••••••••"
+            placeholder="********"
             className="mt-2"
             type="password"
             autoComplete="current-password"
@@ -64,17 +64,17 @@ export const LoginPage: React.FC = () => {
           />
         </div>
         {error && (
-          <div className="rounded-xl bg-rose-50 text-rose-700 px-4 py-3 text-sm border border-rose-200">
+          <div className="rounded-md border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive">
             {error}
           </div>
         )}
-        <Button type="submit" className="w-full rounded-full h-12 text-base">
+        <Button type="submit" className="h-12 w-full text-base">
           Log in
         </Button>
         <Button
           type="button"
           variant="outline"
-          className="w-full rounded-full h-12 text-base"
+          className="h-12 w-full text-base"
           onClick={() => {
             loginDemo();
             navigate("/");
@@ -82,15 +82,15 @@ export const LoginPage: React.FC = () => {
         >
           Try Demo Account
         </Button>
-        <div className="text-sm text-center text-slate-600">
+        <div className="text-center text-sm text-muted-foreground">
           New here?{" "}
-          <Link to="/signup" className="font-semibold text-slate-900 underline">
-            Claim your Stampverse
+          <Link to="/signup" className="font-semibold text-foreground underline">
+            Claim your Stampee
           </Link>
         </div>
-        <div className="text-xs text-center text-slate-500">
+        <div className="text-center text-xs text-muted-foreground">
           Staff member? Use your org portal link like{" "}
-          <span className="font-mono text-slate-700">/yourbrand/staff?id=ORG_ID</span>.
+          <span className="font-mono text-foreground">/yourbrand/staff?id=ORG_ID</span>.
         </div>
       </form>
     </AuthLayout>

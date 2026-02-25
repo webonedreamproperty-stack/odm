@@ -42,7 +42,7 @@ export const SettingsPage: React.FC = () => {
     <div className="p-8 space-y-8 animate-fade-in h-full flex flex-col bg-gray-50/50">
       <div className="space-y-2">
         <h1 className="text-3xl font-bold tracking-tight text-foreground">Settings</h1>
-        <p className="text-muted-foreground">Manage your Stampverse team and access.</p>
+        <p className="text-muted-foreground">Manage your Stampee team and access.</p>
       </div>
 
       <section className="rounded-3xl border bg-white p-6 shadow-sm space-y-6">

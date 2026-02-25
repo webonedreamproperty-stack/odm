@@ -80,23 +80,23 @@ export const StaffLoginPage: React.FC = () => {
             required
             disabled={!!searchParams.get("id")}
           />
-          <p className="text-xs text-slate-500 mt-2">
+          <p className="mt-2 text-xs text-muted-foreground">
             {searchParams.get("id")
               ? "This Org ID is pre-filled from your portal link."
               : "Ask your owner for the Org ID from Settings."}
           </p>
         </div>
         {error && (
-          <div className="rounded-xl bg-rose-50 text-rose-700 px-4 py-3 text-sm border border-rose-200">
+          <div className="rounded-md border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive">
             {error}
           </div>
         )}
-        <Button type="submit" className="w-full rounded-full h-12 text-base">
+        <Button type="submit" className="h-12 w-full text-base">
           Log in as Staff
         </Button>
-        <div className="text-sm text-center text-slate-600">
+        <div className="text-center text-sm text-muted-foreground">
           Owner login?{" "}
-          <Link to="/login" className="font-semibold text-slate-900 underline">
+          <Link to="/login" className="font-semibold text-foreground underline">
             Go to main login
           </Link>
         </div>
