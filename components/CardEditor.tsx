@@ -12,12 +12,14 @@ import { ICON_OPTIONS } from '../lib/iconRegistry';
 
 interface CardEditorProps {
   initialTemplate: Template;
-  onSave: (template: Template) => void;
+  onSave: (template: Template) => Promise<void>;
 }
 
 export const CardEditor: React.FC<CardEditorProps> = ({ initialTemplate, onSave }) => {
   const navigate = useNavigate();
   const [template, setTemplate] = useState<Template>(initialTemplate);
+  const [saveBusy, setSaveBusy] = useState(false);
+  const [saveError, setSaveError] = useState("");
   
   const [bgHex, setBgHex] = useState(template.colors.background || '#ffffff');
   const [bgIntensity, setBgIntensity] = useState(template.backgroundOpacity ?? 100);
@@ -95,8 +97,17 @@ export const CardEditor: React.FC<CardEditorProps> = ({ initialTemplate, onSave 
     });
   };
 
-  const handleSave = () => {
-    onSave(template);
+  const handleSave = async () => {
+    setSaveError("");
+    setSaveBusy(true);
+    try {
+      await onSave(template);
+      navigate('/campaigns');
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : 'Unable to save this campaign right now.');
+    } finally {
+      setSaveBusy(false);
+    }
   };
 
   const handleCancel = () => {
@@ -426,8 +437,13 @@ export const CardEditor: React.FC<CardEditorProps> = ({ initialTemplate, onSave 
         </div>
 
         <div className="pt-6 border-t mt-auto shrink-0">
-            <Button size="lg" className="w-full gap-2 text-lg font-semibold h-14" onClick={handleSave}>
-                Save <CheckIcon size={20} />
+            {saveError && (
+                <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                    {saveError}
+                </div>
+            )}
+            <Button size="lg" className="w-full gap-2 text-lg font-semibold h-14" onClick={handleSave} disabled={saveBusy}>
+                {saveBusy ? 'Saving...' : 'Save'} <CheckIcon size={20} />
             </Button>
         </div>
       </div>

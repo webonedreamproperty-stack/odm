@@ -23,6 +23,7 @@ export const CustomerDirectory: React.FC<CustomerDirectoryProps> = ({ customers,
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [formData, setFormData] = useState({ name: '', email: '', mobile: '' });
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
 
   const filteredCustomers = customers.filter(c =>
     c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -31,6 +32,7 @@ export const CustomerDirectory: React.FC<CustomerDirectoryProps> = ({ customers,
 
   const handleSaveEdit = async () => {
     if (!editingCustomer || !currentOwner) return;
+    setError("");
     setBusy(true);
     const result = await upsertCustomer(
       { id: editingCustomer.id, name: formData.name, email: formData.email, mobile: formData.mobile, status: editingCustomer.status },
@@ -38,13 +40,20 @@ export const CustomerDirectory: React.FC<CustomerDirectoryProps> = ({ customers,
     );
     setBusy(false);
     if (result.ok) {
-      setCustomers(prev => prev.map(c => c.id === editingCustomer.id ? { ...c, ...formData } : c));
+      if (refreshData) {
+        refreshData();
+      } else {
+        setCustomers(prev => prev.map(c => c.id === editingCustomer.id ? { ...c, ...formData } : c));
+      }
       setEditingCustomer(null);
+    } else {
+      setError(result.error ?? "Unable to update this customer right now.");
     }
   };
 
   const handleAddCustomer = async () => {
     if (!currentOwner) return;
+    setError("");
     setBusy(true);
     const newId = `cust-${Date.now()}`;
     const result = await upsertCustomer(
@@ -53,17 +62,23 @@ export const CustomerDirectory: React.FC<CustomerDirectoryProps> = ({ customers,
     );
     setBusy(false);
     if (result.ok) {
-      const newCustomer: Customer = {
-        id: newId,
-        name: formData.name,
-        email: formData.email,
-        mobile: formData.mobile,
-        status: 'Active',
-        cards: []
-      };
-      setCustomers(prev => [...prev, newCustomer]);
+      if (refreshData) {
+        refreshData();
+      } else {
+        const newCustomer: Customer = {
+          id: newId,
+          name: formData.name,
+          email: formData.email,
+          mobile: formData.mobile,
+          status: 'Active',
+          cards: []
+        };
+        setCustomers(prev => [...prev, newCustomer]);
+      }
       setIsAddOpen(false);
       setFormData({ name: '', email: '', mobile: '' });
+    } else {
+      setError(result.error ?? "Unable to create this customer right now.");
     }
   };
 
@@ -90,6 +105,12 @@ export const CustomerDirectory: React.FC<CustomerDirectoryProps> = ({ customers,
           onChange={(e) => setSearchQuery(e.target.value)}
         />
       </div>
+
+      {error && (
+        <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+          {error}
+        </div>
+      )}
 
       <div className="rounded-xl border bg-white flex-1 overflow-auto shadow-sm">
         <Table>
@@ -144,7 +165,7 @@ export const CustomerDirectory: React.FC<CustomerDirectoryProps> = ({ customers,
         </Table>
       </div>
 
-      <Dialog open={!readOnly && !!editingCustomer} onOpenChange={(o) => !o && setEditingCustomer(null)}>
+      <Dialog open={!readOnly && !!editingCustomer} onOpenChange={(o) => !o && !busy && setEditingCustomer(null)}>
         <DialogContent>
           <DialogHeader><DialogTitle>Edit Customer</DialogTitle></DialogHeader>
           <div className="space-y-4 py-4">
@@ -158,7 +179,7 @@ export const CustomerDirectory: React.FC<CustomerDirectoryProps> = ({ customers,
         </DialogContent>
       </Dialog>
 
-      <Dialog open={!readOnly && isAddOpen} onOpenChange={setIsAddOpen}>
+      <Dialog open={!readOnly && isAddOpen} onOpenChange={(open) => !busy && setIsAddOpen(open)}>
         <DialogContent>
           <DialogHeader><DialogTitle>Add Customer</DialogTitle></DialogHeader>
           <div className="space-y-4 py-4">

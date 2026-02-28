@@ -35,6 +35,8 @@ export const IssuedCardsPage: React.FC<IssuedCardsPageProps> = ({ customers, cam
   const { currentOwner, isVerified, isStaff, currentUser } = useAuth();
   const { canIssueCard, issuedCardCount, cardLimit, isProTier } = useSubscriptionContext();
   const canIssue = isVerified;
+  const [mutationBusy, setMutationBusy] = useState(false);
+  const [mutationError, setMutationError] = useState("");
 
   const [isIssueOpen, setIsIssueOpen] = useState(false);
   const [activeKioskData, setActiveKioskData] = useState<{ customer: Customer, card: IssuedCard, template: Template } | null>(null);
@@ -50,54 +52,88 @@ export const IssuedCardsPage: React.FC<IssuedCardsPageProps> = ({ customers, cam
   const [preSelectedCustomer, setPreSelectedCustomer] = useState<Customer | null>(null);
 
   const handleUpdateCard = async (customerId: string, cardId: string, updates: Partial<IssuedCard>) => {
+    setMutationBusy(true);
+    setMutationError("");
     const dbUpdates: Parameters<typeof updateIssuedCard>[1] = {};
     if (updates.stamps !== undefined) dbUpdates.stamps = updates.stamps;
     if (updates.status !== undefined) dbUpdates.status = updates.status;
     if (updates.completedDate !== undefined) dbUpdates.completedDate = updates.completedDate;
     if (updates.lastVisit !== undefined) dbUpdates.lastVisit = updates.lastVisit;
 
-    if (Object.keys(dbUpdates).length > 0) {
-      await updateIssuedCard(cardId, dbUpdates);
-    }
-
-    if (updates.history) {
-      const existingCard = customers
-        .find(c => c.id === customerId)?.cards
-        .find(c => c.id === cardId);
-      const existingIds = new Set((existingCard?.history ?? []).map(t => t.id));
-      const newTxs = updates.history.filter(t => !existingIds.has(t.id));
-      for (const tx of newTxs) {
-        await insertTransaction(cardId, tx);
+    let wroteData = false;
+    try {
+      if (Object.keys(dbUpdates).length > 0) {
+        const updateResult = await updateIssuedCard(cardId, dbUpdates);
+        if (!updateResult.ok) {
+          throw new Error(updateResult.error ?? "Failed to update the card.");
+        }
+        wroteData = true;
       }
-    }
 
-    setCustomers(prev => prev.map(c => {
-      if (c.id === customerId) {
-        return {
-          ...c,
-          cards: c.cards.map(card => card.id === cardId ? { ...card, ...updates } : card)
-        };
+      if (updates.history) {
+        const existingCard = customers
+          .find(c => c.id === customerId)?.cards
+          .find(c => c.id === cardId);
+        const existingIds = new Set((existingCard?.history ?? []).map(t => t.id));
+        const newTxs = updates.history.filter(t => !existingIds.has(t.id));
+        for (const tx of newTxs) {
+          const txResult = await insertTransaction(cardId, tx);
+          if (!txResult.ok) {
+            throw new Error(txResult.error ?? "Failed to record the card activity.");
+          }
+          wroteData = true;
+        }
       }
-      return c;
-    }));
 
-    if (activeKioskData && activeKioskData.customer.id === customerId) {
-      setActiveKioskData(prev => {
-        if (!prev) return null;
-        return { ...prev, card: { ...prev.card, ...updates } };
-      });
+      setCustomers(prev => prev.map(c => {
+        if (c.id === customerId) {
+          return {
+            ...c,
+            cards: c.cards.map(card => card.id === cardId ? { ...card, ...updates } : card)
+          };
+        }
+        return c;
+      }));
+
+      if (activeKioskData && activeKioskData.customer.id === customerId) {
+        setActiveKioskData(prev => {
+          if (!prev) return null;
+          return { ...prev, card: { ...prev.card, ...updates } };
+        });
+      }
+    } catch (error) {
+      if (wroteData) {
+        await refreshData?.();
+      }
+      const message = error instanceof Error ? error.message : "Unable to update this card right now.";
+      setMutationError(message);
+      throw error;
+    } finally {
+      setMutationBusy(false);
     }
   };
 
   const handleRevokeCard = async (customerId: string, cardId: string) => {
     if (confirm("Are you sure you want to revoke this card? This cannot be undone.")) {
-      await deleteIssuedCard(cardId);
-      setCustomers(prev => prev.map(c => {
-        if (c.id === customerId) {
-          return { ...c, cards: c.cards.filter(card => card.id !== cardId) };
+      setMutationBusy(true);
+      setMutationError("");
+      try {
+        const result = await deleteIssuedCard(cardId);
+        if (!result.ok) {
+          throw new Error(result.error ?? "Failed to revoke the card.");
         }
-        return c;
-      }));
+        setCustomers(prev => prev.map(c => {
+          if (c.id === customerId) {
+            return { ...c, cards: c.cards.filter(card => card.id !== cardId) };
+          }
+          return c;
+        }));
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Unable to revoke this card right now.";
+        setMutationError(message);
+      } finally {
+        setMutationBusy(false);
+      }
     }
   };
 
@@ -120,6 +156,10 @@ export const IssuedCardsPage: React.FC<IssuedCardsPageProps> = ({ customers, cam
   };
 
   const handleIssueCard = async (campaign: Template, customer: Customer | null, newCustomerData: { name: string, email: string, mobile: string }): Promise<IssuedCard> => {
+    if (!currentOwner) {
+      throw new Error("You must be signed in as an owner or staff member to issue cards.");
+    }
+
     const actorName = currentUser?.businessName ?? "Owner";
     const actorRole = currentUser?.role ?? "owner";
     const actorId = currentUser?.id;
@@ -136,11 +176,12 @@ export const IssuedCardsPage: React.FC<IssuedCardsPageProps> = ({ customers, cam
         status: "Active",
         cards: []
       };
-      if (currentOwner) {
-        await upsertCustomer(
-          { id: newId, name: newCustomerData.name, email: newCustomerData.email, mobile: newCustomerData.mobile, status: 'Active' },
-          currentOwner.id
-        );
+      const customerResult = await upsertCustomer(
+        { id: newId, name: newCustomerData.name, email: newCustomerData.email, mobile: newCustomerData.mobile, status: 'Active' },
+        currentOwner.id
+      );
+      if (!customerResult.ok) {
+        throw new Error(customerResult.error ?? "Failed to create the customer record.");
       }
     }
 
@@ -172,17 +213,21 @@ export const IssuedCardsPage: React.FC<IssuedCardsPageProps> = ({ customers, cam
       templateSnapshot: toStoredTemplate(campaign)
     };
 
-    if (currentOwner) {
-      await insertIssuedCard({
-        id: newCard.id,
-        uniqueId: newCard.uniqueId,
-        customerId: targetCustomer.id,
-        campaignId: campaign.id,
-        campaignName: campaign.name,
-        templateSnapshot: toStoredTemplate(campaign),
-      }, currentOwner.id);
+    const cardResult = await insertIssuedCard({
+      id: newCard.id,
+      uniqueId: newCard.uniqueId,
+      customerId: targetCustomer.id,
+      campaignId: campaign.id,
+      campaignName: campaign.name,
+      templateSnapshot: toStoredTemplate(campaign),
+    }, currentOwner.id);
+    if (!cardResult.ok) {
+      throw new Error(cardResult.error ?? "Failed to create the card.");
+    }
 
-      await insertTransaction(newCard.id, initialTransaction);
+    const txResult = await insertTransaction(newCard.id, initialTransaction);
+    if (!txResult.ok) {
+      throw new Error(txResult.error ?? "Failed to record the initial transaction.");
     }
 
     const targetId = targetCustomer.id;
@@ -269,6 +314,7 @@ export const IssuedCardsPage: React.FC<IssuedCardsPageProps> = ({ customers, cam
           actorRole={currentUser?.role ?? "owner"}
           actorId={currentUser?.id}
           onScanRequest={() => setIsScanOpen(true)}
+          mutationBusy={mutationBusy}
         />
       )}
 
@@ -317,6 +363,12 @@ export const IssuedCardsPage: React.FC<IssuedCardsPageProps> = ({ customers, cam
           </div>
         </div>
       </div>
+
+      {mutationError && (
+        <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+          {mutationError}
+        </div>
+      )}
 
       <div className="flex items-center space-x-2 bg-white px-3 py-2 rounded-lg border w-full max-w-sm shadow-sm focus-within:ring-2 focus-within:ring-ring">
         <Search className="text-gray-400" size={20} />
@@ -413,7 +465,7 @@ export const IssuedCardsPage: React.FC<IssuedCardsPageProps> = ({ customers, cam
                     <TableCell>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-8 w-8 p-0">
+                          <Button variant="ghost" className="h-8 w-8 p-0" disabled={mutationBusy}>
                             <MoreHorizontal className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>

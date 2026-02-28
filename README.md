@@ -15,7 +15,11 @@ View your app in AI Studio: https://ai.studio/apps/drive/1vdYd_Ajce23Au3ytEE1GBl
 
 1. Install dependencies:
    `npm install`
-2. Set `VITE_GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. For Vercel, add `VITE_GEMINI_API_KEY` as an environment variable in the project settings
-3. Run the app:
+2. Set these variables locally:
+   `VITE_SUPABASE_URL`
+   `VITE_SUPABASE_ANON_KEY`
+   `VITE_GEMINI_API_KEY` in [.env.local](.env.local) if you want AI reward generation
+3. For Vercel, add the same `VITE_...` variables in Project Settings -> Environment Variables
+4. This repo includes [vercel.json](vercel.json) so client-side routes are rewritten to `index.html`
+5. Run the app:
    `npm run dev`

@@ -1,6 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { TIER_LIMITS, User } from "../types";
-import { supabase } from "../lib/supabase";
+import { isSupabaseConfigured, SUPABASE_CONFIG_ERROR, supabase } from "../lib/supabase";
 import { fetchProfile, fetchProfileDetailed, fetchStaffAccounts, updateProfile as dbUpdateProfile } from "../lib/db/profiles";
 import { normalizeSlug } from "../lib/slug";
 
@@ -27,11 +27,11 @@ interface AuthContextValue {
   loginDemo: () => Promise<void>;
   createStaff: (payload: { name: string; email: string; pin: string }) => Promise<AuthResult>;
   updateStaffPin: (staffId: string, pin: string) => Promise<AuthResult>;
-  setStaffAccess: (staffId: string, access: "active" | "disabled") => Promise<void>;
+  setStaffAccess: (staffId: string, access: "active" | "disabled") => Promise<AuthResult>;
   deleteStaff: (staffId: string) => Promise<AuthResult>;
   deleteAccount: () => Promise<AuthResult>;
   logout: () => Promise<void>;
-  verifyAccount: () => Promise<void>;
+  verifyAccount: () => Promise<AuthResult>;
   isSlugAvailable: (slug: string) => Promise<boolean>;
   updateProfileInfo: (payload: { businessName?: string; email?: string; slug?: string }) => Promise<AuthResult>;
   updatePassword: (newPassword: string) => Promise<AuthResult>;
@@ -142,6 +142,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [createMissingProfile, fetchProfileWithRetry, waitForAuthUser]);
 
   useEffect(() => {
+    if (!isSupabaseConfigured) {
+      setCurrentUser(null);
+      setCurrentOwner(null);
+      setStaffAccounts([]);
+      setLoading(false);
+      return;
+    }
+
     let mounted = true;
 
     const init = async () => {
@@ -191,11 +199,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [loadFullSession]);
 
   const refreshProfile = useCallback(async () => {
-    if (!currentUser) return;
+    if (!isSupabaseConfigured || !currentUser) return;
     await loadFullSession(currentUser.id);
   }, [currentUser, loadFullSession]);
 
   const login = useCallback(async (email: string, password: string): Promise<AuthResult> => {
+    if (!isSupabaseConfigured) {
+      return { ok: false, error: SUPABASE_CONFIG_ERROR };
+    }
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
         email: email.trim().toLowerCase(),
@@ -245,6 +256,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [createMissingProfile, fetchProfileWithRetry, loadFullSession, waitForAuthUser]);
 
   const loginStaff = useCallback(async (email: string, pin: string, orgId: string): Promise<AuthResult> => {
+    if (!isSupabaseConfigured) {
+      return { ok: false, error: SUPABASE_CONFIG_ERROR };
+    }
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
         email: email.trim().toLowerCase(),
@@ -288,6 +302,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signup = useCallback(async (payload: {
     businessName: string; email: string; password: string; slug: string;
   }): Promise<AuthResult> => {
+    if (!isSupabaseConfigured) {
+      return { ok: false, error: SUPABASE_CONFIG_ERROR };
+    }
     try {
       const { data, error } = await supabase.auth.signUp({
         email: payload.email.trim().toLowerCase(),
@@ -315,6 +332,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const loginDemo = useCallback(async () => {
+    if (!isSupabaseConfigured) return;
     const demoEmail = "demo@stampee.com";
     const demoPassword = "demo1234";
     const { error } = await supabase.auth.signInWithPassword({
@@ -337,6 +355,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const createStaff = useCallback(async (payload: { name: string; email: string; pin: string }): Promise<AuthResult> => {
+    if (!isSupabaseConfigured) {
+      return { ok: false, error: SUPABASE_CONFIG_ERROR };
+    }
     if (!currentOwner || currentUser?.role !== "owner") {
       return { ok: false, error: "Only owners can manage staff." };
     }
@@ -363,6 +384,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [currentOwner, currentUser, staffAccounts]);
 
   const updateStaffPin = useCallback(async (staffId: string, pin: string): Promise<AuthResult> => {
+    if (!isSupabaseConfigured) {
+      return { ok: false, error: SUPABASE_CONFIG_ERROR };
+    }
     if (!currentOwner || currentUser?.role !== "owner") {
       return { ok: false, error: "Only owners can manage staff." };
     }
@@ -377,13 +401,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return { ok: true };
   }, [currentOwner, currentUser]);
 
-  const setStaffAccess = useCallback(async (staffId: string, access: "active" | "disabled") => {
-    if (!currentOwner || currentUser?.role !== "owner") return;
-    await dbUpdateProfile(staffId, { access });
+  const setStaffAccess = useCallback(async (staffId: string, access: "active" | "disabled"): Promise<AuthResult> => {
+    if (!isSupabaseConfigured) {
+      return { ok: false, error: SUPABASE_CONFIG_ERROR };
+    }
+    if (!currentOwner || currentUser?.role !== "owner") {
+      return { ok: false, error: "Only owners can manage staff." };
+    }
+    const updateResult = await dbUpdateProfile(staffId, { access });
+    if (!updateResult.ok) {
+      return { ok: false, error: updateResult.error ?? "Failed to update staff access." };
+    }
     setStaffAccounts(await fetchStaffAccounts(currentOwner.id));
+    return { ok: true };
   }, [currentOwner, currentUser]);
 
   const deleteStaff = useCallback(async (staffId: string): Promise<AuthResult> => {
+    if (!isSupabaseConfigured) {
+      return { ok: false, error: SUPABASE_CONFIG_ERROR };
+    }
     if (!currentOwner || currentUser?.role !== "owner") {
       return { ok: false, error: "Only owners can manage staff." };
     }
@@ -396,6 +432,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [currentOwner, currentUser]);
 
   const deleteAccount = useCallback(async (): Promise<AuthResult> => {
+    if (!isSupabaseConfigured) {
+      return { ok: false, error: SUPABASE_CONFIG_ERROR };
+    }
     if (!currentOwner || currentUser?.role !== "owner") {
       return { ok: false, error: "Only owners can delete the account." };
     }
@@ -406,16 +445,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [currentOwner, currentUser]);
 
   const logout = useCallback(async () => {
+    if (!isSupabaseConfigured) return;
     await supabase.auth.signOut();
   }, []);
 
-  const verifyAccount = useCallback(async () => {
-    if (!currentOwner) return;
-    await dbUpdateProfile(currentOwner.id, { status: "verified" });
+  const verifyAccount = useCallback(async (): Promise<AuthResult> => {
+    if (!isSupabaseConfigured) {
+      return { ok: false, error: SUPABASE_CONFIG_ERROR };
+    }
+    if (!currentOwner) {
+      return { ok: false, error: "No owner profile found." };
+    }
+    const result = await dbUpdateProfile(currentOwner.id, { status: "verified" });
+    if (!result.ok) {
+      return { ok: false, error: result.error ?? "Failed to verify the account." };
+    }
     await refreshProfile();
+    return { ok: true };
   }, [currentOwner, refreshProfile]);
 
   const isSlugAvailable = useCallback(async (slug: string): Promise<boolean> => {
+    if (!isSupabaseConfigured) {
+      throw new Error(SUPABASE_CONFIG_ERROR);
+    }
     const { data, error } = await supabase.rpc("is_slug_available", { slug_input: slug });
     if (error) throw error;
     return data === true;
@@ -424,6 +476,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const updateProfileInfo = useCallback(async (payload: {
     businessName?: string; email?: string; slug?: string;
   }): Promise<AuthResult> => {
+    if (!isSupabaseConfigured) {
+      return { ok: false, error: SUPABASE_CONFIG_ERROR };
+    }
     if (!currentUser) return { ok: false, error: "Not logged in." };
 
     const updates: Record<string, string> = {};
@@ -437,6 +492,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [currentUser, refreshProfile]);
 
   const updatePassword = useCallback(async (newPassword: string): Promise<AuthResult> => {
+    if (!isSupabaseConfigured) {
+      return { ok: false, error: SUPABASE_CONFIG_ERROR };
+    }
     if (newPassword.length < 6) {
       return { ok: false, error: "New password must be at least 6 characters." };
     }
@@ -446,6 +504,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const resetPassword = useCallback(async (email: string): Promise<AuthResult> => {
+    if (!isSupabaseConfigured) {
+      return { ok: false, error: SUPABASE_CONFIG_ERROR };
+    }
     const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
       redirectTo: `${window.location.origin}/login`,
     });

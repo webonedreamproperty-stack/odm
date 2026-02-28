@@ -1,14 +1,14 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { Suspense, lazy, useState, useEffect, useRef } from 'react';
 import { BackgroundDoodles } from './BackgroundDoodles';
 import { StampSlot } from './StampSlot';
 import { RewardModal } from './RewardModal';
 import { generateReward } from '../services/geminiService';
 import { Template, Transaction } from '../types';
 import { cn, resolveHexAndOpacity, hexToRgba } from '../lib/utils';
-import { ChevronDown, QrCode, History, ArrowUpRight, ArrowDownLeft, Gift, Plus, Cookie, X, Share2, Minus, CreditCard, PartyPopper, Globe } from 'lucide-react';
+import { QrCode, History, Gift, Plus, X, Minus, CreditCard, Globe } from 'lucide-react';
 import { siFacebook, siInstagram, siTiktok, siX, siYoutube } from 'simple-icons/icons';
-import Lottie from 'lottie-react';
-import giftBoxAnimation from '../Gift Box Orange.json';
+
+const LottiePlayer = lazy(() => import('lottie-react'));
 
 interface LoyaltyCardProps {
   template: Template;
@@ -43,6 +43,7 @@ export const LoyaltyCard: React.FC<LoyaltyCardProps> = ({
   const [showReward, setShowReward] = useState<boolean>(false);
   const [loadingReward, setLoadingReward] = useState<boolean>(false);
   const [rewardData, setRewardData] = useState<{ code: string; message: string } | null>(null);
+  const [giftAnimation, setGiftAnimation] = useState<object | null>(null);
   
   // Navigation State
   const [currentSlide, setCurrentSlide] = useState<0 | 1>(0);
@@ -143,6 +144,25 @@ export const LoyaltyCard: React.FC<LoyaltyCardProps> = ({
   const iconInactiveColor = resolveHexAndOpacity(colors.iconInactive, '#888888');
 
   const isMobileCompleted = isCompleted && mode === 'public';
+
+  useEffect(() => {
+    if (!(isCompleted && !isRedeemed)) return;
+
+    let cancelled = false;
+    void import('../Gift Box Orange.json').then((module) => {
+      if (!cancelled) {
+        setGiftAnimation(module.default);
+      }
+    }).catch(() => {
+      if (!cancelled) {
+        setGiftAnimation(null);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isCompleted, isRedeemed]);
 
   const stampSizing = (() => {
     if (sizeVariant === 'compact') {
@@ -426,7 +446,11 @@ export const LoyaltyCard: React.FC<LoyaltyCardProps> = ({
                 {isCompleted && !isRedeemed && (
                   <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
                     <div className="w-[80vw] h-[80vw] max-w-[520px] max-h-[520px] md:w-[520px] md:h-[520px]">
-                      <Lottie animationData={giftBoxAnimation} loop={true} />
+                      {giftAnimation && (
+                        <Suspense fallback={null}>
+                          <LottiePlayer animationData={giftAnimation} loop={true} />
+                        </Suspense>
+                      )}
                     </div>
                   </div>
                 )}

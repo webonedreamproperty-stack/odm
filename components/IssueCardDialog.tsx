@@ -13,7 +13,7 @@ interface IssueCardDialogProps {
     onClose: () => void;
     campaigns: Template[];
     customers: Customer[];
-    onIssue: (campaign: Template, customer: Customer | null, newCustomerData: {name: string, email: string, mobile: string}) => IssuedCard;
+    onIssue: (campaign: Template, customer: Customer | null, newCustomerData: {name: string, email: string, mobile: string}) => Promise<IssuedCard>;
     preSelectedCampaign?: Template | null;
     preSelectedCustomer?: Customer | null;
 }
@@ -36,6 +36,8 @@ export const IssueCardDialog: React.FC<IssueCardDialogProps> = ({
     const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
     const [newCustomerData, setNewCustomerData] = useState({ name: '', email: '', mobile: '' });
     const [createdCard, setCreatedCard] = useState<IssuedCard | null>(null);
+    const [submitError, setSubmitError] = useState("");
+    const [issuing, setIssuing] = useState(false);
     const publicUrl = createdCard ? buildPublicCardUrl(slug, createdCard.uniqueId) : "";
     const displayUrl = publicUrl.length > 42 ? `${publicUrl.slice(0, 42)}...` : publicUrl;
 
@@ -46,6 +48,8 @@ export const IssueCardDialog: React.FC<IssueCardDialogProps> = ({
             setSearchQuery("");
             setNewCustomerData({ name: '', email: '', mobile: '' });
             setCreatedCard(null);
+            setSubmitError("");
+            setIssuing(false);
 
             if (preSelectedCampaign && preSelectedCustomer) {
                 setSelectedCampaign(preSelectedCampaign);
@@ -77,20 +81,30 @@ export const IssueCardDialog: React.FC<IssueCardDialogProps> = ({
 
     const handleSelectCustomer = (c: Customer) => {
         setSelectedCustomer(c);
+        setSubmitError("");
         setStep('review');
     };
 
     const handleCreateNewCustomer = () => {
         setSelectedCustomer(null);
         setNewCustomerData({ name: searchQuery, email: '', mobile: '' });
+        setSubmitError("");
         setStep('new-customer');
     };
 
-    const handleConfirmIssue = () => {
+    const handleConfirmIssue = async () => {
         if (!selectedCampaign) return;
-        const card = onIssue(selectedCampaign, selectedCustomer, newCustomerData);
-        setCreatedCard(card);
-        setStep('success');
+        setSubmitError("");
+        setIssuing(true);
+        try {
+            const card = await onIssue(selectedCampaign, selectedCustomer, newCustomerData);
+            setCreatedCard(card);
+            setStep('success');
+        } catch (error) {
+            setSubmitError(error instanceof Error ? error.message : "Unable to issue card right now.");
+        } finally {
+            setIssuing(false);
+        }
     };
 
     const handleCopyLink = () => {
@@ -185,6 +199,11 @@ export const IssueCardDialog: React.FC<IssueCardDialogProps> = ({
                             <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mb-2"><CheckCircle2 size={32} /></div>
                             <div className="space-y-1 w-full"><p className="text-sm text-muted-foreground uppercase tracking-wider">Issuing Card</p><div className="text-xl font-bold">{selectedCampaign?.name}</div></div>
                             <div className="w-full border-t border-b py-4 space-y-1"><p className="text-sm text-muted-foreground uppercase tracking-wider">To Customer</p><div className="text-lg font-semibold flex items-center justify-center gap-2"><User size={18} />{selectedCustomer ? selectedCustomer.name : newCustomerData.name}</div></div>
+                            {submitError && (
+                                <div className="w-full rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                                    {submitError}
+                                </div>
+                            )}
                         </div>
                     )}
 
@@ -222,15 +241,17 @@ export const IssueCardDialog: React.FC<IssueCardDialogProps> = ({
                     
                     {step === 'new-customer' && (
                         <>
-                            <Button variant="outline" onClick={() => setStep('customer')} className="gap-2"><ArrowLeft size={16} /> Back</Button>
+                            <Button variant="outline" onClick={() => setStep('customer')} className="gap-2" disabled={issuing}><ArrowLeft size={16} /> Back</Button>
                             <Button onClick={() => setStep('review')} disabled={!newCustomerData.name}>Review</Button>
                         </>
                     )}
 
                     {step === 'review' && (
                         <>
-                            <Button variant="outline" onClick={() => setStep(selectedCustomer ? 'customer' : 'new-customer')} className="gap-2"><ArrowLeft size={16} /> Back</Button>
-                            <Button onClick={handleConfirmIssue} className="bg-green-600 hover:bg-green-700">Confirm & Issue</Button>
+                            <Button variant="outline" onClick={() => setStep(selectedCustomer ? 'customer' : 'new-customer')} className="gap-2" disabled={issuing}><ArrowLeft size={16} /> Back</Button>
+                            <Button onClick={handleConfirmIssue} className="bg-green-600 hover:bg-green-700" disabled={issuing}>
+                                {issuing ? "Issuing..." : "Confirm & Issue"}
+                            </Button>
                         </>
                     )}
 

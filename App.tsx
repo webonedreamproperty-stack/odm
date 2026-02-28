@@ -1,36 +1,49 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { LoyaltyCard } from './components/LoyaltyCard';
-import { CardEditor } from './components/CardEditor';
+import React, { Suspense, lazy, useCallback, useEffect, useState } from 'react';
 import { Sidebar, NAV_ITEMS, SidebarContent } from './components/Sidebar';
-import { MyCards } from './components/MyCards';
-import { IssuedCardsPage } from './components/IssuedCardsPage';
-import { CustomerDirectory } from './components/CustomerDirectory';
-import { TemplatesGallery } from './components/TemplatesGallery';
-import { TransactionsPage } from './components/TransactionsPage';
-import { AnalyticsPage } from './components/AnalyticsPage';
 import { Template, Customer, IssuedCard } from './types';
 import { templates } from './data/templates';
 import { BrowserRouter, Routes, Route, Outlet, useParams, useNavigate, Navigate, useSearchParams, useLocation } from 'react-router-dom';
 import { Lock } from 'lucide-react';
-import { resolveCardTemplate, toStoredTemplate, fromStoredTemplate } from './lib/templateSerialization';
+import { toStoredTemplate, fromStoredTemplate } from './lib/templateSerialization';
 import { cn } from './lib/utils';
 import { AuthProvider, useAuth } from './components/AuthProvider';
 import { RequireAuth } from './components/RequireAuth';
 import { RequireRole } from './components/RequireRole';
-import { LoginPage } from './components/LoginPage';
-import { SignupPage } from './components/SignupPage';
-import { StaffLoginPage } from './components/StaffLoginPage';
 import { VerifyBanner } from './components/VerifyBanner';
-import { SettingsPage } from './components/SettingsPage';
-import { LandingPage } from './components/LandingPage';
-import { ForgotPasswordPage } from './components/ForgotPasswordPage';
-import { DashboardPage } from './components/DashboardPage';
 import { fetchCampaigns, upsertCampaign, deleteCampaign as dbDeleteCampaign } from './lib/db/campaigns';
 import { fetchCustomersWithCards } from './lib/db/customers';
-import { supabase } from './lib/supabase';
+import { isSupabaseConfigured, SUPABASE_CONFIG_ERROR, supabase } from './lib/supabase';
 import { useSubscription } from './lib/useSubscription';
 import { SubscriptionProvider } from './components/SubscriptionContext';
 import { UpgradePrompt } from './components/UpgradePrompt';
+
+const LoyaltyCard = lazy(() => import('./components/LoyaltyCard').then((module) => ({ default: module.LoyaltyCard })));
+const CardEditor = lazy(() => import('./components/CardEditor').then((module) => ({ default: module.CardEditor })));
+const MyCards = lazy(() => import('./components/MyCards').then((module) => ({ default: module.MyCards })));
+const IssuedCardsPage = lazy(() => import('./components/IssuedCardsPage').then((module) => ({ default: module.IssuedCardsPage })));
+const CustomerDirectory = lazy(() => import('./components/CustomerDirectory').then((module) => ({ default: module.CustomerDirectory })));
+const TemplatesGallery = lazy(() => import('./components/TemplatesGallery').then((module) => ({ default: module.TemplatesGallery })));
+const TransactionsPage = lazy(() => import('./components/TransactionsPage').then((module) => ({ default: module.TransactionsPage })));
+const AnalyticsPage = lazy(() => import('./components/AnalyticsPage').then((module) => ({ default: module.AnalyticsPage })));
+const LoginPage = lazy(() => import('./components/LoginPage').then((module) => ({ default: module.LoginPage })));
+const SignupPage = lazy(() => import('./components/SignupPage').then((module) => ({ default: module.SignupPage })));
+const StaffLoginPage = lazy(() => import('./components/StaffLoginPage').then((module) => ({ default: module.StaffLoginPage })));
+const SettingsPage = lazy(() => import('./components/SettingsPage').then((module) => ({ default: module.SettingsPage })));
+const LandingPage = lazy(() => import('./components/LandingPage').then((module) => ({ default: module.LandingPage })));
+const ForgotPasswordPage = lazy(() => import('./components/ForgotPasswordPage').then((module) => ({ default: module.ForgotPasswordPage })));
+const DashboardPage = lazy(() => import('./components/DashboardPage').then((module) => ({ default: module.DashboardPage })));
+
+const RouteLoader: React.FC = () => (
+  <div className="flex min-h-[40vh] w-full items-center justify-center">
+    <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+  </div>
+);
+
+const withSuspense = (node: React.ReactNode) => (
+  <Suspense fallback={<RouteLoader />}>
+    {node}
+  </Suspense>
+);
 
 const PublicCardWrapper: React.FC = () => {
   const { slug, uniqueId } = useParams<{ slug: string; uniqueId: string }>();
@@ -42,7 +55,7 @@ const PublicCardWrapper: React.FC = () => {
   } | null>(null);
 
   useEffect(() => {
-    if (!slug || !uniqueId) { setLoading(false); return; }
+    if (!isSupabaseConfigured || !slug || !uniqueId) { setLoading(false); return; }
     (async () => {
       const { data, error } = await supabase.rpc('get_public_card', {
         slug_input: slug,
@@ -66,9 +79,8 @@ const PublicCardWrapper: React.FC = () => {
       const customer: Customer = {
         id: data.customer.id,
         name: data.customer.name,
-        email: data.customer.email,
-        mobile: data.customer.mobile,
-        status: data.customer.status,
+        email: '',
+        status: 'Active',
         cards: [card],
       };
 
@@ -109,7 +121,11 @@ const PublicCardWrapper: React.FC = () => {
   }
 
   if (!cardData) {
-    return <div className="h-screen flex items-center justify-center text-muted-foreground">Card not found.</div>;
+    return (
+      <div className="h-screen flex items-center justify-center px-6 text-center text-muted-foreground">
+        {isSupabaseConfigured ? 'Card not found.' : SUPABASE_CONFIG_ERROR}
+      </div>
+    );
   }
 
   const { card, customer, template } = cardData;
@@ -118,21 +134,23 @@ const PublicCardWrapper: React.FC = () => {
   return (
     <div className="min-h-screen w-full bg-background relative flex flex-col items-center justify-center animate-fade-in">
       <div className="w-full min-h-[100dvh] flex items-center justify-center p-0 relative">
-        <div className={cn(
+      <div className={cn(
           "w-full h-[100dvh] md:w-full md:h-[100dvh] md:rounded-none md:shadow-none md:ring-0",
           isRedeemed && "opacity-50 grayscale-[0.6] pointer-events-none"
         )}>
-          <LoyaltyCard
-            template={template}
-            mode="public"
-            readOnly={true}
-            currentStamps={card.stamps}
-            customerName={customer.name}
-            cardId={card.uniqueId}
-            className="h-full w-full"
-            history={card.history}
-            isRedeemed={isRedeemed}
-          />
+          {withSuspense(
+            <LoyaltyCard
+              template={template}
+              mode="public"
+              readOnly={true}
+              currentStamps={card.stamps}
+              customerName={customer.name}
+              cardId={card.uniqueId}
+              className="h-full w-full"
+              history={card.history}
+              isRedeemed={isRedeemed}
+            />
+          )}
         </div>
         {isRedeemed && (
           <div className="absolute inset-0 z-50 flex items-center justify-center">
@@ -169,11 +187,13 @@ const ActiveCardWrapper: React.FC<{ templates: Template[] }> = ({ templates }) =
       >
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
       </button>
-      <LoyaltyCard
-        template={template}
-        mode="active"
-        className="h-full w-full"
-      />
+      {withSuspense(
+        <LoyaltyCard
+          template={template}
+          mode="active"
+          className="h-full w-full"
+        />
+      )}
     </div>
   );
 };
@@ -187,20 +207,21 @@ const PreviewWrapper: React.FC = () => {
 
   return (
     <div className="h-screen w-full">
-      <LoyaltyCard
-        template={template}
-        mode="preview"
-        onBack={() => navigate('/gallery')}
-        onCreate={() => navigate(`/editor/new?templateId=${templateId}`)}
-        className="h-full w-full"
-      />
+      {withSuspense(
+        <LoyaltyCard
+          template={template}
+          mode="preview"
+          onBack={() => navigate('/gallery')}
+          onCreate={() => navigate(`/editor/new?templateId=${templateId}`)}
+          className="h-full w-full"
+        />
+      )}
     </div>
   );
 };
 
-const EditorWrapper: React.FC<{ onSave: (t: Template) => void; templates: Template[] }> = ({ onSave, templates: createdTemplates }) => {
+const EditorWrapper: React.FC<{ onSave: (t: Template) => Promise<void>; templates: Template[] }> = ({ onSave, templates: createdTemplates }) => {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
   let initialTemplate: Template | undefined;
@@ -221,10 +242,12 @@ const EditorWrapper: React.FC<{ onSave: (t: Template) => void; templates: Templa
   if (!initialTemplate) return <Navigate to="/campaigns" />;
 
   return (
-    <CardEditor
-      initialTemplate={initialTemplate}
-      onSave={(t) => { onSave(t); navigate('/campaigns'); }}
-    />
+    withSuspense(
+      <CardEditor
+        initialTemplate={initialTemplate}
+        onSave={onSave}
+      />
+    )
   );
 };
 
@@ -301,21 +324,18 @@ const AppRoutes: React.FC = () => {
   const { currentOwner, isStaff } = useAuth();
   const [createdCards, setCreatedCards] = useState<Template[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
-  const [dataLoading, setDataLoading] = useState(false);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [upgradeReason, setUpgradeReason] = useState<'campaign' | 'card' | 'staff' | undefined>();
 
   const sub = useSubscription(createdCards, customers);
 
   const loadData = useCallback(async (ownerId: string) => {
-    setDataLoading(true);
     const [storedCampaigns, storedCustomers] = await Promise.all([
       fetchCampaigns(ownerId),
       fetchCustomersWithCards(ownerId),
     ]);
     setCreatedCards(storedCampaigns.map(fromStoredTemplate));
     setCustomers(storedCustomers);
-    setDataLoading(false);
   }, []);
 
   useEffect(() => {
@@ -337,33 +357,43 @@ const AppRoutes: React.FC = () => {
   }, []);
 
   const handleSaveCard = async (template: Template) => {
-    if (!currentOwner) return;
+    if (!currentOwner) {
+      throw new Error('No active owner account found.');
+    }
     const isNew = !createdCards.find(c => c.id === template.id);
     if (isNew && !sub.canCreateCampaign) {
       showUpgrade('campaign');
-      return;
+      throw new Error('Upgrade required to create more campaigns.');
     }
     const saved = isNew ? { ...template, id: `custom-${Date.now()}` } : template;
     const stored = toStoredTemplate(saved);
     const result = await upsertCampaign(stored, currentOwner.id);
-    if (result.ok) {
-      if (isNew) {
-        setCreatedCards(prev => [...prev, saved]);
-      } else {
-        setCreatedCards(prev => prev.map(c => c.id === saved.id ? saved : c));
-      }
+    if (!result.ok) {
+      throw new Error(result.error ?? 'Failed to save the campaign.');
+    }
+
+    if (isNew) {
+      setCreatedCards(prev => [...prev, saved]);
+    } else {
+      setCreatedCards(prev => prev.map(c => c.id === saved.id ? saved : c));
     }
   };
 
   const handleDeleteCard = async (cardId: string) => {
     const result = await dbDeleteCampaign(cardId);
-    if (result.ok) {
-      setCreatedCards(prev => prev.filter(c => c.id !== cardId));
+    if (!result.ok) {
+      throw new Error(result.error ?? 'Failed to delete the campaign.');
     }
+    setCreatedCards(prev => prev.filter(c => c.id !== cardId));
   };
 
   return (
     <SubscriptionProvider value={sub}>
+      {!isSupabaseConfigured && (
+        <div className="border-b border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          {SUPABASE_CONFIG_ERROR}
+        </div>
+      )}
       <UpgradePrompt
         open={upgradeOpen}
         onOpenChange={setUpgradeOpen}
@@ -372,12 +402,12 @@ const AppRoutes: React.FC = () => {
       />
       <Routes>
         {/* Public Routes */}
-        <Route path="/" element={<LandingPage />} />
-        <Route path="/:slug/staff" element={<StaffLoginPage />} />
+        <Route path="/" element={withSuspense(<LandingPage />)} />
+        <Route path="/:slug/staff" element={withSuspense(<StaffLoginPage />)} />
         <Route path="/:slug/:uniqueId" element={<PublicCardWrapper />} />
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/signup" element={<SignupPage />} />
-        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/login" element={withSuspense(<LoginPage />)} />
+        <Route path="/signup" element={withSuspense(<SignupPage />)} />
+        <Route path="/forgot-password" element={withSuspense(<ForgotPasswordPage />)} />
 
         {/* Authenticated Routes */}
         <Route element={<RequireAuth />}>
@@ -389,35 +419,39 @@ const AppRoutes: React.FC = () => {
 
           <Route element={<DashboardLayout />}>
             <Route element={<RequireRole allowed={["owner"]} />}>
-              <Route path="/dashboard" element={
-                <DashboardPage campaigns={createdCards} customers={customers} />
+            <Route path="/dashboard" element={
+                withSuspense(<DashboardPage campaigns={createdCards} customers={customers} />)
               } />
               <Route path="/campaigns" element={
-                <MyCards cards={createdCards} onDeleteCard={handleDeleteCard} onUpgrade={() => showUpgrade('campaign')} />
+                withSuspense(<MyCards cards={createdCards} onDeleteCard={handleDeleteCard} onUpgrade={() => showUpgrade('campaign')} />)
               } />
-              <Route path="/gallery" element={<TemplatesGallery />} />
-              <Route path="/analytics" element={<AnalyticsPage customers={customers} campaigns={createdCards} />} />
-              <Route path="/transactions" element={<TransactionsPage customers={customers} />} />
-              <Route path="/settings" element={<SettingsPage onUpgrade={() => showUpgrade('staff')} />} />
+              <Route path="/gallery" element={withSuspense(<TemplatesGallery />)} />
+              <Route path="/analytics" element={withSuspense(<AnalyticsPage customers={customers} campaigns={createdCards} />)} />
+              <Route path="/transactions" element={withSuspense(<TransactionsPage customers={customers} />)} />
+              <Route path="/settings" element={withSuspense(<SettingsPage onUpgrade={() => showUpgrade('staff')} />)} />
             </Route>
 
             <Route element={<RequireRole allowed={["owner", "staff"]} />}>
               <Route path="/issued-cards" element={
-                <IssuedCardsPage
-                  customers={customers}
-                  campaigns={createdCards}
-                  setCustomers={setCustomers}
-                  refreshData={refreshData}
-                  onUpgrade={() => showUpgrade('card')}
-                />
+                withSuspense(
+                  <IssuedCardsPage
+                    customers={customers}
+                    campaigns={createdCards}
+                    setCustomers={setCustomers}
+                    refreshData={refreshData}
+                    onUpgrade={() => showUpgrade('card')}
+                  />
+                )
               } />
               <Route path="/customers" element={
-                <CustomerDirectory
-                  customers={customers}
-                  setCustomers={setCustomers}
-                  readOnly={isStaff}
-                  refreshData={refreshData}
-                />
+                withSuspense(
+                  <CustomerDirectory
+                    customers={customers}
+                    setCustomers={setCustomers}
+                    readOnly={isStaff}
+                    refreshData={refreshData}
+                  />
+                )
               } />
             </Route>
           </Route>

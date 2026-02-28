@@ -17,7 +17,7 @@ import { useSubscriptionContext } from './SubscriptionContext';
 
 interface MyCardsProps {
   cards: Template[];
-  onDeleteCard: (cardId: string) => void;
+  onDeleteCard: (cardId: string) => Promise<void>;
   onUpgrade?: () => void;
 }
 
@@ -137,12 +137,22 @@ export const MyCards: React.FC<MyCardsProps> = ({
 }) => {
   const navigate = useNavigate();
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
   const { canCreateCampaign, campaignCount, campaignLimit, isProTier } = useSubscriptionContext();
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (deleteId) {
-      onDeleteCard(deleteId);
-      setDeleteId(null);
+      setDeleteBusy(true);
+      setDeleteError("");
+      try {
+        await onDeleteCard(deleteId);
+        setDeleteId(null);
+      } catch (error) {
+        setDeleteError(error instanceof Error ? error.message : "Unable to delete this campaign right now.");
+      } finally {
+        setDeleteBusy(false);
+      }
     }
   };
 
@@ -214,9 +224,16 @@ export const MyCards: React.FC<MyCardsProps> = ({
               This action cannot be undone. This will permanently delete <strong>{cards.find(c => c.id === deleteId)?.name}</strong> and remove it from your campaigns.
             </DialogDescription>
           </DialogHeader>
+          {deleteError && (
+            <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+              {deleteError}
+            </div>
+          )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteId(null)}>Cancel</Button>
-            <Button variant="destructive" onClick={confirmDelete}>Delete</Button>
+            <Button variant="outline" onClick={() => setDeleteId(null)} disabled={deleteBusy}>Cancel</Button>
+            <Button variant="destructive" onClick={confirmDelete} disabled={deleteBusy}>
+              {deleteBusy ? "Deleting..." : "Delete"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

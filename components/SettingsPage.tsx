@@ -45,9 +45,12 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onUpgrade }) => {
   const [form, setForm] = useState({ name: "", email: "", pin: "" });
   const [error, setError] = useState("");
   const [staffBusy, setStaffBusy] = useState(false);
+  const [staffActionBusyId, setStaffActionBusyId] = useState<string | null>(null);
+  const [staffActionError, setStaffActionError] = useState("");
   const [resetTarget, setResetTarget] = useState<{ id: string; name: string } | null>(null);
   const [resetPin, setResetPin] = useState("");
   const [resetError, setResetError] = useState("");
+  const [resetBusy, setResetBusy] = useState(false);
   const [deleteStaffTarget, setDeleteStaffTarget] = useState<{ id: string; name: string } | null>(null);
   const [deleteStaffError, setDeleteStaffError] = useState("");
   const [deleteStaffBusy, setDeleteStaffBusy] = useState(false);
@@ -55,6 +58,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onUpgrade }) => {
   const [isDeleteStepTwoOpen, setIsDeleteStepTwoOpen] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [deleteError, setDeleteError] = useState("");
+  const [deleteAccountBusy, setDeleteAccountBusy] = useState(false);
 
   const handleProfileSave = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -97,6 +101,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onUpgrade }) => {
   const handleCreate = async (event: React.FormEvent) => {
     event.preventDefault();
     setError("");
+    setStaffActionError("");
     if (!canCreateStaff) {
       onUpgrade?.();
       return;
@@ -114,13 +119,25 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onUpgrade }) => {
   const handleReset = async () => {
     if (!resetTarget) return;
     setResetError("");
+    setResetBusy(true);
     const result = await updateStaffPin(resetTarget.id, resetPin);
+    setResetBusy(false);
     if (!result.ok) {
       setResetError(result.error);
       return;
     }
     setResetPin("");
     setResetTarget(null);
+  };
+
+  const handleSetStaffAccess = async (staffId: string, access: "active" | "disabled") => {
+    setStaffActionError("");
+    setStaffActionBusyId(staffId);
+    const result = await setStaffAccess(staffId, access);
+    setStaffActionBusyId(null);
+    if (!result.ok) {
+      setStaffActionError(result.error);
+    }
   };
 
   const handleDeleteFinal = async () => {
@@ -130,7 +147,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onUpgrade }) => {
       return;
     }
 
+    setDeleteAccountBusy(true);
     const result = await deleteAccount();
+    setDeleteAccountBusy(false);
     if (!result.ok) {
       setDeleteError(result.error);
       return;
@@ -358,6 +377,12 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onUpgrade }) => {
           </div>
         )}
 
+        {staffActionError && (
+          <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+            {staffActionError}
+          </div>
+        )}
+
         {/* Staff table — desktop */}
         <div className="hidden md:block rounded-2xl border border-slate-100 overflow-hidden">
           <div className="grid grid-cols-[1.2fr_1.4fr_0.8fr_auto] gap-4 px-4 py-3 text-xs uppercase tracking-wider text-muted-foreground bg-slate-50">
@@ -390,6 +415,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onUpgrade }) => {
                   <Button
                     variant="outline"
                     size="sm"
+                    disabled={staffActionBusyId === staff.id}
                     onClick={() => {
                       setResetTarget({ id: staff.id, name: staff.businessName });
                       setResetPin("");
@@ -401,15 +427,17 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onUpgrade }) => {
                   <Button
                     variant={staff.access === "active" ? "destructive" : "default"}
                     size="sm"
+                    disabled={staffActionBusyId === staff.id}
                     onClick={() =>
-                      setStaffAccess(staff.id, staff.access === "active" ? "disabled" : "active")
+                      handleSetStaffAccess(staff.id, staff.access === "active" ? "disabled" : "active")
                     }
                   >
-                    {staff.access === "active" ? "Disable" : "Enable"}
+                    {staffActionBusyId === staff.id ? "Saving..." : (staff.access === "active" ? "Disable" : "Enable")}
                   </Button>
                   <Button
                     variant="destructive"
                     size="sm"
+                    disabled={staffActionBusyId === staff.id}
                     onClick={() => {
                       setDeleteStaffTarget({ id: staff.id, name: staff.businessName });
                       setDeleteStaffError("");
@@ -452,6 +480,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onUpgrade }) => {
                     variant="outline"
                     size="sm"
                     className="flex-1"
+                    disabled={staffActionBusyId === staff.id}
                     onClick={() => {
                       setResetTarget({ id: staff.id, name: staff.businessName });
                       setResetPin("");
@@ -464,16 +493,18 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onUpgrade }) => {
                     variant={staff.access === "active" ? "destructive" : "default"}
                     size="sm"
                     className="flex-1"
+                    disabled={staffActionBusyId === staff.id}
                     onClick={() =>
-                      setStaffAccess(staff.id, staff.access === "active" ? "disabled" : "active")
+                      handleSetStaffAccess(staff.id, staff.access === "active" ? "disabled" : "active")
                     }
                   >
-                    {staff.access === "active" ? "Disable" : "Enable"}
+                    {staffActionBusyId === staff.id ? "Saving..." : (staff.access === "active" ? "Disable" : "Enable")}
                   </Button>
                   <Button
                     variant="destructive"
                     size="sm"
                     className="flex-1"
+                    disabled={staffActionBusyId === staff.id}
                     onClick={() => {
                       setDeleteStaffTarget({ id: staff.id, name: staff.businessName });
                       setDeleteStaffError("");
@@ -513,7 +544,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onUpgrade }) => {
         </div>
       </section>
 
-      <Dialog open={!!resetTarget} onOpenChange={(open) => !open && setResetTarget(null)}>
+      <Dialog open={!!resetTarget} onOpenChange={(open) => !open && !resetBusy && setResetTarget(null)}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Reset PIN for {resetTarget?.name}</DialogTitle>
@@ -531,10 +562,12 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onUpgrade }) => {
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setResetTarget(null)}>
+            <Button variant="outline" onClick={() => setResetTarget(null)} disabled={resetBusy}>
               Cancel
             </Button>
-            <Button onClick={handleReset}>Update PIN</Button>
+            <Button onClick={handleReset} disabled={resetBusy}>
+              {resetBusy ? "Updating..." : "Update PIN"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -563,7 +596,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onUpgrade }) => {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={isDeleteStepOneOpen} onOpenChange={setIsDeleteStepOneOpen}>
+      <Dialog open={isDeleteStepOneOpen} onOpenChange={(open) => !deleteAccountBusy && setIsDeleteStepOneOpen(open)}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Delete Account: Step 1 of 2</DialogTitle>
@@ -597,6 +630,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onUpgrade }) => {
       <Dialog
         open={isDeleteStepTwoOpen}
         onOpenChange={(open) => {
+          if (deleteAccountBusy) return;
           setIsDeleteStepTwoOpen(open);
           if (!open) {
             setDeleteConfirmText("");
@@ -621,15 +655,15 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onUpgrade }) => {
             {deleteError && <div className="text-sm text-rose-600">{deleteError}</div>}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDeleteStepTwoOpen(false)}>
+            <Button variant="outline" onClick={() => setIsDeleteStepTwoOpen(false)} disabled={deleteAccountBusy}>
               Cancel
             </Button>
             <Button
               variant="destructive"
               onClick={handleDeleteFinal}
-              disabled={deleteConfirmText.trim().toUpperCase() !== DELETE_CONFIRMATION}
+              disabled={deleteAccountBusy || deleteConfirmText.trim().toUpperCase() !== DELETE_CONFIRMATION}
             >
-              Permanently Delete
+              {deleteAccountBusy ? "Deleting..." : "Permanently Delete"}
             </Button>
           </DialogFooter>
         </DialogContent>

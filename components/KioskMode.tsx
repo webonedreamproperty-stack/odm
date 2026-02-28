@@ -13,7 +13,7 @@ interface KioskModeProps {
   card: IssuedCard;
   template: Template;
   onClose: () => void;
-  onUpdateCard: (customerId: string, cardId: string, updates: Partial<IssuedCard>) => void;
+  onUpdateCard: (customerId: string, cardId: string, updates: Partial<IssuedCard>) => Promise<void>;
   onIssueNew: (customer: Customer, template: Template) => void;
   canIssue: boolean;
   allowRedeem: boolean;
@@ -21,6 +21,7 @@ interface KioskModeProps {
   actorName: string;
   actorRole: 'owner' | 'staff';
   onScanRequest?: () => void;
+  mutationBusy?: boolean;
 }
 
 // Helper to create timestamped transaction
@@ -65,9 +66,11 @@ export const KioskMode: React.FC<KioskModeProps> = ({
   actorId,
   actorName,
   actorRole,
-  onScanRequest
+  onScanRequest,
+  mutationBusy = false
 }) => {
   const [isAnimating, setIsAnimating] = useState(false);
+  const [actionError, setActionError] = useState("");
   
   // Confirmation States
   const [confirmAction, setConfirmAction] = useState<'stamp' | 'remove' | 'redeem' | null>(null);
@@ -80,44 +83,52 @@ export const KioskMode: React.FC<KioskModeProps> = ({
 
   // --- Handlers ---
 
-  const handleConfirmAction = () => {
-      if (confirmAction === 'stamp') {
-          performAddStamp();
-      } else if (confirmAction === 'remove') {
-          performRemoveStamp();
-      } else if (confirmAction === 'redeem') {
-          performRedeem();
+  const handleConfirmAction = async () => {
+      setActionError("");
+      try {
+          if (confirmAction === 'stamp') {
+              await performAddStamp();
+          } else if (confirmAction === 'remove') {
+              await performRemoveStamp();
+          } else if (confirmAction === 'redeem') {
+              await performRedeem();
+          }
+          setConfirmAction(null);
+          setRedemptionRemarks("");
+      } catch (error) {
+          setActionError(error instanceof Error ? error.message : "Unable to update this card right now.");
       }
-      setConfirmAction(null);
-      setRedemptionRemarks(""); // Reset remarks
   };
 
-  const performAddStamp = () => {
+  const performAddStamp = async () => {
       setIsAnimating(true);
       const tx = createTransaction('stamp_add', 1, 'Stamp Collected', undefined, { id: actorId, name: actorName, role: actorRole });
-      
-      onUpdateCard(customer.id, card.id, { 
-          stamps: card.stamps + 1,
-          lastVisit: new Date().toISOString().split('T')[0],
-          history: [tx, ...card.history]
-      });
-      setTimeout(() => setIsAnimating(false), 300);
+
+      try {
+          await onUpdateCard(customer.id, card.id, {
+              stamps: card.stamps + 1,
+              lastVisit: new Date().toISOString().split('T')[0],
+              history: [tx, ...card.history]
+          });
+      } finally {
+          setTimeout(() => setIsAnimating(false), 300);
+      }
   };
 
-  const performRemoveStamp = () => {
+  const performRemoveStamp = async () => {
       const tx = createTransaction('stamp_remove', -1, 'Stamp Removed', 'Manual Correction', { id: actorId, name: actorName, role: actorRole });
-      
-      onUpdateCard(customer.id, card.id, { 
+
+      await onUpdateCard(customer.id, card.id, {
           stamps: Math.max(0, card.stamps - 1),
           history: [tx, ...card.history]
       });
   };
 
-  const performRedeem = () => {
+  const performRedeem = async () => {
       const tx = createTransaction('redeem', 0, 'Reward Redeemed', redemptionRemarks, { id: actorId, name: actorName, role: actorRole });
 
       // Lock the card by setting status to Redeemed
-      onUpdateCard(customer.id, card.id, { 
+      await onUpdateCard(customer.id, card.id, {
           status: 'Redeemed',
           completedDate: new Date().toISOString().split('T')[0],
           history: [tx, ...card.history]
@@ -220,6 +231,12 @@ export const KioskMode: React.FC<KioskModeProps> = ({
                 <div className="text-sm text-muted-foreground">{customer.email}</div>
                 <div className="text-xs text-muted-foreground font-mono">ID: {card.uniqueId.slice(0, 8)}...</div>
             </div>
+
+            {actionError && (
+                <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                    {actionError}
+                </div>
+            )}
             
             {isLocked ? (
                 // LOCKED STATE ACTIONS
@@ -244,7 +261,7 @@ export const KioskMode: React.FC<KioskModeProps> = ({
                     {/* Stamp Button */}
                     <button
                         onClick={() => setConfirmAction('stamp')}
-                        disabled={!canAdd}
+                        disabled={mutationBusy || !canAdd}
                         className={cn(
                             "group relative flex flex-col items-center justify-center gap-4 h-64 rounded-3xl border-2 transition-all duration-200",
                             !canAdd 
@@ -265,7 +282,7 @@ export const KioskMode: React.FC<KioskModeProps> = ({
                     {allowRedeem ? (
                         <button
                             onClick={() => setConfirmAction('redeem')}
-                            disabled={!canRedeem}
+                            disabled={mutationBusy || !canRedeem}
                             className={cn(
                                 "group relative flex flex-col items-center justify-center gap-4 h-64 rounded-3xl border-2 transition-all duration-200",
                                 !canRedeem 
@@ -304,7 +321,7 @@ export const KioskMode: React.FC<KioskModeProps> = ({
                      {/* Remove Stamp Button */}
                      <button 
                         onClick={() => setConfirmAction('remove')}
-                        disabled={!canRemove}
+                        disabled={mutationBusy || !canRemove}
                         className={cn(
                             "bg-white rounded-2xl p-4 flex items-center gap-4 border hover:bg-red-50 hover:border-red-200 transition-colors text-left",
                             !canRemove && "opacity-50 cursor-not-allowed"
@@ -335,7 +352,7 @@ export const KioskMode: React.FC<KioskModeProps> = ({
       </div>
 
       {/* CONFIRMATION DIALOG */}
-      <Dialog open={!!confirmAction} onOpenChange={(open) => !open && setConfirmAction(null)}>
+      <Dialog open={!!confirmAction} onOpenChange={(open) => !open && !mutationBusy && setConfirmAction(null)}>
         <DialogContent>
             <DialogHeader>
                 <DialogTitle>
@@ -365,17 +382,21 @@ export const KioskMode: React.FC<KioskModeProps> = ({
                 </DialogDescription>
             </DialogHeader>
             <DialogFooter className="gap-2 sm:gap-0">
-                <Button variant="outline" onClick={() => setConfirmAction(null)}>Cancel</Button>
+                <Button variant="outline" onClick={() => setConfirmAction(null)} disabled={mutationBusy}>Cancel</Button>
                 
                 {confirmAction === 'stamp' && (
-                    <Button onClick={handleConfirmAction}>Add Stamp</Button>
+                    <Button onClick={handleConfirmAction} disabled={mutationBusy}>
+                        {mutationBusy ? "Saving..." : "Add Stamp"}
+                    </Button>
                 )}
                 {confirmAction === 'remove' && (
-                    <Button variant="destructive" onClick={handleConfirmAction}>Remove Stamp</Button>
+                    <Button variant="destructive" onClick={handleConfirmAction} disabled={mutationBusy}>
+                        {mutationBusy ? "Saving..." : "Remove Stamp"}
+                    </Button>
                 )}
                 {confirmAction === 'redeem' && (
-                    <Button className="bg-purple-600 hover:bg-purple-700" onClick={handleConfirmAction}>
-                        Confirm & Redeem
+                    <Button className="bg-purple-600 hover:bg-purple-700" onClick={handleConfirmAction} disabled={mutationBusy}>
+                        {mutationBusy ? "Saving..." : "Confirm & Redeem"}
                     </Button>
                 )}
             </DialogFooter>

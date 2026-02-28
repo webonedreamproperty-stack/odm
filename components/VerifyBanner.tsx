@@ -5,8 +5,20 @@ import { Button } from "./ui/button";
 
 export const VerifyBanner: React.FC = () => {
   const { currentOwner, isVerified, verifyAccount } = useAuth();
+  const [busy, setBusy] = React.useState(false);
+  const [error, setError] = React.useState("");
 
   if (!currentOwner || isVerified) return null;
+
+  const handleVerify = async () => {
+    setError("");
+    setBusy(true);
+    const result = await verifyAccount();
+    setBusy(false);
+    if (!result.ok) {
+      setError(result.error);
+    }
+  };
 
   return (
     <div className="mx-6 mt-6 rounded-lg border border-border/80 bg-card p-5 shadow-subtle">
@@ -25,13 +37,19 @@ export const VerifyBanner: React.FC = () => {
           </div>
         </div>
         <Button
-          onClick={verifyAccount}
+          onClick={handleVerify}
           className="h-11 px-6 text-base"
+          disabled={busy}
         >
           <CheckCircle2 className="mr-2" size={18} />
-          Verify email
+          {busy ? "Verifying..." : "Verify email"}
         </Button>
       </div>
+      {error && (
+        <div className="mt-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+          {error}
+        </div>
+      )}
     </div>
   );
 };

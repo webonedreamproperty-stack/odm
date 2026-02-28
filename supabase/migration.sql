@@ -212,11 +212,8 @@ create policy "Staff can update owner issued cards"
     owner_id = (select owner_id from public.profiles where id = auth.uid())
   );
 
--- Public read for public card view (no auth required)
+-- Public card access is handled only via security definer RPCs.
 drop policy if exists "Anyone can read issued cards by unique_id" on public.issued_cards;
-create policy "Anyone can read issued cards by unique_id"
-  on public.issued_cards for select
-  using (true);
 
 
 -- 5. TRANSACTIONS TABLE
@@ -263,11 +260,8 @@ create policy "Staff can insert transactions for owner cards"
     )
   );
 
--- Public read for card history display
+-- Public card history is exposed only through get_public_card().
 drop policy if exists "Anyone can read transactions for public cards" on public.transactions;
-create policy "Anyone can read transactions for public cards"
-  on public.transactions for select
-  using (true);
 
 
 -- 6. LICENSE KEYS TABLE
@@ -289,11 +283,8 @@ create policy "Users can read own license keys"
   on public.license_keys for select
   using (profile_id = auth.uid());
 
--- Allow reading unactivated keys (for validation during activation)
+-- License activation is handled through activate_license_key().
 drop policy if exists "Users can read unclaimed keys by key value" on public.license_keys;
-create policy "Users can read unclaimed keys by key value"
-  on public.license_keys for select
-  using (profile_id is null);
 
 drop policy if exists "Users can claim a license key" on public.license_keys;
 create policy "Users can claim a license key"
@@ -302,23 +293,12 @@ create policy "Users can claim a license key"
 
 
 -- 7. PUBLIC ACCESS HELPERS
--- Allow reading profiles by slug for public card views
+-- Public access is handled through security definer RPCs instead of table-wide read policies.
 drop policy if exists "Anyone can read profiles by slug" on public.profiles;
-create policy "Anyone can read profiles by slug"
-  on public.profiles for select
-  using (slug is not null);
 
--- Allow reading campaigns for public card views
 drop policy if exists "Anyone can read campaigns" on public.campaigns;
-create policy "Anyone can read campaigns"
-  on public.campaigns for select
-  using (true);
 
--- Allow reading customers for public card views
 drop policy if exists "Anyone can read customers" on public.customers;
-create policy "Anyone can read customers"
-  on public.customers for select
-  using (true);
 
 
 -- 8. ACTIVATE LICENSE KEY FUNCTION (RPC)
@@ -502,7 +482,7 @@ declare
   owner_row record;
   card_row record;
   customer_row record;
-  campaign_row record;
+  campaign_payload jsonb;
   history_data jsonb;
 begin
   select id, slug, business_name into owner_row
@@ -517,15 +497,30 @@ begin
   from public.customers where id = card_row.customer_id;
   if not found then return null; end if;
 
-  select * into campaign_row
-  from public.campaigns where id = card_row.campaign_id;
+  select jsonb_build_object(
+    'id', c.id,
+    'name', c.name,
+    'description', c.description,
+    'reward_name', c.reward_name,
+    'tagline', c.tagline,
+    'background_image', c.background_image,
+    'background_opacity', c.background_opacity,
+    'logo_image', c.logo_image,
+    'show_logo', c.show_logo,
+    'title_size', c.title_size,
+    'icon_key', c.icon_key,
+    'colors', c.colors,
+    'total_stamps', c.total_stamps,
+    'social', c.social
+  )
+  into campaign_payload
+  from public.campaigns c
+  where c.id = card_row.campaign_id;
 
   select coalesce(jsonb_agg(
     jsonb_build_object(
       'id', t.id, 'type', t.type, 'amount', t.amount,
-      'date', t.date, 'timestamp', t."timestamp", 'title', t.title,
-      'remarks', t.remarks, 'actorId', t.actor_id,
-      'actorName', t.actor_name, 'actorRole', t.actor_role
+      'date', t.date, 'timestamp', t."timestamp", 'title', t.title
     ) order by t."timestamp"
   ), '[]'::jsonb)
   into history_data
@@ -541,13 +536,9 @@ begin
       'history', history_data
     ),
     'customer', jsonb_build_object(
-      'id', customer_row.id, 'name', customer_row.name,
-      'email', customer_row.email, 'mobile', customer_row.mobile,
-      'status', customer_row.status
+      'id', customer_row.id, 'name', customer_row.name
     ),
-    'campaign', campaign_row,
-    'ownerSlug', owner_row.slug,
-    'ownerName', owner_row.business_name
+    'campaign', campaign_payload
   );
 end;
 $$ language plpgsql security definer;
