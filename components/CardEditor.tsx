@@ -433,15 +433,14 @@ export const CardEditor: React.FC<CardEditorProps> = ({ initialTemplate, onSave 
       </div>
 
       <div className="flex-1 bg-gray-100 p-6 lg:p-12 flex flex-col items-center justify-center relative overflow-hidden">
-        <div className="relative w-full h-full max-w-none overflow-hidden lg:max-w-[380px] lg:h-[750px] lg:bg-gray-900 lg:rounded-[3rem] lg:shadow-2xl lg:border-8 lg:border-gray-900 lg:ring-1 lg:ring-black/10">
-            <div className="hidden lg:block absolute top-0 left-1/2 -translate-x-1/2 h-7 w-32 bg-gray-900 rounded-b-2xl z-50"></div>
-            <div className="w-full h-full bg-white overflow-hidden">
-                 <LoyaltyCard 
-                    template={template} 
-                    mode="preview" 
-                    className="h-full w-full"
-                 />
-            </div>
+        <div className="relative w-full h-full max-w-none overflow-hidden lg:max-w-[380px] lg:h-[750px] lg:rounded-[3rem]">
+          <div className="w-full h-full overflow-hidden">
+            <LoyaltyCard 
+              template={template} 
+              mode="preview" 
+              className="h-full w-full"
+            />
+          </div>
         </div>
         <p className="mt-8 text-muted-foreground text-sm font-medium uppercase tracking-widest">Live Preview</p>
       </div>

@@ -15,10 +15,23 @@ export const StaffLoginPage: React.FC = () => {
   const [pin, setPin] = useState("");
   const [orgId, setOrgId] = useState("");
   const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
 
-  if (currentUser) {
-    return <Navigate to="/issued-cards" replace />;
-  }
+  const withTimeout = async <T,>(promise: Promise<T>, ms = 15000): Promise<T> =>
+    new Promise<T>((resolve, reject) => {
+      const timeoutId = window.setTimeout(() => {
+        reject(new Error("Login timed out. Please check your internet connection and Supabase settings."));
+      }, ms);
+      promise
+        .then((value) => {
+          window.clearTimeout(timeoutId);
+          resolve(value);
+        })
+        .catch((err) => {
+          window.clearTimeout(timeoutId);
+          reject(err);
+        });
+    });
 
   useEffect(() => {
     const orgParam = searchParams.get("id") ?? "";
@@ -27,15 +40,26 @@ export const StaffLoginPage: React.FC = () => {
     }
   }, [searchParams]);
 
-  const handleSubmit = (event: React.FormEvent) => {
+  if (currentUser) {
+    return <Navigate to="/issued-cards" replace />;
+  }
+
+  const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     setError("");
-    const result = loginStaff(email, pin, orgId);
-    if (!result.ok) {
-      setError(result.error);
-      return;
+    setBusy(true);
+    try {
+      const result = await withTimeout(loginStaff(email, pin, orgId));
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      navigate("/issued-cards");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to log in right now.");
+    } finally {
+      setBusy(false);
     }
-    navigate("/issued-cards");
   };
 
   return (
@@ -91,8 +115,8 @@ export const StaffLoginPage: React.FC = () => {
             {error}
           </div>
         )}
-        <Button type="submit" className="h-12 w-full text-base">
-          Log in as Staff
+        <Button type="submit" className="h-12 w-full text-base" disabled={busy}>
+          {busy ? "Logging in..." : "Log in as Staff"}
         </Button>
         <div className="text-center text-sm text-muted-foreground">
           Owner login?{" "}

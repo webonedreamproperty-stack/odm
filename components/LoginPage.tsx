@@ -1,133 +1,175 @@
 import React, { useState } from "react";
-import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
-import { ArrowRight, ShieldCheck, Sparkles } from "lucide-react";
+import { Link, Navigate, useLocation } from "react-router-dom";
+import { ArrowRight } from "lucide-react";
 import { AuthLayout } from "./AuthLayout";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
-import { Label } from "./ui/label";
 import { useAuth } from "./AuthProvider";
 
+const inputCls =
+  "h-12 rounded-xl border-black/[0.1] bg-[#f5f5f7] text-[#1d1d1f] placeholder:text-[#6e6e73]/50 focus-visible:border-[#1d1d1f] focus-visible:ring-0";
+const labelCls = "block text-[11px] font-semibold uppercase tracking-[0.16em] text-[#6e6e73]";
+
 export const LoginPage: React.FC = () => {
-  const { currentUser, login, loginDemo } = useAuth();
-  const navigate = useNavigate();
+  const { currentUser, loading, login, loginDemo } = useAuth();
   const location = useLocation();
+  const fromPath = (location.state as { from?: { pathname?: string } })?.from?.pathname;
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
 
-  if (currentUser) {
-    return <Navigate to="/" replace />;
+  const withTimeout = async <T,>(promise: Promise<T>, ms = 15000): Promise<T> =>
+    new Promise<T>((resolve, reject) => {
+      const timeoutId = window.setTimeout(() => {
+        reject(new Error("Sign in timed out. Please check your internet connection and Supabase settings."));
+      }, ms);
+      promise
+        .then((value) => {
+          window.clearTimeout(timeoutId);
+          resolve(value);
+        })
+        .catch((err) => {
+          window.clearTimeout(timeoutId);
+          reject(err);
+        });
+    });
+
+  // Once auth state is resolved and user is logged in, redirect
+  if (!loading && currentUser) {
+    return <Navigate to={fromPath ?? (currentUser.role === "staff" ? "/issued-cards" : "/dashboard")} replace />;
   }
 
-  const handleSubmit = (event: React.FormEvent) => {
+  const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     setError("");
-    const result = login(email, password);
-    if (!result.ok) {
-      setError(result.error);
-      return;
+    setBusy(true);
+    try {
+      const result = await withTimeout(login(email, password));
+      if (!result.ok) {
+        setError(result.error);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to sign in right now.");
+    } finally {
+      setBusy(false);
     }
-    const fromPath = (location.state as { from?: { pathname?: string } })?.from?.pathname;
-    const role = result.user?.role;
-    const redirectTo = fromPath ?? (role === "staff" ? "/issued-cards" : "/");
-    navigate(redirectTo);
+    // Redirect is handled automatically when currentUser becomes set
   };
+
+  const handleDemo = async () => {
+    setBusy(true);
+    setError("");
+    try {
+      await withTimeout(loginDemo());
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to sign in to demo right now.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const isSubmitting = busy;
+  const isDisabled = busy || loading;
 
   return (
     <AuthLayout
-      title="Welcome Back"
-      subtitle="Log in to manage campaigns, issue stamps, and track loyalty performance in real time."
-      badge="Operator console"
+      title="Welcome back."
+      subtitle="Manage campaigns, issue stamps, and track loyalty performance in real time."
+      badge="Sign in"
       theme="login"
     >
       <form className="space-y-5" onSubmit={handleSubmit}>
-        <div className="grid gap-3 rounded-2xl border border-border/70 bg-muted/25 p-4 sm:grid-cols-2">
-          <div className="rounded-xl border border-border/60 bg-background/90 px-3 py-2.5">
-            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
-              <ShieldCheck className="h-3.5 w-3.5" />
-              Secure login
-            </div>
-            <p className="mt-1 text-xs text-slate-600">Protected session and role-based access.</p>
-          </div>
-          <div className="rounded-xl border border-border/60 bg-background/90 px-3 py-2.5">
-            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
-              <Sparkles className="h-3.5 w-3.5" />
-              Real-time dashboard
-            </div>
-            <p className="mt-1 text-xs text-slate-600">Campaign stats, cards, and customers synced live.</p>
-          </div>
+
+        <div className="mb-2">
+          <h2 className="text-xl font-semibold text-[#1d1d1f]">Sign in to your account</h2>
+          <p className="mt-1 text-sm text-[#6e6e73]">Enter your credentials below to continue.</p>
         </div>
 
-        <div className="space-y-2">
-          <Label className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Work email</Label>
+        <div className="space-y-1.5">
+          <label className={labelCls}>Email</label>
           <Input
             value={email}
-            onChange={(event) => setEmail(event.target.value)}
+            onChange={(e) => setEmail(e.target.value)}
             placeholder="you@brand.com"
-            className="h-12 border-border/70 bg-background/90"
+            className={inputCls}
             type="email"
             autoComplete="email"
             required
           />
         </div>
-        <div className="space-y-2">
+
+        <div className="space-y-1.5">
           <div className="flex items-center justify-between">
-            <Label className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Password</Label>
-            <span className="text-xs text-muted-foreground">Owner and staff supported</span>
+            <label className={labelCls}>Password</label>
+            <Link
+              to="/forgot-password"
+              className="text-[11px] text-[#6e6e73] underline-offset-2 hover:underline hover:text-[#1d1d1f]"
+            >
+              Forgot password?
+            </Link>
           </div>
           <Input
             value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            placeholder="********"
-            className="h-12 border-border/70 bg-background/90"
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Your password"
+            className={inputCls}
             type="password"
             autoComplete="current-password"
             required
           />
         </div>
+
         {error && (
-          <div className="rounded-md border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
             {error}
           </div>
         )}
-        <Button type="submit" className="h-12 w-full text-base font-semibold">
-          <span>Continue to Dashboard</span>
-          <ArrowRight className="ml-2 h-4 w-4" />
+
+        <Button
+          type="submit"
+          disabled={isDisabled}
+          className="h-12 w-full rounded-full bg-[#1d1d1f] text-base font-medium text-white shadow-sm hover:bg-black/80"
+        >
+          {isSubmitting ? "Signing in..." : <>Continue <ArrowRight className="ml-2 h-4 w-4" /></>}
         </Button>
+        {loading && !busy && (
+          <p className="text-center text-xs text-[#6e6e73]">Checking existing session...</p>
+        )}
 
         <div className="relative py-1">
-          <div className="border-t border-border/70" />
-          <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border border-border/70 bg-background px-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
-            Quick access
+          <div className="border-t border-black/[0.08]" />
+          <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white px-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#6e6e73]">
+            or
           </span>
         </div>
 
         <Button
           type="button"
           variant="outline"
-          className="h-12 w-full border-border/70 bg-background/80 text-base font-semibold"
-          onClick={() => {
-            loginDemo();
-            navigate("/");
-          }}
+          disabled={isDisabled}
+          className="h-12 w-full rounded-full border-black/[0.1] bg-white text-base font-medium text-[#1d1d1f] hover:bg-[#f5f5f7]"
+          onClick={handleDemo}
         >
           Try Demo Workspace
         </Button>
 
-        <div className="rounded-xl border border-border/70 bg-muted/30 px-4 py-3">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">Staff shortcut</p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Team members can use org portal links like{" "}
-            <span className="font-mono text-foreground">/yourbrand/staff?id=ORG_ID</span>.
+        <div className="rounded-2xl border border-black/[0.07] bg-[#f5f5f7] px-4 py-3">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#6e6e73]">Staff access</p>
+          <p className="mt-1 text-xs text-[#6e6e73]">
+            Team members use the org portal link:{" "}
+            <span className="font-mono text-[#1d1d1f]">/yourbrand/staff</span>
           </p>
         </div>
 
-        <div className="text-center text-sm text-muted-foreground">
+        <p className="text-center text-sm text-[#6e6e73]">
           New here?{" "}
-          <Link to="/signup" className="font-semibold text-foreground underline">
+          <Link to="/signup" className="font-semibold text-[#1d1d1f] underline-offset-2 hover:underline">
             Create your workspace
           </Link>
-        </div>
+        </p>
+
       </form>
     </AuthLayout>
   );

@@ -93,10 +93,10 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({ customers })
   };
 
   return (
-    <div className="p-8 space-y-6 animate-fade-in h-full flex flex-col bg-gray-50/50">
+    <div className="p-4 md:p-8 space-y-6 animate-fade-in h-full flex flex-col bg-gray-50/50">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
-                <h1 className="text-3xl font-bold tracking-tight text-foreground">Transactions</h1>
+                <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground">Transactions</h1>
                 <p className="text-muted-foreground">History of all stamps, redemptions, and issuances.</p>
             </div>
         </div>

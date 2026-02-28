@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Template } from '../types';
 import { Button } from './ui/button';
-import { PlusCircle, Edit2, Trash2, CreditCard, Play } from 'lucide-react';
+import { PlusCircle, Edit2, Trash2, CreditCard, Play, Crown } from 'lucide-react';
 import { LoyaltyCard } from './LoyaltyCard';
 import { cn } from '../lib/utils';
 import { useNavigate } from 'react-router-dom';
@@ -13,10 +13,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "./ui/dialog";
+import { useSubscriptionContext } from './SubscriptionContext';
 
 interface MyCardsProps {
   cards: Template[];
   onDeleteCard: (cardId: string) => void;
+  onUpgrade?: () => void;
 }
 
 interface ResponsiveCardItemProps {
@@ -130,10 +132,12 @@ const ResponsiveCardItem: React.FC<ResponsiveCardItemProps> = ({
 
 export const MyCards: React.FC<MyCardsProps> = ({ 
   cards, 
-  onDeleteCard
+  onDeleteCard,
+  onUpgrade,
 }) => {
   const navigate = useNavigate();
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const { canCreateCampaign, campaignCount, campaignLimit, isProTier } = useSubscriptionContext();
 
   const confirmDelete = () => {
     if (deleteId) {
@@ -142,7 +146,13 @@ export const MyCards: React.FC<MyCardsProps> = ({
     }
   };
 
-  const handleCreateNew = () => navigate('/gallery');
+  const handleCreateNew = () => {
+    if (!canCreateCampaign) {
+      onUpgrade?.();
+      return;
+    }
+    navigate('/gallery');
+  };
   const handleEdit = (id: string) => navigate(`/editor/${id}`);
 
   return (
@@ -153,11 +163,19 @@ export const MyCards: React.FC<MyCardsProps> = ({
                 <CreditCard size={24} />
             </div>
             <div>
-                <h1 className="text-3xl font-bold tracking-tight text-foreground">Campaigns</h1>
+                <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground">Campaigns</h1>
                 <p className="text-muted-foreground">Manage your active loyalty campaigns.</p>
             </div>
         </div>
-        <div>
+        <div className="flex items-center gap-3">
+            {!isProTier && (
+              <div className="hidden md:flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs text-muted-foreground">
+                <CreditCard size={14} />
+                <span className="font-semibold text-foreground">{campaignCount}</span>
+                <span>/</span>
+                <span>{campaignLimit}</span>
+              </div>
+            )}
             <Button onClick={handleCreateNew} className="gap-2 rounded-full shadow-sm w-full md:w-auto h-11 text-base">
                 <PlusCircle size={20} /> Create New
             </Button>
@@ -193,7 +211,7 @@ export const MyCards: React.FC<MyCardsProps> = ({
           <DialogHeader>
             <DialogTitle>Delete Campaign?</DialogTitle>
             <DialogDescription>
-              This action cannot be undone. This will permanently delete <strong>{cards.find(c => c.id === deleteId)?.name}</strong> and remove it from your dashboard.
+              This action cannot be undone. This will permanently delete <strong>{cards.find(c => c.id === deleteId)?.name}</strong> and remove it from your campaigns.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

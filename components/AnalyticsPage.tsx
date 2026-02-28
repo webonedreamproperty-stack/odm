@@ -271,7 +271,7 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ customers, campaig
     <div className="h-full overflow-y-auto flex flex-col space-y-8 bg-background p-6 md:p-8 animate-fade-in">
       <div className="flex flex-col gap-4">
         <div className="space-y-2">
-          <h1 className="text-4xl font-semibold tracking-tight text-foreground">Analytics</h1>
+          <h1 className="text-2xl md:text-4xl font-semibold tracking-tight text-foreground">Analytics</h1>
           <p className="text-sm text-muted-foreground md:text-base">
             A quick pulse check on loyalty performance and customer activity.
           </p>

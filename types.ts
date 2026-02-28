@@ -91,16 +91,23 @@ export interface Customer {
 export type AccountStatus = 'unverified' | 'verified';
 export type UserRole = 'owner' | 'staff';
 export type AccessStatus = 'active' | 'disabled';
+export type SubscriptionTier = 'free' | 'pro';
+
+export const TIER_LIMITS = {
+  free: { campaigns: 3, issuedCards: 50, staff: 1 },
+  pro: { campaigns: Infinity, issuedCards: Infinity, staff: Infinity },
+} as const;
 
 export interface User {
   id: string;
   businessName: string;
   email: string;
-  password: string;
   slug?: string;
   role: UserRole;
   ownerId?: string;
   status: AccountStatus;
   access: AccessStatus;
+  tier: SubscriptionTier;
+  tierExpiresAt?: string;
   createdAt: string;
 }
