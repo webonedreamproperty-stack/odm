@@ -1,16 +1,16 @@
 import React, { useState } from "react";
 import { Link, Navigate, useLocation } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
-import { AuthSplitLayout } from "./AuthSplitLayout";
+import { AuthLayout } from "./AuthLayout";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { useAuth } from "./AuthProvider";
 
 const inputCls =
-  "h-14 rounded-2xl border-black/[0.06] bg-[#f4f3ee] px-5 text-base text-[#111111] placeholder:text-[#6f7066] focus-visible:border-black/[0.12] focus-visible:ring-0";
+  "h-12 rounded-xl border-black/[0.1] bg-[#f5f5f7] text-[#1d1d1f] placeholder:text-[#6e6e73]/50 focus-visible:border-[#1d1d1f] focus-visible:ring-0";
 const labelCls = "block text-[11px] font-semibold uppercase tracking-[0.16em] text-[#6e6e73]";
 
-export const LoginPage: React.FC = () => {
+export const LoginClassicPage: React.FC = () => {
   const { currentUser, loading, login, loginDemo } = useAuth();
   const location = useLocation();
   const fromPath = (location.state as { from?: { pathname?: string } })?.from?.pathname;
@@ -36,7 +36,6 @@ export const LoginPage: React.FC = () => {
         });
     });
 
-  // Once auth state is resolved and user is logged in, redirect
   if (!loading && currentUser) {
     return <Navigate to={fromPath ?? (currentUser.role === "staff" ? "/issued-cards" : "/dashboard")} replace />;
   }
@@ -55,7 +54,6 @@ export const LoginPage: React.FC = () => {
     } finally {
       setBusy(false);
     }
-    // Redirect is handled automatically when currentUser becomes set
   };
 
   const handleDemo = async () => {
@@ -74,13 +72,18 @@ export const LoginPage: React.FC = () => {
   const isDisabled = busy || loading;
 
   return (
-    <AuthSplitLayout
-      title="Welcome back"
-      subtitle="Log in to run campaigns, issue digital cards, and track loyalty activity from one place."
+    <AuthLayout
+      title="Welcome back."
+      subtitle="Manage campaigns, issue stamps, and track loyalty performance in real time."
       badge="Sign in"
-      mode="login"
+      theme="login"
     >
-      <form className="space-y-4" onSubmit={handleSubmit}>
+      <form className="space-y-5" onSubmit={handleSubmit}>
+        <div className="mb-2">
+          <h2 className="text-xl font-semibold text-[#1d1d1f]">Sign in to your account</h2>
+          <p className="mt-1 text-sm text-[#6e6e73]">Enter your credentials below to continue.</p>
+        </div>
+
         <div className="space-y-1.5">
           <label className={labelCls}>Email</label>
           <Input
@@ -116,7 +119,7 @@ export const LoginPage: React.FC = () => {
         </div>
 
         {error && (
-          <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
             {error}
           </div>
         )}
@@ -124,7 +127,7 @@ export const LoginPage: React.FC = () => {
         <Button
           type="submit"
           disabled={isDisabled}
-          className="h-14 w-full rounded-2xl bg-[#cccec2] text-base font-semibold text-[#111111] shadow-none hover:bg-[#c3c5b8] disabled:opacity-60"
+          className="h-12 w-full rounded-full bg-[#1d1d1f] text-base font-medium text-white shadow-sm hover:bg-black/80"
         >
           {isSubmitting ? "Signing in..." : <>Continue <ArrowRight className="ml-2 h-4 w-4" /></>}
         </Button>
@@ -134,7 +137,7 @@ export const LoginPage: React.FC = () => {
 
         <div className="relative py-1">
           <div className="border-t border-black/[0.08]" />
-          <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-[#ecebe6] px-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#6e6e73]">
+          <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white px-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#6e6e73]">
             or
           </span>
         </div>
@@ -143,13 +146,13 @@ export const LoginPage: React.FC = () => {
           type="button"
           variant="outline"
           disabled={isDisabled}
-          className="h-14 w-full rounded-2xl border-black/[0.08] bg-transparent text-base font-semibold text-[#111111] hover:bg-white/45"
+          className="h-12 w-full rounded-full border-black/[0.1] bg-white text-base font-medium text-[#1d1d1f] hover:bg-[#f5f5f7]"
           onClick={handleDemo}
         >
           Try Demo Workspace
         </Button>
 
-        <div className="rounded-[1.6rem] border border-black/[0.07] bg-white/40 px-4 py-3">
+        <div className="rounded-2xl border border-black/[0.07] bg-[#f5f5f7] px-4 py-3">
           <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#6e6e73]">Staff access</p>
           <p className="mt-1 text-xs text-[#6e6e73]">
             Team members use the org portal link:{" "}
@@ -164,6 +167,6 @@ export const LoginPage: React.FC = () => {
           </Link>
         </p>
       </form>
-    </AuthSplitLayout>
+    </AuthLayout>
   );
 };

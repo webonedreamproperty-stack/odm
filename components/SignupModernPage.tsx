@@ -8,10 +8,10 @@ import { useAuth } from "./AuthProvider";
 import { getSlugHint, isSlugValid, normalizeSlug } from "../lib/slug";
 
 const inputCls =
-  "h-14 rounded-2xl border-black/[0.06] bg-[#f4f3ee] px-5 text-base text-[#111111] placeholder:text-[#6f7066] focus-visible:border-black/[0.12] focus-visible:ring-0";
+  "h-13 rounded-2xl border-black/[0.06] bg-[#f4f3ee] px-5 text-[1.05rem] text-[#111111] placeholder:text-[#6f7066] focus-visible:border-black/[0.12] focus-visible:ring-0";
 const labelCls = "block text-[11px] font-semibold uppercase tracking-[0.16em] text-[#6e6e73]";
 
-export const SignupPage: React.FC = () => {
+export const SignupModernPage: React.FC = () => {
   const { currentUser, loading, signup, isSlugAvailable } = useAuth();
   const [businessName, setBusinessName] = useState("");
   const [email, setEmail] = useState("");
@@ -58,6 +58,7 @@ export const SignupPage: React.FC = () => {
       setSlugCheckFailed(false);
       return;
     }
+
     let cancelled = false;
     setSlugChecking(true);
     const timer = setTimeout(async () => {
@@ -76,6 +77,7 @@ export const SignupPage: React.FC = () => {
         }
       }
     }, 300);
+
     return () => {
       cancelled = true;
       clearTimeout(timer);
@@ -99,14 +101,17 @@ export const SignupPage: React.FC = () => {
     event.preventDefault();
     setError("");
     setInfo("");
+
     if (!slugValid) {
       setError("Your public URL is invalid. Use lowercase letters, numbers, and hyphens only.");
       return;
     }
+
     if (!slugAvailable && !slugCheckFailed) {
       setError("That public URL is already taken.");
       return;
     }
+
     setBusy(true);
     try {
       const result = await withTimeout(signup({ businessName, email, password, slug: normalizedSlug }));
@@ -120,7 +125,6 @@ export const SignupPage: React.FC = () => {
     } finally {
       setBusy(false);
     }
-    // Redirect happens automatically when currentUser is set by onAuthStateChange
   };
 
   if (!loading && currentUser) {
@@ -134,13 +138,10 @@ export const SignupPage: React.FC = () => {
     <AuthSplitLayout
       title="Create your workspace"
       subtitle="Set up your brand, publish your public card link, and launch digital loyalty in minutes."
-      badge="Get started"
       mode="signup"
+      titleClassName="whitespace-nowrap text-[clamp(2rem,4vw,3.2rem)]"
     >
-      <form className="space-y-4" onSubmit={handleSubmit}>
-
-          <p className="mt-1 text-sm text-[#6e6e73]">Free to start — no credit card required.</p>
-
+      <form className="space-y-3.5" onSubmit={handleSubmit}>
         <div className="space-y-1.5">
           <label className={labelCls}>Business name</label>
           <Input
@@ -178,7 +179,7 @@ export const SignupPage: React.FC = () => {
           />
         </div>
 
-        <div className="space-y-2 rounded-2xl border border-black/[0.07] bg-[#f5f5f7] p-3">
+        <div className="space-y-2 rounded-[1.7rem] border border-black/[0.07] bg-white/40 p-3.5">
           <div className="flex items-center justify-between">
             <label className={labelCls}>Your public URL</label>
             {normalizedSlug && (
@@ -196,7 +197,7 @@ export const SignupPage: React.FC = () => {
             )}
           </div>
 
-          <div className="flex items-center gap-2 rounded-xl border border-black/[0.1] bg-white px-4 py-3 focus-within:border-[#1d1d1f]">
+          <div className="flex items-center gap-2 rounded-2xl border border-black/[0.08] bg-white px-4 py-3.5 focus-within:border-black/[0.14]">
             <Link2 className="h-4 w-4 shrink-0 text-[#6e6e73]" />
             <span className="shrink-0 text-sm font-medium text-[#6e6e73]">stampee.com/</span>
             <input
@@ -205,7 +206,7 @@ export const SignupPage: React.FC = () => {
                 setSlugTouched(true);
                 setSlugInput(e.target.value);
               }}
-              className="min-w-0 flex-1 bg-transparent font-mono text-sm text-[#1d1d1f] outline-none placeholder:text-[#6e6e73]/50"
+              className="min-w-0 flex-1 bg-transparent font-mono text-base text-[#1d1d1f] outline-none placeholder:text-[#6e6e73]/50"
               placeholder="yourbrand"
               required
             />
@@ -222,12 +223,12 @@ export const SignupPage: React.FC = () => {
         </div>
 
         {error && (
-          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+          <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
             {error}
           </div>
         )}
         {info && (
-          <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
             {info}
           </div>
         )}
@@ -235,7 +236,7 @@ export const SignupPage: React.FC = () => {
         <Button
           type="submit"
           disabled={isDisabled}
-          className="h-11 w-full rounded-full bg-[#1d1d1f] text-sm font-medium text-white shadow-sm hover:bg-black/80 disabled:opacity-40"
+          className="h-14 w-full rounded-2xl bg-[#cccec2] text-base font-semibold text-[#111111] shadow-none hover:bg-[#c3c5b8] disabled:opacity-60"
         >
           {isSubmitting ? "Creating..." : "Create Workspace"}
           {!isSubmitting && <ArrowRight className="ml-2 h-4 w-4" />}
@@ -250,8 +251,7 @@ export const SignupPage: React.FC = () => {
             Log in
           </Link>
         </p>
-
       </form>
-    </AuthLayout>
+    </AuthSplitLayout>
   );
 };

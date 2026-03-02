@@ -25,13 +25,15 @@ const CustomerDirectory = lazy(() => import('./components/CustomerDirectory').th
 const TemplatesGallery = lazy(() => import('./components/TemplatesGallery').then((module) => ({ default: module.TemplatesGallery })));
 const TransactionsPage = lazy(() => import('./components/TransactionsPage').then((module) => ({ default: module.TransactionsPage })));
 const AnalyticsPage = lazy(() => import('./components/AnalyticsPage').then((module) => ({ default: module.AnalyticsPage })));
-const LoginPage = lazy(() => import('./components/LoginPage').then((module) => ({ default: module.LoginPage })));
-const SignupPage = lazy(() => import('./components/SignupPage').then((module) => ({ default: module.SignupPage })));
+const LoginPage = lazy(() => import('./components/LoginClassicPage').then((module) => ({ default: module.LoginClassicPage })));
+const SignupPage = lazy(() => import('./components/SignupClassicPage').then((module) => ({ default: module.SignupClassicPage })));
 const StaffLoginPage = lazy(() => import('./components/StaffLoginPage').then((module) => ({ default: module.StaffLoginPage })));
 const SettingsPage = lazy(() => import('./components/SettingsPage').then((module) => ({ default: module.SettingsPage })));
 const LandingPage = lazy(() => import('./components/LandingPage').then((module) => ({ default: module.LandingPage })));
 const ForgotPasswordPage = lazy(() => import('./components/ForgotPasswordPage').then((module) => ({ default: module.ForgotPasswordPage })));
 const DashboardPage = lazy(() => import('./components/DashboardPage').then((module) => ({ default: module.DashboardPage })));
+const GettingStartedArticlePage = lazy(() => import('./components/GettingStartedArticlePage').then((module) => ({ default: module.GettingStartedArticlePage })));
+const ShowcasePage = lazy(() => import('./components/ShowcasePage').then((module) => ({ default: module.ShowcasePage })));
 
 const RouteLoader: React.FC = () => (
   <div className="flex min-h-[40vh] w-full items-center justify-center">
@@ -403,6 +405,8 @@ const AppRoutes: React.FC = () => {
       <Routes>
         {/* Public Routes */}
         <Route path="/" element={withSuspense(<LandingPage />)} />
+        <Route path="/showcase" element={withSuspense(<ShowcasePage />)} />
+        <Route path="/articles/getting-started" element={withSuspense(<GettingStartedArticlePage />)} />
         <Route path="/:slug/staff" element={withSuspense(<StaffLoginPage />)} />
         <Route path="/:slug/:uniqueId" element={<PublicCardWrapper />} />
         <Route path="/login" element={withSuspense(<LoginPage />)} />

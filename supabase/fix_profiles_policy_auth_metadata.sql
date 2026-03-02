@@ -1,4 +1,4 @@
--- Fix: profiles RLS policy recursion and insecure user_metadata dependency.
+-- Fix: avoid using editable auth user_metadata in profiles RLS.
 -- Run this in Supabase SQL Editor on the active project.
 
 create or replace function public.current_staff_owner_id()

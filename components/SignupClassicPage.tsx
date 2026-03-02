@@ -1,17 +1,17 @@
 import React, { useEffect, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { ArrowRight, Link2 } from "lucide-react";
-import { AuthSplitLayout } from "./AuthSplitLayout";
+import { AuthLayout } from "./AuthLayout";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { useAuth } from "./AuthProvider";
 import { getSlugHint, isSlugValid, normalizeSlug } from "../lib/slug";
 
 const inputCls =
-  "h-14 rounded-2xl border-black/[0.06] bg-[#f4f3ee] px-5 text-base text-[#111111] placeholder:text-[#6f7066] focus-visible:border-black/[0.12] focus-visible:ring-0";
+  "h-10 rounded-xl border-black/[0.1] bg-[#f5f5f7] text-[#1d1d1f] placeholder:text-[#6e6e73]/50 focus-visible:border-[#1d1d1f] focus-visible:ring-0";
 const labelCls = "block text-[11px] font-semibold uppercase tracking-[0.16em] text-[#6e6e73]";
 
-export const SignupPage: React.FC = () => {
+export const SignupClassicPage: React.FC = () => {
   const { currentUser, loading, signup, isSlugAvailable } = useAuth();
   const [businessName, setBusinessName] = useState("");
   const [email, setEmail] = useState("");
@@ -120,7 +120,6 @@ export const SignupPage: React.FC = () => {
     } finally {
       setBusy(false);
     }
-    // Redirect happens automatically when currentUser is set by onAuthStateChange
   };
 
   if (!loading && currentUser) {
@@ -131,15 +130,17 @@ export const SignupPage: React.FC = () => {
   const isDisabled = slugChecking || (!slugAvailable && !slugCheckFailed) || !slugValid || busy || loading;
 
   return (
-    <AuthSplitLayout
-      title="Create your workspace"
-      subtitle="Set up your brand, publish your public card link, and launch digital loyalty in minutes."
+    <AuthLayout
+      title="Launch in minutes."
+      subtitle="Set up your brand and launch a loyalty program your customers actually use."
       badge="Get started"
-      mode="signup"
+      theme="signup"
     >
       <form className="space-y-4" onSubmit={handleSubmit}>
-
-          <p className="mt-1 text-sm text-[#6e6e73]">Free to start — no credit card required.</p>
+        <div className="mb-2">
+          <h2 className="text-xl font-semibold text-[#1d1d1f]">Create your workspace</h2>
+          <p className="mt-1 text-sm text-[#6e6e73]">Free to start - no credit card required.</p>
+        </div>
 
         <div className="space-y-1.5">
           <label className={labelCls}>Business name</label>
@@ -250,7 +251,6 @@ export const SignupPage: React.FC = () => {
             Log in
           </Link>
         </p>
-
       </form>
     </AuthLayout>
   );

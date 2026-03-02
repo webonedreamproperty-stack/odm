@@ -22,6 +22,20 @@ create table if not exists public.profiles (
 
 alter table public.profiles enable row level security;
 
+create or replace function public.current_staff_owner_id()
+returns uuid
+language sql
+security definer
+stable
+set search_path = public
+as $$
+  select p.owner_id
+  from public.profiles p
+  where p.id = (select auth.uid())
+    and p.role = 'staff'
+  limit 1
+$$;
+
 drop policy if exists "Users can read own profile" on public.profiles;
 create policy "Users can read own profile"
   on public.profiles for select
@@ -38,9 +52,7 @@ drop policy if exists "Staff can read owner profile" on public.profiles;
 create policy "Staff can read owner profile"
   on public.profiles for select
   using (
-    coalesce(auth.jwt()->'user_metadata'->>'role', '') = 'staff'
-    and (auth.jwt()->'user_metadata'->>'owner_id') ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
-    and id = (auth.jwt()->'user_metadata'->>'owner_id')::uuid
+    id = (select public.current_staff_owner_id())
   );
 
 drop policy if exists "Users can update own profile" on public.profiles;
@@ -237,7 +249,7 @@ drop policy if exists "Owners can manage transactions for own cards" on public.t
 create policy "Owners can manage transactions for own cards"
   on public.transactions for all
   using (
-    card_id in (select id from public.issued_cards where owner_id = auth.uid())
+    card_id in (select id from public.issued_cards where owner_id = (select auth.uid()))
   );
 
 drop policy if exists "Staff can read owner transactions" on public.transactions;
@@ -246,7 +258,9 @@ create policy "Staff can read owner transactions"
   using (
     card_id in (
       select ic.id from public.issued_cards ic
-      where ic.owner_id = (select owner_id from public.profiles where id = auth.uid())
+      where ic.owner_id = (
+        select owner_id from public.profiles where id = (select auth.uid())
+      )
     )
   );
 
@@ -256,7 +270,9 @@ create policy "Staff can insert transactions for owner cards"
   with check (
     card_id in (
       select ic.id from public.issued_cards ic
-      where ic.owner_id = (select owner_id from public.profiles where id = auth.uid())
+      where ic.owner_id = (
+        select owner_id from public.profiles where id = (select auth.uid())
+      )
     )
   );
 
@@ -472,7 +488,8 @@ begin
     and role = 'owner'
   );
 end;
-$$ language plpgsql security definer;
+$$ language plpgsql security definer
+set search_path = public;
 
 
 -- 14. GET PUBLIC CARD DATA (RPC)

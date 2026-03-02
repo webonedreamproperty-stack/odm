@@ -2,7 +2,7 @@ import React from 'react';
 import { LayoutDashboard, Users, CreditCard, Settings, LogOut, Wallet, History, QrCode, Crown, Sparkles } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { Button } from './ui/button';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from './AuthProvider';
 import { useSubscriptionContext } from './SubscriptionContext';
 
@@ -69,11 +69,13 @@ export const SidebarContent: React.FC<SidebarContentProps> = ({ onNavigate, onSc
     <div className="flex h-full flex-col py-8">
       <div className="px-3 py-2">
         <div className="mb-6 px-4 flex items-center gap-3">
-          <img
-            src="/stampee.svg"
-            alt="Stampee logo"
-            className="h-12 w-auto"
-          />
+          <Link to="/" className="inline-flex items-center" onClick={onNavigate}>
+            <img
+              src="/stampee.svg"
+              alt="Stampee logo"
+              className="h-12 w-auto"
+            />
+          </Link>
         </div>
         <div className="space-y-2">
           {NAV_ITEMS.filter((item) => item.roles.includes(isStaff ? 'staff' : 'owner')).map((item) => (
