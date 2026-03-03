@@ -39,7 +39,7 @@ const sections = [
 
 export const TermsPage: React.FC = () => {
   return (
-    <div className="min-h-screen bg-[#f5f4ef] text-[#1d1d1f]">
+    <div className="min-h-screen bg-white text-[#1d1d1f]">
       <header className="fixed top-0 z-30 w-full border-b border-black/[0.06] bg-white/78 backdrop-blur-2xl">
         <div className="mx-auto flex max-w-[88rem] items-center justify-between px-4 py-4 sm:px-6 lg:px-10">
           <Link to="/" className="inline-flex items-center">
@@ -72,10 +72,10 @@ export const TermsPage: React.FC = () => {
           </div>
         </section>
 
-        <section className="px-4 py-14 sm:px-6 lg:px-10 lg:py-16">
+        <section className="bg-white px-4 py-14 sm:px-6 lg:px-10 lg:py-16">
           <div className="mx-auto grid max-w-[88rem] gap-10 lg:grid-cols-[minmax(0,1fr)_320px]">
             <div className="space-y-6">
-              <div className="rounded-[2.2rem] border border-black/[0.06] bg-white px-6 py-6 shadow-[0_24px_70px_-42px_rgba(0,0,0,0.18)] sm:px-8 sm:py-8">
+              <div className="bg-white px-6 py-2 sm:px-8 sm:py-2">
                 <h2 className="text-[clamp(1.6rem,2.5vw,2.4rem)] font-semibold tracking-tight text-[#1d1d1f]">
                   Overview
                 </h2>
@@ -88,7 +88,7 @@ export const TermsPage: React.FC = () => {
               {sections.map((section) => (
                 <article
                   key={section.title}
-                  className="rounded-[2.2rem] border border-black/[0.06] bg-white px-6 py-6 shadow-[0_24px_70px_-42px_rgba(0,0,0,0.18)] sm:px-8 sm:py-8"
+                  className="bg-white px-6 py-2 sm:px-8 sm:py-2"
                 >
                   <h2 className="text-[clamp(1.5rem,2.3vw,2.2rem)] font-semibold leading-[1.02] tracking-tight text-[#1d1d1f]">
                     {section.title}
@@ -99,8 +99,8 @@ export const TermsPage: React.FC = () => {
             </div>
 
             <aside className="space-y-5 lg:sticky lg:top-24 lg:self-start">
-              <div className="rounded-[2rem] bg-[#fff3e8] p-6 shadow-[0_24px_60px_-34px_rgba(0,0,0,0.14)]">
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#8b5a17]">Beta note</p>
+              <div className="bg-white px-6 py-2">
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#1d1d1f]">Beta note</p>
                 <p className="mt-4 text-sm leading-7 text-[#5f4a2c]">
                   Stampee is still being hardened for broader release. Use the beta with that expectation, and contact{" "}
                   <a className="font-medium underline underline-offset-2" href={`mailto:${SUPPORT_EMAIL}`}>
