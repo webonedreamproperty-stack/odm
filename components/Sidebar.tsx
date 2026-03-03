@@ -127,7 +127,7 @@ export const SidebarContent: React.FC<SidebarContentProps> = ({ onNavigate, onSc
             Log Out
          </Button>
          <div className="px-1 text-[10px] uppercase tracking-[0.18em] text-muted-foreground/70">
-            v0.01
+            v0.5
          </div>
       </div>
     </div>

@@ -406,7 +406,12 @@ const DashboardLayout: React.FC = () => {
 
         <VerifyBanner />
         <div className="flex-1 overflow-hidden">
-          <Outlet />
+          <div
+            key={location.pathname}
+            className="dashboard-route-transition h-full"
+          >
+            <Outlet />
+          </div>
         </div>
       </main>
     </div>

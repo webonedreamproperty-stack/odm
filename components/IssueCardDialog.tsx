@@ -120,9 +120,9 @@ export const IssueCardDialog: React.FC<IssueCardDialogProps> = ({
 
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent className="sm:max-w-[500px] h-[650px] flex flex-col p-0 gap-0 overflow-hidden transition-all">
+            <DialogContent className="w-[calc(100vw-1rem)] max-w-[500px] h-[min(650px,calc(100vh-1rem))] sm:h-[650px] flex flex-col p-0 gap-0 overflow-hidden transition-all">
                 {/* Header */}
-                <div className="p-6 border-b bg-muted/20">
+                <div className="border-b bg-muted/20 p-4 sm:p-6">
                     <DialogTitle className="text-xl">
                         {step === 'campaign' && "Select Campaign"}
                         {step === 'customer' && "Select Customer"}
@@ -186,7 +186,7 @@ export const IssueCardDialog: React.FC<IssueCardDialogProps> = ({
 
                     {/* STEP 3: NEW CUSTOMER */}
                     {step === 'new-customer' && (
-                        <div className="p-6 space-y-4">
+                        <div className="space-y-4 p-4 sm:p-6">
                             <div className="grid gap-2"><Label>Full Name</Label><Input value={newCustomerData.name} onChange={(e) => setNewCustomerData({...newCustomerData, name: e.target.value})} autoFocus /></div>
                             <div className="grid gap-2"><Label>Email</Label><Input value={newCustomerData.email} onChange={(e) => setNewCustomerData({...newCustomerData, email: e.target.value})} /></div>
                             <div className="grid gap-2"><Label>Mobile (Optional)</Label><Input value={newCustomerData.mobile} onChange={(e) => setNewCustomerData({...newCustomerData, mobile: e.target.value})} /></div>
@@ -195,10 +195,10 @@ export const IssueCardDialog: React.FC<IssueCardDialogProps> = ({
 
                     {/* STEP 4: REVIEW */}
                     {step === 'review' && (
-                        <div className="p-6 flex flex-col items-center justify-center h-full text-center space-y-6">
-                            <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mb-2"><CheckCircle2 size={32} /></div>
-                            <div className="space-y-1 w-full"><p className="text-sm text-muted-foreground uppercase tracking-wider">Issuing Card</p><div className="text-xl font-bold">{selectedCampaign?.name}</div></div>
-                            <div className="w-full border-t border-b py-4 space-y-1"><p className="text-sm text-muted-foreground uppercase tracking-wider">To Customer</p><div className="text-lg font-semibold flex items-center justify-center gap-2"><User size={18} />{selectedCustomer ? selectedCustomer.name : newCustomerData.name}</div></div>
+                        <div className="flex h-full flex-col items-center justify-center space-y-6 p-4 text-center sm:p-6">
+                            <div className="mb-2 flex h-16 w-16 items-center justify-center rounded-full bg-blue-50 text-blue-600"><CheckCircle2 size={32} /></div>
+                            <div className="w-full space-y-1"><p className="text-sm uppercase tracking-wider text-muted-foreground">Issuing Card</p><div className="text-lg font-bold sm:text-xl">{selectedCampaign?.name}</div></div>
+                            <div className="w-full space-y-1 border-y py-4"><p className="text-sm uppercase tracking-wider text-muted-foreground">To Customer</p><div className="flex items-center justify-center gap-2 text-base font-semibold sm:text-lg"><User size={18} />{selectedCustomer ? selectedCustomer.name : newCustomerData.name}</div></div>
                             {submitError && (
                                 <div className="w-full rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
                                     {submitError}
@@ -209,12 +209,12 @@ export const IssueCardDialog: React.FC<IssueCardDialogProps> = ({
 
                     {/* STEP 5: SUCCESS (QR CODE) */}
                     {step === 'success' && createdCard && (
-                        <div className="flex flex-col items-center justify-center h-full p-6 space-y-6 animate-fade-in">
+                        <div className="flex h-full flex-col items-center justify-center space-y-6 p-4 animate-fade-in sm:p-6">
                             <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
                                 <img 
                                     src={`https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(publicUrl)}`} 
                                     alt="QR Code" 
-                                    className="w-72 h-72 object-contain"
+                                    className="h-56 w-56 object-contain sm:h-72 sm:w-72"
                                 />
                             </div>
                             <div className="text-center space-y-2 w-full max-w-xs">
@@ -234,22 +234,22 @@ export const IssueCardDialog: React.FC<IssueCardDialogProps> = ({
                 </div>
 
                 {/* Footer */}
-                <div className="p-4 border-t bg-muted/20 flex justify-between">
+                <div className="flex flex-col gap-2 border-t bg-muted/20 p-4 sm:flex-row sm:items-center sm:justify-between">
                     {step === 'campaign' && <Button variant="ghost" onClick={onClose}>Cancel</Button>}
                     
-                    {step === 'customer' && <Button variant="outline" onClick={() => setStep('campaign')} className="gap-2"><ArrowLeft size={16} /> Back</Button>}
+                    {step === 'customer' && <Button variant="outline" onClick={() => setStep('campaign')} className="gap-2 sm:w-auto"><ArrowLeft size={16} /> Back</Button>}
                     
                     {step === 'new-customer' && (
                         <>
-                            <Button variant="outline" onClick={() => setStep('customer')} className="gap-2" disabled={issuing}><ArrowLeft size={16} /> Back</Button>
-                            <Button onClick={() => setStep('review')} disabled={!newCustomerData.name}>Review</Button>
+                            <Button variant="outline" onClick={() => setStep('customer')} className="gap-2 sm:w-auto" disabled={issuing}><ArrowLeft size={16} /> Back</Button>
+                            <Button onClick={() => setStep('review')} className="sm:w-auto" disabled={!newCustomerData.name}>Review</Button>
                         </>
                     )}
 
                     {step === 'review' && (
                         <>
-                            <Button variant="outline" onClick={() => setStep(selectedCustomer ? 'customer' : 'new-customer')} className="gap-2" disabled={issuing}><ArrowLeft size={16} /> Back</Button>
-                            <Button onClick={handleConfirmIssue} className="bg-green-600 hover:bg-green-700" disabled={issuing}>
+                            <Button variant="outline" onClick={() => setStep(selectedCustomer ? 'customer' : 'new-customer')} className="gap-2 sm:w-auto" disabled={issuing}><ArrowLeft size={16} /> Back</Button>
+                            <Button onClick={handleConfirmIssue} className="bg-green-600 hover:bg-green-700 sm:w-auto" disabled={issuing}>
                                 {issuing ? "Issuing..." : "Confirm & Issue"}
                             </Button>
                         </>

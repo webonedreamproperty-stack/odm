@@ -353,6 +353,32 @@ export const IssuedCardsPage: React.FC<IssuedCardsPageProps> = ({ customers, cam
     (card.id || "").toLowerCase().includes(normalizedQuery)
   );
 
+  const cardRows = filteredList
+    .map(({ customer, card }) => {
+      const campaign = resolveCardTemplate(card, campaigns);
+      if (!campaign) return null;
+
+      const progress = (card.stamps / campaign.totalStamps) * 100;
+      const canRedeem = card.stamps >= campaign.totalStamps;
+      const isRedeemed = card.status === 'Redeemed';
+
+      return {
+        customer,
+        card,
+        campaign,
+        progress,
+        canRedeem,
+        isRedeemed,
+      };
+    })
+    .filter((row): row is NonNullable<typeof row> => row !== null);
+
+  const openPublicLink = (uniqueId: string) => {
+    const slug = currentOwner?.slug;
+    if (!slug) return;
+    window.open(buildPublicCardUrl(slug, uniqueId), '_blank');
+  };
+
   return (
     <div className="p-4 md:p-8 space-y-6 animate-fade-in h-full flex flex-col bg-gray-50/50">
 
@@ -390,29 +416,29 @@ export const IssuedCardsPage: React.FC<IssuedCardsPageProps> = ({ customers, cam
         onDetected={handleScanResult}
       />
 
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
+      <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
+        <div className="min-w-0">
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground">Issued Cards</h1>
-          <p className="text-muted-foreground">Monitor active cards and open Kiosk Mode for stamping.</p>
+          <p className="text-sm text-muted-foreground md:text-base">Monitor active cards and open Kiosk Mode for stamping.</p>
         </div>
-        <div className="flex flex-col sm:flex-row items-end sm:items-center gap-3">
-          <Button variant="outline" className="gap-2 rounded-full" onClick={() => setIsScanOpen(true)}>
+        <div className="flex w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center lg:w-auto lg:justify-end">
+          <Button variant="outline" className="w-full gap-2 rounded-full sm:w-auto" onClick={() => setIsScanOpen(true)}>
             <QrCode size={16} /> Scan QR
           </Button>
           {!isProTier && (
-            <div className="hidden sm:flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs text-muted-foreground">
+            <div className="flex items-center justify-center gap-1.5 rounded-full border bg-white px-3 py-2 text-xs text-muted-foreground sm:justify-start">
               <CreditCard size={14} />
               <span className="font-semibold text-foreground">{issuedCardCount}</span>
               <span>/</span>
               <span>{cardLimit}</span>
             </div>
           )}
-          <div className="flex flex-col items-end gap-2">
-            <Button onClick={openIssueWizard} className="gap-2 shadow-sm rounded-full px-6" disabled={!canIssue}>
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:items-end">
+            <Button onClick={openIssueWizard} className="w-full gap-2 rounded-full px-6 shadow-sm sm:w-auto" disabled={!canIssue}>
               <Plus size={16} /> Issue New Card
             </Button>
             {!canIssue && (
-              <div className="text-xs text-amber-600 flex items-center gap-2">
+              <div className="flex items-center gap-2 text-xs text-amber-600 sm:justify-end">
                 <Lock size={12} /> Verify your email to issue cards.
               </div>
             )}
@@ -426,7 +452,7 @@ export const IssuedCardsPage: React.FC<IssuedCardsPageProps> = ({ customers, cam
         </div>
       )}
 
-      <div className="flex items-center space-x-2 bg-white px-3 py-2 rounded-lg border w-full max-w-sm shadow-sm focus-within:ring-2 focus-within:ring-ring">
+      <div className="flex w-full items-center space-x-2 rounded-lg border bg-white px-3 py-2 shadow-sm focus-within:ring-2 focus-within:ring-ring sm:max-w-sm">
         <Search className="text-gray-400" size={20} />
         <input
           className="flex-1 outline-none text-sm bg-transparent placeholder:text-muted-foreground"
@@ -436,122 +462,220 @@ export const IssuedCardsPage: React.FC<IssuedCardsPageProps> = ({ customers, cam
         />
       </div>
 
-      <div className="rounded-xl border bg-white flex-1 overflow-auto shadow-sm">
-        <Table>
-          <TableHeader>
-            <TableRow className="bg-muted/30">
-              <TableHead className="w-[300px]">Card Details</TableHead>
-              <TableHead>Customer</TableHead>
-              <TableHead className="text-right">Progress</TableHead>
-              <TableHead className="text-right">Action</TableHead>
-              <TableHead className="w-[50px]"></TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredList.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={5} className="text-center h-32 text-muted-foreground">
-                  No cards found. Issue one to get started.
-                </TableCell>
-              </TableRow>
-            ) : (
-              filteredList.map(({ customer, card }) => {
-                const campaign = resolveCardTemplate(card, campaigns);
-                if (!campaign) return null;
-
-                const progress = (card.stamps / campaign.totalStamps) * 100;
-                const canRedeem = card.stamps >= campaign.totalStamps;
-                const isRedeemed = card.status === 'Redeemed';
-
-                return (
-                  <TableRow key={card.id} className={cn("transition-colors", isRedeemed ? "bg-gray-50/50 hover:bg-gray-50" : "hover:bg-muted/30")}>
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <div className={cn(
-                          "w-10 h-10 rounded-lg flex items-center justify-center",
-                          isRedeemed ? "bg-gray-100 text-gray-400" : "bg-primary/10 text-primary"
-                        )}>
-                          {isRedeemed ? <Lock size={18} /> : <CreditCard size={20} />}
-                        </div>
-                        <div className={cn(isRedeemed && "opacity-60")}>
-                          <div className="font-semibold text-foreground flex items-center gap-2">
-                            {card.campaignName}
-                            {isRedeemed && <span className="text-[10px] bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded font-bold uppercase">Redeemed</span>}
-                          </div>
-                          <div className="text-xs text-muted-foreground font-mono">ID: {card.uniqueId.slice(0, 8)}</div>
-                        </div>
+      <div className="rounded-xl border bg-white shadow-sm">
+        {cardRows.length === 0 ? (
+          <div className="flex h-32 items-center justify-center px-4 text-center text-sm text-muted-foreground">
+            No cards found. Issue one to get started.
+          </div>
+        ) : (
+          <>
+            <div className="space-y-3 p-3 md:hidden">
+              {cardRows.map(({ customer, card, campaign, progress, canRedeem, isRedeemed }) => (
+                <div
+                  key={card.id}
+                  className={cn(
+                    "rounded-2xl border p-4 shadow-sm",
+                    isRedeemed ? "border-gray-200 bg-gray-50/70" : "border-border bg-white"
+                  )}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex min-w-0 items-start gap-3">
+                      <div className={cn(
+                        "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl",
+                        isRedeemed ? "bg-gray-100 text-gray-400" : "bg-primary/10 text-primary"
+                      )}>
+                        {isRedeemed ? <Lock size={18} /> : <CreditCard size={20} />}
                       </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className={cn("flex items-center gap-2", isRedeemed && "opacity-60")}>
-                        <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-[10px]">
-                          {customer.name.substring(0, 2).toUpperCase()}
+                      <div className={cn("min-w-0", isRedeemed && "opacity-60")}>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h2 className="text-sm font-semibold text-foreground">{card.campaignName}</h2>
+                          {isRedeemed && <span className="rounded bg-gray-200 px-1.5 py-0.5 text-[10px] font-bold uppercase text-gray-600">Redeemed</span>}
                         </div>
-                        <span className="text-sm font-medium">{customer.name}</span>
+                        <p className="mt-1 truncate text-xs font-mono text-muted-foreground">ID: {card.uniqueId.slice(0, 8)}</p>
                       </div>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {isRedeemed ? (
-                        <div className="text-sm text-muted-foreground font-medium">Completed</div>
-                      ) : (
-                        <div className="flex flex-col items-end gap-1">
-                          <div className="text-sm font-bold">
-                            {card.stamps} <span className="text-muted-foreground font-normal">/ {campaign.totalStamps}</span>
-                          </div>
-                          <div className="w-24 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                            <div
-                              className={cn("h-full rounded-full transition-all", canRedeem ? "bg-green-500" : "bg-primary")}
-                              style={{ width: `${progress}%` }}
-                            />
-                          </div>
-                        </div>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        size="sm"
-                        variant={isRedeemed ? "outline" : "default"}
-                        className={cn("gap-2 rounded-full", canRedeem && !isRedeemed ? "bg-green-600 hover:bg-green-700" : "")}
-                        onClick={() => setActiveKioskData({ customer, card, template: campaign })}
-                      >
-                        {isRedeemed ? <Lock size={14} /> : <MonitorPlay size={14} />}
-                        {isRedeemed ? "View" : (canRedeem ? "Redeem" : "Kiosk")}
-                      </Button>
-                    </TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-8 w-8 p-0" disabled={mutationBusy}>
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Manage Card</DropdownMenuLabel>
-                          <DropdownMenuItem onClick={() => {
-                            const slug = currentOwner?.slug;
-                            if (!slug) return;
-                            window.open(buildPublicCardUrl(slug, card.uniqueId), '_blank');
-                          }}>
-                            <ExternalLink className="mr-2 h-4 w-4" /> Public Link
+                    </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" className="h-8 w-8 shrink-0 p-0" disabled={mutationBusy}>
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuLabel>Manage Card</DropdownMenuLabel>
+                        <DropdownMenuItem onClick={() => openPublicLink(card.uniqueId)}>
+                          <ExternalLink className="mr-2 h-4 w-4" /> Public Link
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        {!isStaff && (
+                          <DropdownMenuItem
+                            className="text-red-600"
+                            onClick={() => handleRevokeCard(customer.id, card.id)}
+                          >
+                            <Trash className="mr-2 h-4 w-4" /> Revoke
                           </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          {!isStaff && (
-                            <DropdownMenuItem
-                              className="text-red-600"
-                              onClick={() => handleRevokeCard(customer.id, card.id)}
-                            >
-                              <Trash className="mr-2 h-4 w-4" /> Revoke
-                            </DropdownMenuItem>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+
+                  <div className={cn("mt-4 flex items-center gap-2", isRedeemed && "opacity-60")}>
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">
+                      {customer.name.substring(0, 2).toUpperCase()}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium text-foreground">{customer.name}</p>
+                      {(customer.email || customer.mobile) && (
+                        <p className="truncate text-xs text-muted-foreground">{customer.email || customer.mobile}</p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="mt-4 space-y-2">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">Progress</span>
+                      {isRedeemed ? (
+                        <span className="text-sm font-medium text-muted-foreground">Completed</span>
+                      ) : (
+                        <span className="text-sm font-bold text-foreground">
+                          {card.stamps} <span className="font-normal text-muted-foreground">/ {campaign.totalStamps}</span>
+                        </span>
+                      )}
+                    </div>
+                    {!isRedeemed && (
+                      <div className="h-2 overflow-hidden rounded-full bg-gray-100">
+                        <div
+                          className={cn("h-full rounded-full transition-all", canRedeem ? "bg-green-500" : "bg-primary")}
+                          style={{ width: `${progress}%` }}
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="mt-4 flex flex-col gap-2">
+                    <Button
+                      size="sm"
+                      variant={isRedeemed ? "outline" : "default"}
+                      className={cn("w-full gap-2 rounded-full", canRedeem && !isRedeemed ? "bg-green-600 hover:bg-green-700" : "")}
+                      onClick={() => setActiveKioskData({ customer, card, template: campaign })}
+                    >
+                      {isRedeemed ? <Lock size={14} /> : <MonitorPlay size={14} />}
+                      {isRedeemed ? "View Card" : (canRedeem ? "Redeem Reward" : "Open Kiosk")}
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="hidden overflow-auto md:block">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/30">
+                    <TableHead className="w-[300px]">Card Details</TableHead>
+                    <TableHead>Customer</TableHead>
+                    <TableHead className="text-right">Progress</TableHead>
+                    <TableHead className="text-right">Action</TableHead>
+                    <TableHead className="w-[50px]"></TableHead>
                   </TableRow>
-                );
-              })
-            )}
-          </TableBody>
-        </Table>
+                </TableHeader>
+                <TableBody>
+                  {cardRows.map(({ customer, card, campaign, progress, canRedeem, isRedeemed }) => (
+                    <TableRow key={card.id} className={cn("transition-colors", isRedeemed ? "bg-gray-50/50 hover:bg-gray-50" : "hover:bg-muted/30")}>
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <div className={cn(
+                            "flex h-10 w-10 items-center justify-center rounded-lg",
+                            isRedeemed ? "bg-gray-100 text-gray-400" : "bg-primary/10 text-primary"
+                          )}>
+                            {isRedeemed ? <Lock size={18} /> : <CreditCard size={20} />}
+                          </div>
+                          <div className={cn(isRedeemed && "opacity-60")}>
+                            <div className="flex items-center gap-2 font-semibold text-foreground">
+                              {card.campaignName}
+                              {isRedeemed && <span className="rounded bg-gray-200 px-1.5 py-0.5 text-[10px] font-bold uppercase text-gray-600">Redeemed</span>}
+                            </div>
+                            <div className="font-mono text-xs text-muted-foreground">ID: {card.uniqueId.slice(0, 8)}</div>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className={cn("flex items-center gap-2", isRedeemed && "opacity-60")}>
+                          <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">
+                            {customer.name.substring(0, 2).toUpperCase()}
+                          </div>
+                          <span className="text-sm font-medium">{customer.name}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {isRedeemed ? (
+                          <div className="text-sm font-medium text-muted-foreground">Completed</div>
+                        ) : (
+                          <div className="flex flex-col items-end gap-1">
+                            <div className="text-sm font-bold">
+                              {card.stamps} <span className="font-normal text-muted-foreground">/ {campaign.totalStamps}</span>
+                            </div>
+                            <div className="h-1.5 w-24 overflow-hidden rounded-full bg-gray-100">
+                              <div
+                                className={cn("h-full rounded-full transition-all", canRedeem ? "bg-green-500" : "bg-primary")}
+                                style={{ width: `${progress}%` }}
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <Button
+                            size="icon"
+                            variant="outline"
+                            className="h-9 w-9 rounded-full"
+                            onClick={() => openPublicLink(card.uniqueId)}
+                            aria-label="Open public link"
+                            title="Open public link"
+                          >
+                            <ExternalLink size={14} />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant={isRedeemed ? "outline" : "default"}
+                            className={cn("gap-2 rounded-full", canRedeem && !isRedeemed ? "bg-green-600 hover:bg-green-700" : "")}
+                            onClick={() => setActiveKioskData({ customer, card, template: campaign })}
+                          >
+                            {isRedeemed ? <Lock size={14} /> : <MonitorPlay size={14} />}
+                            {isRedeemed ? "View" : (canRedeem ? "Redeem" : "Kiosk")}
+                          </Button>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="h-8 w-8 p-0" disabled={mutationBusy}>
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>Manage Card</DropdownMenuLabel>
+                            <DropdownMenuItem onClick={() => openPublicLink(card.uniqueId)}>
+                              <ExternalLink className="mr-2 h-4 w-4" /> Public Link
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            {!isStaff && (
+                              <DropdownMenuItem
+                                className="text-red-600"
+                                onClick={() => handleRevokeCard(customer.id, card.id)}
+                              >
+                                <Trash className="mr-2 h-4 w-4" /> Revoke
+                              </DropdownMenuItem>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

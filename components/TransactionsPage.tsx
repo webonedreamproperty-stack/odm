@@ -1,9 +1,9 @@
-import React, { useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
 import { Input } from "./ui/input";
 import { 
-    Search, Calendar, Filter, History, 
-    Gift, Plus, Minus, CreditCard, ArrowUpDown 
+    Search, Calendar, History,
+    Gift, Plus, Minus, CreditCard, ArrowUpDown, Download
 } from "lucide-react";
 import { Customer, Transaction } from '../types';
 import { cn } from '../lib/utils';
@@ -21,10 +21,17 @@ interface FlatTransaction extends Transaction {
     cardId: string;
 }
 
+const escapeCsvValue = (value: string | number | undefined) => {
+    const normalized = value == null ? "" : String(value);
+    return `"${normalized.replace(/"/g, '""')}"`;
+};
+
 export const TransactionsPage: React.FC<TransactionsPageProps> = ({ customers }) => {
+  const PAGE_SIZE = 50;
   const [searchQuery, setSearchQuery] = useState("");
   const [dateFilter, setDateFilter] = useState("");
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
   // 1. Flatten Data
   const allTransactions: FlatTransaction[] = useMemo(() => {
@@ -63,7 +70,63 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({ customers })
       });
   }, [allTransactions, searchQuery, dateFilter]);
 
+  useEffect(() => {
+      setVisibleCount(PAGE_SIZE);
+  }, [customers, searchQuery, dateFilter, sortOrder]);
+
+  const visibleTransactions = useMemo(() => {
+      return filteredTransactions.slice(0, visibleCount);
+  }, [filteredTransactions, visibleCount]);
+
+  const hasMoreTransactions = filteredTransactions.length > visibleCount;
+
   const toggleSort = () => setSortOrder(prev => prev === 'desc' ? 'asc' : 'desc');
+  const handleLoadMore = () => setVisibleCount((prev) => prev + PAGE_SIZE);
+
+  const handleExportCsv = () => {
+      const headers = [
+          "Recorded At",
+          "Customer Name",
+          "Customer Email",
+          "Campaign",
+          "Card ID",
+          "Action",
+          "Amount",
+          "Processed By",
+          "Actor Role",
+          "Remarks"
+      ];
+
+      const rows = filteredTransactions.map((tx) => [
+          new Date(tx.timestamp).toISOString(),
+          tx.customerName,
+          tx.customerEmail,
+          tx.campaignName,
+          tx.cardId,
+          getLabel(tx.type),
+          tx.amount,
+          tx.actorName || "Owner",
+          tx.actorRole === "staff" ? "Staff" : "Owner",
+          tx.remarks || ""
+      ]);
+
+      const csvContent = [
+          headers.map(escapeCsvValue).join(","),
+          ...rows.map((row) => row.map(escapeCsvValue).join(","))
+      ].join("\r\n");
+
+      const blob = new Blob(["\uFEFF", csvContent], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+
+      link.href = url;
+      link.download = `transactions-${timestamp}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+  };
 
   const getIcon = (type: Transaction['type']) => {
       switch(type) {
@@ -129,6 +192,16 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({ customers })
             </div>
 
              <div className="ml-auto flex items-center gap-2">
+                 <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleExportCsv}
+                    className="gap-2"
+                    disabled={filteredTransactions.length === 0}
+                 >
+                    <Download size={16} />
+                    Export CSV
+                 </Button>
                  <Button variant="ghost" size="sm" onClick={toggleSort} className="gap-2 text-muted-foreground">
                     <ArrowUpDown size={16} />
                     {sortOrder === 'desc' ? 'Newest First' : 'Oldest First'}
@@ -158,7 +231,7 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({ customers })
                             </TableCell>
                         </TableRow>
                     ) : (
-                        filteredTransactions.map(tx => (
+                        visibleTransactions.map(tx => (
                             <TableRow key={tx.id} className="hover:bg-muted/30 transition-colors">
                                 <TableCell className="font-mono text-xs text-muted-foreground">
                                     <div className="font-medium text-foreground">{tx.date.split(',')[0]}</div>
@@ -204,8 +277,15 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({ customers })
                 </TableBody>
             </Table>
         </div>
-        <div className="text-xs text-muted-foreground text-center">
-            Showing {filteredTransactions.length} transaction{filteredTransactions.length !== 1 && 's'}
+        <div className="flex flex-col items-center gap-3">
+            <div className="text-xs text-muted-foreground text-center">
+                Showing {visibleTransactions.length} of {filteredTransactions.length} transaction{filteredTransactions.length !== 1 && 's'}
+            </div>
+            {hasMoreTransactions && (
+                <Button variant="outline" size="sm" onClick={handleLoadMore}>
+                    Load more
+                </Button>
+            )}
         </div>
     </div>
   );
