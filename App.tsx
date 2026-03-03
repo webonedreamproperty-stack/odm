@@ -19,8 +19,8 @@ import { useSubscription } from './lib/useSubscription';
 import { SubscriptionProvider } from './components/SubscriptionContext';
 import { UpgradePrompt } from './components/UpgradePrompt';
 
-const SITE_ORIGIN = 'https://stampee.co';
-const DEFAULT_SOCIAL_DESCRIPTION = 'Your future loyalty game-changer! \u{1F440} #SmallBizSuperhero #digitalloyalty #stampee';
+const SITE_ORIGIN = 'https://stamppee.vercel.app';
+const DEFAULT_SOCIAL_DESCRIPTION = 'Launch digital loyalty cards for your small business. Reward repeat customers, track visits, and grow without paper cards or app installs.';
 const DEFAULT_OG_IMAGE = `${SITE_ORIGIN}/image_1.jpg`;
 
 type SeoConfig = {
@@ -187,6 +187,7 @@ const SeoManager: React.FC = () => {
     setMetaTag('property', 'og:description', socialDescription);
     setMetaTag('property', 'og:url', seo.canonical);
     setMetaTag('property', 'og:image', DEFAULT_OG_IMAGE);
+    setMetaTag('property', 'og:image:url', DEFAULT_OG_IMAGE);
     setMetaTag('property', 'og:image:secure_url', DEFAULT_OG_IMAGE);
     setMetaTag('property', 'og:image:type', 'image/jpeg');
     setMetaTag('property', 'og:image:width', '1536');
@@ -195,7 +196,9 @@ const SeoManager: React.FC = () => {
     setMetaTag('name', 'twitter:card', 'summary_large_image');
     setMetaTag('name', 'twitter:title', seo.title);
     setMetaTag('name', 'twitter:description', socialDescription);
+    setMetaTag('name', 'twitter:url', seo.canonical);
     setMetaTag('name', 'twitter:image', DEFAULT_OG_IMAGE);
+    setMetaTag('name', 'twitter:image:src', DEFAULT_OG_IMAGE);
     setMetaTag('name', 'twitter:image:alt', 'Stampee digital loyalty card preview');
   }, [location.pathname]);
 
