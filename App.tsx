@@ -21,7 +21,7 @@ import { UpgradePrompt } from './components/UpgradePrompt';
 
 const SITE_ORIGIN = 'https://stamppee.vercel.app';
 const DEFAULT_SOCIAL_DESCRIPTION = 'Launch digital loyalty cards for your small business. Reward repeat customers, track visits, and grow without paper cards or app installs.';
-const DEFAULT_OG_IMAGE = `${SITE_ORIGIN}/image_1.jpg`;
+const DEFAULT_OG_IMAGE = `${SITE_ORIGIN}/social-preview-v2.jpg`;
 
 type SeoConfig = {
   title: string;
