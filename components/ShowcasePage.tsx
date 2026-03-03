@@ -28,7 +28,8 @@ const ShowcasePreviewCard: React.FC<(typeof showcaseImages)[number]> = ({ src, a
   <a
     className="showcase-card group block"
     href={href}
-    rel="noreferrer"
+    target="_blank"
+    rel="noopener noreferrer"
   >
     <div className="relative aspect-[380/750] w-full overflow-hidden rounded-[2.4rem] border border-black/5 bg-white shadow-[0_32px_80px_-40px_rgba(0,0,0,0.26)]">
       <img src={src} alt={alt} className="h-full w-full object-cover" loading="lazy" />

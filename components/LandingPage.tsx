@@ -399,9 +399,12 @@ export const LandingPage: React.FC = () => {
                 Stampee is the modern, no-app loyalty system that turns one-time visitors into loyal customers — simple, smart, and instantly rewarding.
               </p>
             </div>
-            <div style={rise(hero.visible, 260)} className="mt-10">
+            <div style={rise(hero.visible, 260)} className="mt-10 flex flex-col gap-4 sm:flex-row sm:flex-wrap">
               <Button asChild className="glow-button h-16 rounded-[1.55rem] bg-[#17351a] px-10 text-lg font-semibold text-white shadow-[0_26px_50px_-28px_rgba(23,53,26,0.85)] hover:bg-[#102712] sm:min-w-[17rem]">
-                <Link to="/signup" onClick={() => trackEvent("Landing CTA Clicked", { placement: "hero" })}>Create Your Card</Link>
+                <Link to="/signup" onClick={() => trackEvent("Landing CTA Clicked", { placement: "hero" })}>Get Started for free</Link>
+              </Button>
+              <Button asChild variant="outline" className="h-16 rounded-[1.55rem] border-[#17351a]/16 bg-white/75 px-10 text-lg font-semibold text-[#17351a] shadow-[0_20px_40px_-32px_rgba(23,53,26,0.8)] hover:bg-white hover:text-[#102712] sm:min-w-[14rem]">
+                <Link to="/showcase" onClick={() => trackEvent("Landing Demo CTA Clicked", { placement: "hero" })}>View Demo</Link>
               </Button>
             </div>
           </div>

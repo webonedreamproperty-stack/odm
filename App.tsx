@@ -6,7 +6,7 @@ import { templates } from './data/templates';
 import { BrowserRouter, Routes, Route, Outlet, useParams, useNavigate, Navigate, useSearchParams, useLocation } from 'react-router-dom';
 import { Lock } from 'lucide-react';
 import { toStoredTemplate, fromStoredTemplate } from './lib/templateSerialization';
-import { cn } from './lib/utils';
+import { cn, hexToRgba, resolveHexAndOpacity } from './lib/utils';
 import { AuthProvider, useAuth } from './components/AuthProvider';
 import { RequireAuth } from './components/RequireAuth';
 import { RequireRole } from './components/RequireRole';
@@ -32,6 +32,41 @@ type SeoConfig = {
   canonical: string;
   robots: string;
   type?: 'website' | 'article';
+};
+
+const normalizeHexColor = (value: string) => {
+  const normalized = value.replace('#', '').trim();
+  if (normalized.length === 3) {
+    return `#${normalized.split('').map((char) => `${char}${char}`).join('')}`;
+  }
+  if (normalized.length === 6) {
+    return `#${normalized}`;
+  }
+  return '#ffffff';
+};
+
+const mixHexColors = (base: string, target: string, weight: number) => {
+  const source = normalizeHexColor(base);
+  const destination = normalizeHexColor(target);
+  const ratio = Math.min(1, Math.max(0, weight));
+  const parseChannel = (hex: string, start: number) => Number.parseInt(hex.slice(start, start + 2), 16);
+  const blendChannel = (from: number, to: number) => Math.round(from + (to - from) * ratio);
+
+  const r = blendChannel(parseChannel(source, 1), parseChannel(destination, 1));
+  const g = blendChannel(parseChannel(source, 3), parseChannel(destination, 3));
+  const b = blendChannel(parseChannel(source, 5), parseChannel(destination, 5));
+
+  return `#${[r, g, b].map((channel) => channel.toString(16).padStart(2, '0')).join('')}`;
+};
+
+const getHexLuminance = (value: string) => {
+  const normalized = normalizeHexColor(value);
+  const channels = [1, 3, 5].map((start) => Number.parseInt(normalized.slice(start, start + 2), 16) / 255);
+  const [r, g, b] = channels.map((channel) => (
+    channel <= 0.03928 ? channel / 12.92 : Math.pow((channel + 0.055) / 1.055, 2.4)
+  ));
+
+  return (0.2126 * r) + (0.7152 * g) + (0.0722 * b);
 };
 
 const LoyaltyCard = lazy(() => import('./components/LoyaltyCard').then((module) => ({ default: module.LoyaltyCard })));
@@ -302,14 +337,30 @@ const PublicCardWrapper: React.FC = () => {
 
   const { card, customer, template } = cardData;
   const isRedeemed = card.status === 'Redeemed';
+  const cardBackgroundHex = resolveHexAndOpacity(template.colors.background, '#f5f5f5').hex;
+  const isDarkBackground = getHexLuminance(cardBackgroundHex) < 0.38;
+  const pageBackground = mixHexColors(cardBackgroundHex, isDarkBackground ? '#0b0b0d' : '#ffffff', isDarkBackground ? 0.64 : 0.22);
+  const shellBackground = mixHexColors(cardBackgroundHex, isDarkBackground ? '#1a1a1d' : '#ffffff', isDarkBackground ? 0.28 : 0.1);
+  const haloColor = hexToRgba(cardBackgroundHex, isDarkBackground ? 0.44 : 0.28);
 
   return (
-    <div className="min-h-screen w-full bg-background relative flex flex-col items-center justify-center animate-fade-in">
-      <div className="w-full min-h-[100dvh] flex items-center justify-center p-0 relative">
+    <div
+      className="min-h-screen w-full relative flex flex-col items-center justify-center animate-fade-in md:px-8 md:py-8"
+      style={{
+        backgroundColor: pageBackground,
+        backgroundImage: `radial-gradient(circle at top, ${hexToRgba(shellBackground, 0.42)} 0%, transparent 42%)`
+      }}
+    >
+      <div className="w-full min-h-[100dvh] flex items-center justify-center p-0 relative md:min-h-0">
       <div className={cn(
-          "w-full h-[100dvh] md:w-full md:h-[100dvh] md:rounded-none md:shadow-none md:ring-0",
+          "w-full h-[100dvh] md:h-[min(940px,calc(100dvh-2rem))] md:w-[min(436px,calc((100dvh-2rem)*0.4638))] md:max-w-full md:overflow-hidden md:rounded-[3.6rem] md:ring-1 md:ring-black/5",
           isRedeemed && "opacity-50 grayscale-[0.6] pointer-events-none"
-        )}>
+        )}
+        style={{
+          backgroundColor: shellBackground,
+          boxShadow: `0 34px 96px -42px ${haloColor}, 0 18px 40px -28px rgba(15, 23, 42, 0.3)`
+        }}
+      >
           {withSuspense(
             <LoyaltyCard
               template={template}
@@ -324,7 +375,7 @@ const PublicCardWrapper: React.FC = () => {
               isRedeemed={isRedeemed}
             />
           )}
-        </div>
+      </div>
         {isRedeemed && (
           <div className="absolute inset-0 z-50 flex items-center justify-center">
             <div className="mx-6 w-full max-w-sm rounded-2xl bg-white/90 backdrop-blur-md shadow-xl border border-gray-200 p-6 text-center">
