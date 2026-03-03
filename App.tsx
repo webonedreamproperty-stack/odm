@@ -574,7 +574,7 @@ const DashboardLayout: React.FC = () => {
       <Sidebar
         onScanQr={() => window.dispatchEvent(new Event('open-qr-scan'))}
       />
-      <main className="flex-1 overflow-hidden h-screen relative flex flex-col">
+      <main className="relative flex min-h-screen flex-1 flex-col overflow-visible md:h-screen md:overflow-hidden">
         <div className="md:hidden sticky top-0 z-40 flex items-center justify-between border-b border-border/80 bg-card/95 px-4 py-3 backdrop-blur-sm">
           <button
             className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-border/80 bg-background shadow-subtle"
@@ -624,10 +624,10 @@ const DashboardLayout: React.FC = () => {
         </div>
 
         <VerifyBanner />
-        <div className="flex-1 overflow-hidden">
+        <div className="flex-1 overflow-visible md:overflow-hidden">
           <div
             key={location.pathname}
-            className="dashboard-route-transition h-full"
+            className="dashboard-route-transition min-h-full md:h-full"
           >
             <Outlet />
           </div>

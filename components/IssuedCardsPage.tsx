@@ -383,7 +383,7 @@ export const IssuedCardsPage: React.FC<IssuedCardsPageProps> = ({ customers, cam
   };
 
   return (
-    <div className="p-4 md:p-8 space-y-6 animate-fade-in h-full flex flex-col bg-gray-50/50">
+    <div className="min-h-full space-y-6 bg-gray-50/50 p-4 md:p-8">
 
       {activeKioskData && (
         <KioskMode
