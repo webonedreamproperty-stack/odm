@@ -49,12 +49,11 @@ export const CardEditor: React.FC<CardEditorProps> = ({ initialTemplate, onSave 
     }));
   };
 
-  const handleStampsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = parseInt(e.target.value);
-    if (!isNaN(val)) {
+  const handleStampsChange = (value: number) => {
+    if (!Number.isNaN(value)) {
         setTemplate(prev => ({
             ...prev,
-            totalStamps: Math.min(Math.max(val, 3), 16)
+            totalStamps: Math.min(Math.max(value, 3), 16)
         }));
     }
   };
@@ -187,16 +186,27 @@ export const CardEditor: React.FC<CardEditorProps> = ({ initialTemplate, onSave 
                             />
                             <p className="text-xs text-muted-foreground">Override the default "Collect X stamps..." text.</p>
                         </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="totalStamps">Number of Stamps (3-16)</Label>
-                            <Input 
-                                id="totalStamps" 
-                                type="number" 
-                                min={3} 
-                                max={16} 
-                                value={template.totalStamps} 
-                                onChange={handleStampsChange} 
+                        <div className="space-y-3">
+                            <div className="flex items-center justify-between gap-3">
+                                <Label htmlFor="totalStamps">Number of Stamps</Label>
+                                <span className="inline-flex min-w-12 items-center justify-center rounded-full bg-secondary px-3 py-1 text-sm font-semibold">
+                                    {template.totalStamps}
+                                </span>
+                            </div>
+                            <input
+                                id="totalStamps"
+                                type="range"
+                                min={3}
+                                max={16}
+                                step={1}
+                                value={template.totalStamps}
+                                onChange={(e) => handleStampsChange(parseInt(e.target.value, 10))}
+                                className="h-2 w-full cursor-pointer appearance-none rounded-full bg-gray-200"
                             />
+                            <div className="flex justify-between text-xs text-muted-foreground">
+                                <span>3</span>
+                                <span>16</span>
+                            </div>
                         </div>
                     </AccordionContent>
                 </AccordionItem>

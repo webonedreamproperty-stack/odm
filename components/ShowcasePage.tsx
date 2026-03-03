@@ -1,91 +1,46 @@
-import React, { useEffect, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { ArrowRight, LayoutGrid, MonitorPlay } from "lucide-react";
-import { templates } from "../data/templates";
-import { Template } from "../types";
-import { LoyaltyCard } from "./LoyaltyCard";
+import React from "react";
+import { Link } from "react-router-dom";
+import { ArrowRight, MonitorPlay } from "lucide-react";
 import { PublicFooter } from "./PublicFooter";
 import { Button } from "./ui/button";
 import { useAuth } from "./AuthProvider";
-import { cn } from "../lib/utils";
 
-const categories = ["All", "Food & Drink", "Beauty & Wellness", "Services"] as const;
+const showcaseCardPaths = [
+  "/the-daily-brew/888f22a4-247d-4b3d-a5fa-8d32d7474d6d",
+  "/the-daily-brew/d60e05e6-9e10-4727-9625-58fd392956a1",
+  "/the-daily-brew/fd6616fc-c7a5-4021-89f0-6a2397208cda",
+  "/the-daily-brew/66f828a4-e7b3-47eb-bb4d-677fb773870e",
+  "/the-daily-brew/2ec99ae1-9954-4218-a6bc-1c399551f2c8",
+  "/the-daily-brew/28a46076-28a7-4f57-8f91-b66b70a3d1ce",
+  "/the-daily-brew/5d975cbf-31f3-4f5f-90d6-da6cb3b4934b",
+  "/the-daily-brew/6b6b61d8-ee0f-4327-b3ff-04795051a70b",
+  "/the-daily-brew/7fbf6642-beaa-4642-9c38-dafdfce0a903",
+] as const;
 
-const templateCategories: Record<string, string> = {
-  "cookie-classic": "Food & Drink",
-  "midnight-brew": "Food & Drink",
-  "pizza-party": "Food & Drink",
-  "sweet-scoops": "Food & Drink",
-  "massage-bliss": "Beauty & Wellness",
-  "laundry-fresh": "Services",
-  "sharp-cuts": "Beauty & Wellness",
-  "boba-time": "Food & Drink",
-  "burger-joint": "Food & Drink",
-};
+const showcaseImages = showcaseCardPaths.map((href, index) => ({
+  id: `demo-${index + 1}`,
+  src: `/demo_${index + 1}.png`,
+  alt: `Stampee demo ${index + 1}`,
+  href,
+}));
 
-interface PreviewCardProps {
-  template: Template;
-  onSelect: (id: string) => void;
-}
-
-const ShowcasePreviewCard: React.FC<PreviewCardProps> = ({ template, onSelect }) => {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [scale, setScale] = useState(1);
-
-  useEffect(() => {
-    const observer = new ResizeObserver((entries) => {
-      if (!entries[0]) return;
-      const width = entries[0].contentRect.width;
-      setScale(width / 380);
-    });
-
-    if (containerRef.current) observer.observe(containerRef.current);
-    return () => observer.disconnect();
-  }, []);
-
-  return (
-    <article
-      className="showcase-card group cursor-pointer space-y-5"
-      onClick={() => onSelect(template.id)}
-    >
-      <div
-        ref={containerRef}
-        className="relative aspect-[380/750] w-full overflow-hidden rounded-[2.4rem] border border-black/5 bg-white shadow-[0_32px_80px_-40px_rgba(0,0,0,0.26)]"
-      >
-        <div
-          className="absolute left-0 top-0 origin-top-left"
-          style={{
-            width: "380px",
-            height: "750px",
-            transform: `scale(${scale})`,
-          }}
-        >
-          <LoyaltyCard template={template} mode="active" className="h-full w-full pointer-events-none" />
-        </div>
-        <div className="absolute inset-0 bg-black/0 transition-colors duration-300 group-hover:bg-black/[0.04]" />
-      </div>
-      <div className="space-y-2 text-center">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#6e6e73]">
-          {templateCategories[template.id] ?? "Template"}
-        </p>
-        <h3 className="text-2xl font-semibold tracking-tight text-[#1d1d1f]">{template.name}</h3>
-        <p className="text-sm text-[#5f6368]">{template.rewardName}</p>
-      </div>
-    </article>
-  );
-};
+const ShowcasePreviewCard: React.FC<(typeof showcaseImages)[number]> = ({ src, alt, href }) => (
+  <a
+    className="showcase-card group block"
+    href={href}
+    rel="noreferrer"
+  >
+    <div className="relative aspect-[380/750] w-full overflow-hidden rounded-[2.4rem] border border-black/5 bg-white shadow-[0_32px_80px_-40px_rgba(0,0,0,0.26)]">
+      <img src={src} alt={alt} className="h-full w-full object-cover" loading="lazy" />
+      <div className="absolute inset-0 bg-black/0 transition-colors duration-300 group-hover:bg-black/[0.04]" />
+    </div>
+  </a>
+);
 
 export const ShowcasePage: React.FC = () => {
   const { currentUser, isStaff } = useAuth();
-  const navigate = useNavigate();
-  const [activeCategory, setActiveCategory] = useState<(typeof categories)[number]>("All");
   const primaryPath = currentUser ? (isStaff ? "/issued-cards" : "/dashboard") : "/signup";
   const primaryLabel = currentUser ? "Open dashboard" : "Create account";
-
-  const filteredTemplates = templates.filter((template) => {
-    if (activeCategory === "All") return true;
-    return templateCategories[template.id] === activeCategory;
-  });
 
   return (
     <div className="min-h-screen bg-[#f4f1e8] text-[#1d1d1f]">
@@ -136,7 +91,7 @@ export const ShowcasePage: React.FC = () => {
             <div className="absolute left-[46%] top-[22%] h-[280px] w-[280px] rounded-full bg-white/20 blur-[90px]" />
           </div>
 
-          <div className="relative flex min-h-[72svh] w-full items-center px-6 pb-16 pt-24 sm:px-8 lg:px-10 lg:pb-20">
+          <div className="relative mx-auto flex min-h-[72svh] w-full max-w-[88rem] items-center px-4 pb-16 pt-24 sm:px-6 lg:pb-20">
             <div className="max-w-[62rem]">
               <div className="showcase-chip mb-7 inline-flex items-center gap-2 rounded-full border border-[#17351a]/10 bg-white/35 px-5 py-2 text-[0.72rem] font-semibold uppercase tracking-[0.24em] text-[#284b1f] backdrop-blur-sm">
                 <MonitorPlay className="h-3.5 w-3.5" />
@@ -162,44 +117,11 @@ export const ShowcasePage: React.FC = () => {
 
         <section id="templates" className="relative overflow-hidden bg-[#f4f1e8] px-4 py-16 sm:px-6 lg:px-8 lg:py-20">
           <div className="mx-auto max-w-[96rem]">
-            <div className="mb-10 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-              <div className="max-w-[38rem]">
-                <div className="showcase-chip inline-flex items-center gap-2 rounded-full border border-black/[0.06] bg-white px-4 py-2 text-[0.72rem] font-semibold uppercase tracking-[0.22em] text-[#6e6e73]">
-                  <LayoutGrid className="h-3.5 w-3.5" />
-                  Template library
-                </div>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {categories.map((category) => (
-                  <button
-                    key={category}
-                    type="button"
-                    onClick={() => setActiveCategory(category)}
-                    className={cn(
-                      "rounded-full px-4 py-2 text-sm font-medium transition-all duration-200",
-                      activeCategory === category
-                        ? "bg-[#1d1d1f] text-white shadow-[0_20px_45px_-28px_rgba(0,0,0,0.35)]"
-                        : "bg-white text-[#5f6368] ring-1 ring-black/[0.06] hover:bg-black/[0.03]"
-                    )}
-                  >
-                    {category}
-                  </button>
-                ))}
-              </div>
-            </div>
-
             <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-10">
-              {filteredTemplates.map((template) => (
+              {showcaseImages.map((image) => (
                 <ShowcasePreviewCard
-                  key={template.id}
-                  template={template}
-                  onSelect={(id) => {
-                    if (currentUser && !isStaff) {
-                      navigate(`/preview/${id}`);
-                      return;
-                    }
-                    navigate("/signup");
-                  }}
+                  key={image.id}
+                  {...image}
                 />
               ))}
             </div>

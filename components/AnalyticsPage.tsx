@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
-import { Customer, Template, Transaction } from "../types";
+import { Customer, IssuedCard, Template, Transaction } from "../types";
 import { resolveCardTemplate } from "../lib/templateSerialization";
 import {
   Activity,
@@ -25,6 +25,14 @@ type ActivityBucket = {
   stampAdds: number;
   redemptions: number;
   total: number;
+};
+
+type CampaignStatsGroup = {
+  id: string;
+  name: string;
+  totalStamps: number | null;
+  issuedCards: IssuedCard[];
+  archived: boolean;
 };
 
 const DEFAULT_DAY_COUNT = 14;
@@ -228,8 +236,45 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ customers, campaig
   }, [filteredCards, campaigns]);
 
   const campaignStats = useMemo(() => {
-    return campaigns.map((campaign) => {
-      const cards = filteredCards.filter((card) => card.campaignId === campaign.id);
+    const groups = new Map<string, CampaignStatsGroup>();
+
+    campaigns.forEach((campaign) => {
+      groups.set(campaign.id, {
+        id: campaign.id,
+        name: campaign.name,
+        totalStamps: campaign.totalStamps,
+        issuedCards: [],
+        archived: false,
+      });
+    });
+
+    filteredCards.forEach((card) => {
+      const liveCampaign = card.campaignId ? campaigns.find((campaign) => campaign.id === card.campaignId) : undefined;
+      const template = resolveCardTemplate(card, campaigns);
+      const groupId = liveCampaign
+        ? liveCampaign.id
+        : `deleted:${card.campaignName}:${template?.totalStamps ?? 'unknown'}`;
+      const existingGroup = groups.get(groupId);
+
+      if (existingGroup) {
+        existingGroup.issuedCards.push(card);
+        if (existingGroup.totalStamps === null && template) {
+          existingGroup.totalStamps = template.totalStamps;
+        }
+        return;
+      }
+
+      groups.set(groupId, {
+        id: groupId,
+        name: card.campaignName || template?.name || "Archived campaign",
+        totalStamps: template?.totalStamps ?? null,
+        issuedCards: [card],
+        archived: true,
+      });
+    });
+
+    return Array.from(groups.values()).map((campaign) => {
+      const cards = campaign.issuedCards;
       const active = cards.filter((card) => card.status === "Active");
       const redeemed = cards.filter((card) => card.status === "Redeemed");
       const avgStamps =
@@ -237,12 +282,16 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ customers, campaig
           ? active.reduce((sum, card) => sum + card.stamps, 0) / active.length
           : 0;
       const completionRate = cards.length > 0 ? (redeemed.length / cards.length) * 100 : 0;
-      const readyToRedeem = active.filter((card) => card.stamps >= campaign.totalStamps).length;
+      const readyToRedeem = active.filter((card) => {
+        const template = resolveCardTemplate(card, campaigns);
+        return template ? card.stamps >= template.totalStamps : false;
+      }).length;
 
       return {
         id: campaign.id,
         name: campaign.name,
         totalStamps: campaign.totalStamps,
+        archived: campaign.archived,
         issued: cards.length,
         active: active.length,
         redeemed: redeemed.length,
@@ -499,7 +548,10 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ customers, campaig
               <div key={campaign.id} className="rounded-lg border border-border/80 bg-background px-4 py-4 shadow-subtle">
                 <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                   <div>
-                    <div className="text-sm font-semibold text-foreground">{campaign.name}</div>
+                    <div className="flex items-center gap-2">
+                      <div className="text-sm font-semibold text-foreground">{campaign.name}</div>
+                      {campaign.archived && <Badge variant="outline">Archived</Badge>}
+                    </div>
                     <div className="text-xs text-muted-foreground">
                       {campaign.issued} issued | {campaign.active} active | {campaign.redeemed} redeemed
                     </div>
@@ -513,10 +565,10 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ customers, campaig
                     </span>
                   </div>
                 </div>
-                <div className="mt-3">
+                  <div className="mt-3">
                   <div className="mb-2 flex items-center justify-between text-xs text-muted-foreground">
                     <span>Ready to redeem: {campaign.readyToRedeem}</span>
-                    <span>{campaign.totalStamps} stamps to reward</span>
+                    <span>{campaign.totalStamps === null ? 'Reward threshold unavailable' : `${campaign.totalStamps} stamps to reward`}</span>
                   </div>
                   <div className="h-2 overflow-hidden rounded-full bg-muted/70">
                     <div

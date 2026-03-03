@@ -69,7 +69,7 @@ export interface Transaction {
 export interface IssuedCard {
   id: string; // Internal ID
   uniqueId: string; // Public UUID for link
-  campaignId: string;
+  campaignId: string | null;
   campaignName: string;
   stamps: number;
   lastVisit: string;

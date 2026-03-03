@@ -78,11 +78,12 @@ export async function upsertCampaign(template: StoredTemplate, ownerId: string):
 }
 
 export async function deleteCampaign(campaignId: string): Promise<{ ok: boolean; error?: string }> {
-  const { error } = await supabase
-    .from('campaigns')
-    .delete()
-    .eq('id', campaignId);
+  const { data, error } = await supabase
+    .rpc('delete_campaign_preserve_cards', { campaign_id_input: campaignId });
   if (error) return { ok: false, error: error.message };
+  if (typeof data === 'object' && data && 'success' in data && (data as { success?: boolean }).success === false) {
+    return { ok: false, error: 'Failed to delete the campaign.' };
+  }
   return { ok: true };
 }
 

@@ -192,7 +192,7 @@ create table if not exists public.issued_cards (
   id text primary key default gen_random_uuid()::text,
   unique_id uuid not null default gen_random_uuid() unique,
   customer_id text not null references public.customers(id) on delete cascade,
-  campaign_id text not null references public.campaigns(id) on delete cascade,
+  campaign_id text references public.campaigns(id) on delete set null,
   owner_id uuid not null references public.profiles(id) on delete cascade,
   campaign_name text not null,
   stamps int not null default 0,
@@ -202,6 +202,70 @@ create table if not exists public.issued_cards (
   template_snapshot jsonb,
   created_at timestamptz not null default now()
 );
+
+update public.issued_cards ic
+set template_snapshot = coalesce(
+      ic.template_snapshot,
+      jsonb_build_object(
+        'id', c.id,
+        'name', c.name,
+        'description', c.description,
+        'rewardName', c.reward_name,
+        'tagline', c.tagline,
+        'backgroundImage', c.background_image,
+        'backgroundOpacity', c.background_opacity,
+        'logoImage', c.logo_image,
+        'showLogo', c.show_logo,
+        'titleSize', c.title_size,
+        'iconKey', c.icon_key,
+        'colors', c.colors,
+        'totalStamps', c.total_stamps,
+        'social', c.social
+      )
+    ),
+    campaign_name = coalesce(nullif(ic.campaign_name, ''), c.name)
+from public.campaigns c
+where ic.campaign_id = c.id
+  and (ic.template_snapshot is null or nullif(ic.campaign_name, '') is null);
+
+do $$
+declare
+  issued_cards_campaign_fk text;
+begin
+  select conname
+  into issued_cards_campaign_fk
+  from pg_constraint
+  where conrelid = 'public.issued_cards'::regclass
+    and contype = 'f'
+    and confrelid = 'public.campaigns'::regclass
+    and array_position(
+      conkey,
+      (
+        select attnum
+        from pg_attribute
+        where attrelid = 'public.issued_cards'::regclass
+          and attname = 'campaign_id'
+      )
+    ) is not null
+  limit 1;
+
+  if issued_cards_campaign_fk is not null then
+    execute format(
+      'alter table public.issued_cards drop constraint %I',
+      issued_cards_campaign_fk
+    );
+  end if;
+end;
+$$;
+
+alter table public.issued_cards
+  alter column campaign_id drop not null;
+
+alter table public.issued_cards
+  add constraint issued_cards_campaign_id_fkey
+  foreign key (campaign_id)
+  references public.campaigns(id)
+  on delete set null;
 
 alter table public.issued_cards enable row level security;
 
@@ -557,6 +621,52 @@ begin
     where slug = lower(trim(slug_input))
     and role = 'owner'
   );
+end;
+$$ language plpgsql security definer
+set search_path = public;
+
+create or replace function public.delete_campaign_preserve_cards(campaign_id_input text)
+returns jsonb as $$
+declare
+  campaign_row public.campaigns%rowtype;
+  campaign_snapshot jsonb;
+begin
+  select *
+  into campaign_row
+  from public.campaigns
+  where id = campaign_id_input
+    and owner_id = auth.uid();
+
+  if not found then
+    raise exception 'Campaign not found or not owned by current user';
+  end if;
+
+  campaign_snapshot := jsonb_build_object(
+    'id', campaign_row.id,
+    'name', campaign_row.name,
+    'description', campaign_row.description,
+    'rewardName', campaign_row.reward_name,
+    'tagline', campaign_row.tagline,
+    'backgroundImage', campaign_row.background_image,
+    'backgroundOpacity', campaign_row.background_opacity,
+    'logoImage', campaign_row.logo_image,
+    'showLogo', campaign_row.show_logo,
+    'titleSize', campaign_row.title_size,
+    'iconKey', campaign_row.icon_key,
+    'colors', campaign_row.colors,
+    'totalStamps', campaign_row.total_stamps,
+    'social', campaign_row.social
+  );
+
+  update public.issued_cards
+  set template_snapshot = coalesce(template_snapshot, campaign_snapshot),
+      campaign_name = coalesce(nullif(campaign_name, ''), campaign_row.name)
+  where campaign_id = campaign_row.id;
+
+  delete from public.campaigns
+  where id = campaign_row.id;
+
+  return jsonb_build_object('success', true);
 end;
 $$ language plpgsql security definer
 set search_path = public;

@@ -37,6 +37,7 @@ import { Customer, Template, IssuedCard, Transaction } from '../types';
 import { IssueCardDialog } from './IssueCardDialog';
 import { useAuth } from './AuthProvider';
 import { buildPublicCardUrl } from '../lib/links';
+import { resolveCardTemplate } from '../lib/templateSerialization';
 
 interface CustomersPageProps {
   customers: Customer[];
@@ -176,7 +177,7 @@ export const CustomersPage: React.FC<CustomersPageProps> = ({ customers, campaig
   const updateCardStamps = (amount: number, reset: boolean = false) => {
     if (!activeCustomer || !activeCard) return;
 
-    const campaign = campaigns.find(c => c.id === activeCard.campaignId);
+    const campaign = resolveCardTemplate(activeCard, campaigns);
     const maxStamps = campaign ? campaign.totalStamps : 10;
     
     let newStamps = reset ? 0 : activeCard.stamps + amount;

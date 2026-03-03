@@ -221,7 +221,7 @@ export const MyCards: React.FC<MyCardsProps> = ({
           <DialogHeader>
             <DialogTitle>Delete Campaign?</DialogTitle>
             <DialogDescription>
-              This action cannot be undone. This will permanently delete <strong>{cards.find(c => c.id === deleteId)?.name}</strong> and remove it from your campaigns.
+              This action cannot be undone. This will permanently delete <strong>{cards.find(c => c.id === deleteId)?.name}</strong> from your campaigns, but any issued cards will stay active and keep using their saved card snapshot.
             </DialogDescription>
           </DialogHeader>
           {deleteError && (

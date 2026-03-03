@@ -4,6 +4,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "./ui/table";
 import { Button } from "./ui/button";
+import { Badge } from "./ui/badge";
 import {
   Plus, Search, CreditCard, MonitorPlay, MoreHorizontal, Trash, ExternalLink, Lock, QrCode
 } from "lucide-react";
@@ -361,6 +362,7 @@ export const IssuedCardsPage: React.FC<IssuedCardsPageProps> = ({ customers, cam
       const progress = (card.stamps / campaign.totalStamps) * 100;
       const canRedeem = card.stamps >= campaign.totalStamps;
       const isRedeemed = card.status === 'Redeemed';
+      const isArchivedCampaign = card.campaignId === null;
 
       return {
         customer,
@@ -369,6 +371,7 @@ export const IssuedCardsPage: React.FC<IssuedCardsPageProps> = ({ customers, cam
         progress,
         canRedeem,
         isRedeemed,
+        isArchivedCampaign,
       };
     })
     .filter((row): row is NonNullable<typeof row> => row !== null);
@@ -470,7 +473,7 @@ export const IssuedCardsPage: React.FC<IssuedCardsPageProps> = ({ customers, cam
         ) : (
           <>
             <div className="space-y-3 p-3 md:hidden">
-              {cardRows.map(({ customer, card, campaign, progress, canRedeem, isRedeemed }) => (
+              {cardRows.map(({ customer, card, campaign, progress, canRedeem, isRedeemed, isArchivedCampaign }) => (
                 <div
                   key={card.id}
                   className={cn(
@@ -489,6 +492,7 @@ export const IssuedCardsPage: React.FC<IssuedCardsPageProps> = ({ customers, cam
                       <div className={cn("min-w-0", isRedeemed && "opacity-60")}>
                         <div className="flex flex-wrap items-center gap-2">
                           <h2 className="text-sm font-semibold text-foreground">{card.campaignName}</h2>
+                          {isArchivedCampaign && <Badge variant="outline" className="text-[10px] uppercase tracking-wide">Archived campaign</Badge>}
                           {isRedeemed && <span className="rounded bg-gray-200 px-1.5 py-0.5 text-[10px] font-bold uppercase text-gray-600">Redeemed</span>}
                         </div>
                         <p className="mt-1 truncate text-xs font-mono text-muted-foreground">ID: {card.uniqueId.slice(0, 8)}</p>
@@ -578,7 +582,7 @@ export const IssuedCardsPage: React.FC<IssuedCardsPageProps> = ({ customers, cam
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {cardRows.map(({ customer, card, campaign, progress, canRedeem, isRedeemed }) => (
+                  {cardRows.map(({ customer, card, campaign, progress, canRedeem, isRedeemed, isArchivedCampaign }) => (
                     <TableRow key={card.id} className={cn("transition-colors", isRedeemed ? "bg-gray-50/50 hover:bg-gray-50" : "hover:bg-muted/30")}>
                       <TableCell>
                         <div className="flex items-center gap-3">
@@ -591,6 +595,7 @@ export const IssuedCardsPage: React.FC<IssuedCardsPageProps> = ({ customers, cam
                           <div className={cn(isRedeemed && "opacity-60")}>
                             <div className="flex items-center gap-2 font-semibold text-foreground">
                               {card.campaignName}
+                              {isArchivedCampaign && <Badge variant="outline" className="text-[10px] uppercase tracking-wide">Archived campaign</Badge>}
                               {isRedeemed && <span className="rounded bg-gray-200 px-1.5 py-0.5 text-[10px] font-bold uppercase text-gray-600">Redeemed</span>}
                             </div>
                             <div className="font-mono text-xs text-muted-foreground">ID: {card.uniqueId.slice(0, 8)}</div>
