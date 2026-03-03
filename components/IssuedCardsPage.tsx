@@ -35,9 +35,9 @@ interface IssuedCardsPageProps {
 export const IssuedCardsPage: React.FC<IssuedCardsPageProps> = ({ customers, campaigns, setCustomers, refreshData, dataReady = false, onUpgrade }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState("");
-  const { currentOwner, isVerified, isStaff, currentUser } = useAuth();
+  const { currentOwner, isEmailVerified, isStaff, currentUser } = useAuth();
   const { canIssueCard, issuedCardCount, cardLimit, isProTier } = useSubscriptionContext();
-  const canIssue = isVerified;
+  const canIssue = isEmailVerified;
   const [mutationBusy, setMutationBusy] = useState(false);
   const [mutationError, setMutationError] = useState("");
 
@@ -439,7 +439,7 @@ export const IssuedCardsPage: React.FC<IssuedCardsPageProps> = ({ customers, cam
             </Button>
             {!canIssue && (
               <div className="flex items-center gap-2 text-xs text-amber-600 sm:justify-end">
-                <Lock size={12} /> Verify your email to issue cards.
+                <Lock size={12} /> Confirm your email to issue cards.
               </div>
             )}
           </div>

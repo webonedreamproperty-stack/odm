@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { ArrowLeft, ShieldCheck } from "lucide-react";
 import { Button } from "./ui/button";
 import { PublicFooter } from "./PublicFooter";
+import { SUPPORT_EMAIL } from "../lib/siteConfig";
 
 const sections = [
   {
@@ -38,7 +39,7 @@ const sections = [
   {
     title: "Your choices",
     body:
-      "Business owners can review and update core account and campaign information inside the product. If you need help with privacy-related requests, use the contact details made available through Stampee or your account support channel.",
+      `Business owners can review and update core account and campaign information inside the product. If you need help with privacy-related requests, email ${SUPPORT_EMAIL}.`,
   },
 ];
 
@@ -118,7 +119,10 @@ export const PrivacyPolicyPage: React.FC = () => {
               <div className="rounded-[2rem] bg-[#fff3e8] p-6 shadow-[0_24px_60px_-34px_rgba(0,0,0,0.14)]">
                 <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#8b5a17]">Need help?</p>
                 <p className="mt-4 text-sm leading-7 text-[#5f4a2c]">
-                  If you need privacy-related help, use the contact details or support channel made available through Stampee.
+                  If you need privacy-related help, email{" "}
+                  <a className="font-medium underline underline-offset-2" href={`mailto:${SUPPORT_EMAIL}`}>
+                    {SUPPORT_EMAIL}
+                  </a>.
                 </p>
               </div>
             </aside>

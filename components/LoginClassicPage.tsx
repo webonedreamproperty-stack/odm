@@ -5,6 +5,8 @@ import { AuthLayout } from "./AuthLayout";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { useAuth } from "./AuthProvider";
+import { trackEvent } from "../lib/analytics";
+import { DEMO_WORKSPACE_ENABLED } from "../lib/siteConfig";
 
 const inputCls =
   "h-12 rounded-xl border-black/[0.1] bg-[#f5f5f7] text-[#1d1d1f] placeholder:text-[#6e6e73]/50 focus-visible:border-[#1d1d1f] focus-visible:ring-0";
@@ -14,7 +16,7 @@ export const LoginClassicPage: React.FC = () => {
   const { currentUser, loading, login, loginDemo } = useAuth();
   const location = useLocation();
   const fromPath = (location.state as { from?: { pathname?: string } })?.from?.pathname;
-  const showDemoWorkspace = new URLSearchParams(location.search).get("admin") === "pogi";
+  const showDemoWorkspace = DEMO_WORKSPACE_ENABLED && new URLSearchParams(location.search).get("admin") === "pogi";
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -49,6 +51,8 @@ export const LoginClassicPage: React.FC = () => {
       const result = await withTimeout(login(email, password));
       if (!result.ok) {
         setError(result.error);
+      } else {
+        trackEvent("Login Success", { role: result.user?.role ?? "owner" });
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to sign in right now.");

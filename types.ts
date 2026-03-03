@@ -88,6 +88,7 @@ export interface Customer {
   cards: IssuedCard[];
 }
 
+// Internal account state. Email confirmation now comes from Supabase auth.
 export type AccountStatus = 'unverified' | 'verified';
 export type UserRole = 'owner' | 'staff';
 export type AccessStatus = 'active' | 'disabled';

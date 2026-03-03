@@ -1,4 +1,5 @@
 import React, { Suspense, lazy, useCallback, useEffect, useState } from 'react';
+import { Analytics } from '@vercel/analytics/react';
 import { Sidebar, NAV_ITEMS, SidebarContent } from './components/Sidebar';
 import { Template, Customer, IssuedCard } from './types';
 import { templates } from './data/templates';
@@ -18,8 +19,9 @@ import { isSupabaseConfigured, SUPABASE_CONFIG_ERROR, supabase } from './lib/sup
 import { useSubscription } from './lib/useSubscription';
 import { SubscriptionProvider } from './components/SubscriptionContext';
 import { UpgradePrompt } from './components/UpgradePrompt';
+import { APP_ORIGIN } from './lib/siteConfig';
 
-const SITE_ORIGIN = 'https://stamppee.vercel.app';
+const SITE_ORIGIN = APP_ORIGIN;
 const DEFAULT_SOCIAL_DESCRIPTION = 'Launch digital loyalty cards for your small business. Reward repeat customers, track visits, and grow without paper cards or app installs.';
 const DEFAULT_OG_IMAGE = `${SITE_ORIGIN}/social-preview-v2.jpg`;
 
@@ -49,6 +51,7 @@ const ForgotPasswordPage = lazy(() => import('./components/ForgotPasswordPage').
 const DashboardPage = lazy(() => import('./components/DashboardPage').then((module) => ({ default: module.DashboardPage })));
 const ArticlesPage = lazy(() => import('./components/ArticlesPage').then((module) => ({ default: module.ArticlesPage })));
 const PrivacyPolicyPage = lazy(() => import('./components/PrivacyPolicyPage').then((module) => ({ default: module.PrivacyPolicyPage })));
+const TermsPage = lazy(() => import('./components/TermsPage').then((module) => ({ default: module.TermsPage })));
 const GettingStartedArticlePage = lazy(() => import('./components/GettingStartedArticlePage').then((module) => ({ default: module.GettingStartedArticlePage })));
 const ShowcasePage = lazy(() => import('./components/ShowcasePage').then((module) => ({ default: module.ShowcasePage })));
 
@@ -133,6 +136,15 @@ const getSeoForPathname = (pathname: string): SeoConfig => {
       ...defaultSeo,
       title: 'Privacy Policy | Stampee',
       description: 'Review the Stampee privacy policy and how customer, campaign, and account information is handled.',
+      canonical,
+    };
+  }
+
+  if (normalizedPath === '/terms') {
+    return {
+      ...defaultSeo,
+      title: 'Terms of Service | Stampee',
+      description: 'Review the Stampee beta terms of service, acceptable use requirements, and support contact information.',
       canonical,
     };
   }
@@ -623,7 +635,7 @@ const AppRoutes: React.FC = () => {
     const isNew = !createdCards.find(c => c.id === template.id);
     if (isNew && !sub.canCreateCampaign) {
       showUpgrade('campaign');
-      throw new Error('Upgrade required to create more campaigns.');
+      throw new Error('Campaign limit reached for the beta. Contact hello@stampee.co for higher limits.');
     }
     const saved = isNew ? { ...template, id: `custom-${Date.now()}` } : template;
     const stored = toStoredTemplate(saved);
@@ -666,6 +678,7 @@ const AppRoutes: React.FC = () => {
         <Route path="/showcase" element={withSuspense(<ShowcasePage />)} />
         <Route path="/articles" element={withSuspense(<ArticlesPage />)} />
         <Route path="/privacy-policy" element={withSuspense(<PrivacyPolicyPage />)} />
+        <Route path="/terms" element={withSuspense(<TermsPage />)} />
         <Route path="/articles/getting-started" element={withSuspense(<GettingStartedArticlePage />)} />
         <Route path="/:slug/staff" element={withSuspense(<StaffLoginPage />)} />
         <Route path="/:slug/scan/:uniqueId" element={<StaffScanEntryWrapper />} />
@@ -734,6 +747,7 @@ const App: React.FC = () => {
     <AuthProvider>
       <BrowserRouter>
         <SeoManager />
+        <Analytics />
         <AppRoutes />
       </BrowserRouter>
     </AuthProvider>

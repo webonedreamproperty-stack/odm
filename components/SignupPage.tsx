@@ -6,6 +6,7 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { useAuth } from "./AuthProvider";
 import { getSlugHint, isSlugValid, normalizeSlug } from "../lib/slug";
+import { trackEvent } from "../lib/analytics";
 
 const inputCls =
   "h-14 rounded-[1.2rem] border border-black/[0.08] bg-[#f4f1ea] px-4 text-[15px] text-[#171512] shadow-none placeholder:text-[#8a8276] focus-visible:border-black/25 focus-visible:bg-white focus-visible:ring-0";
@@ -108,12 +109,14 @@ export const SignupPage: React.FC = () => {
       return;
     }
     setBusy(true);
+    trackEvent("Signup Submitted", { slug: normalizedSlug });
     try {
       const result = await withTimeout(signup({ businessName, email, password, slug: normalizedSlug }));
       if (!result.ok) {
         setError(result.error);
         return;
       }
+      trackEvent("Signup Success", { slug: normalizedSlug });
       if (result.message) setInfo(result.message);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to create account right now.");

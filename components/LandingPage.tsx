@@ -4,6 +4,7 @@ import { ChartNoAxesCombined, ChevronDown, Leaf, QrCode } from "lucide-react";
 import { Button } from "./ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "./ui/accordion";
 import { useAuth } from "./AuthProvider";
+import { trackEvent } from "../lib/analytics";
 
 // ── Hooks ─────────────────────────────────────────────────────────────────────
 
@@ -129,7 +130,7 @@ const AnalyticsMockup: React.FC = () => (
       <div className="h-3 w-3 rounded-full bg-[#febc2e]" />
       <div className="h-3 w-3 rounded-full bg-[#28c840]" />
       <div className="ml-3 flex-1 rounded-md bg-white/80 px-3 py-1">
-        <p className="text-[9px] text-[#6e6e73]">app.cookees.co/analytics</p>
+        <p className="text-[9px] text-[#6e6e73]">app.stampee.co/analytics</p>
       </div>
     </div>
     <div className="flex bg-[#f8f8f8]">
@@ -197,7 +198,7 @@ const CustomersMockup: React.FC = () => {
         <div className="h-3 w-3 rounded-full bg-[#febc2e]" />
         <div className="h-3 w-3 rounded-full bg-[#28c840]" />
         <div className="ml-3 flex-1 rounded-md bg-white/80 px-3 py-1">
-          <p className="text-[9px] text-[#6e6e73]">app.cookees.co/customers</p>
+          <p className="text-[9px] text-[#6e6e73]">app.stampee.co/customers</p>
         </div>
       </div>
       <div className="flex bg-[#f8f8f8]">
@@ -261,6 +262,10 @@ export const LandingPage: React.FC = () => {
   const value      = useInView(0.15);
   const faq        = useInView(0.15);
   const cta        = useInView(0.18);
+
+  useEffect(() => {
+    trackEvent("Landing Viewed");
+  }, []);
 
   return (
     <div className="text-[#1d1d1f] antialiased">
@@ -333,7 +338,7 @@ export const LandingPage: React.FC = () => {
       <header className="fixed top-0 z-50 w-full border-b border-black/[0.06] bg-white/75 backdrop-blur-2xl">
         <div className="mx-auto flex max-w-[88rem] items-center justify-between px-4 py-4 sm:px-6">
           <Link to="/" className="inline-flex items-center">
-            <img src="/stampee.svg" alt="Cookees" className="h-8 w-auto" />
+            <img src="/stampee.svg" alt="Stampee" className="h-8 w-auto" />
           </Link>
           <nav className="flex items-center gap-1.5 sm:gap-2">
             <Button asChild variant="ghost" className="hidden rounded-full text-sm font-medium text-[#1d1d1f] hover:bg-black/[0.06] sm:inline-flex">
@@ -352,7 +357,7 @@ export const LandingPage: React.FC = () => {
                   <Link to="/login">Log in</Link>
                 </Button>
                 <Button asChild className="rounded-full bg-[#1d1d1f] px-4 text-sm font-medium text-white hover:bg-black/80 sm:px-5">
-                  <Link to="/signup">Get started</Link>
+                  <Link to="/signup" onClick={() => trackEvent("Landing CTA Clicked", { placement: "header" })}>Get started</Link>
                 </Button>
               </>
             )}
@@ -396,7 +401,7 @@ export const LandingPage: React.FC = () => {
             </div>
             <div style={rise(hero.visible, 260)} className="mt-10">
               <Button asChild className="glow-button h-16 rounded-[1.55rem] bg-[#17351a] px-10 text-lg font-semibold text-white shadow-[0_26px_50px_-28px_rgba(23,53,26,0.85)] hover:bg-[#102712] sm:min-w-[17rem]">
-                <Link to="/signup">Create Your Card</Link>
+                <Link to="/signup" onClick={() => trackEvent("Landing CTA Clicked", { placement: "hero" })}>Create Your Card</Link>
               </Button>
             </div>
           </div>
@@ -731,7 +736,7 @@ export const LandingPage: React.FC = () => {
             </p>
             <div style={rise(value.visible, 320)} className="mt-12">
               <Button asChild className="glow-button h-[3.75rem] rounded-full bg-[#dcb7df] px-12 text-lg font-semibold text-black shadow-none hover:bg-[#d2a6d6]">
-                <Link to="/signup">Get started for free</Link>
+                <Link to="/signup" onClick={() => trackEvent("Landing CTA Clicked", { placement: "value" })}>Get started for free</Link>
               </Button>
             </div>
           </div>
@@ -814,7 +819,7 @@ export const LandingPage: React.FC = () => {
           </p>
           <div style={rise(cta.visible, 280)}>
             <Button asChild className="glow-button mt-12 h-[3.75rem] rounded-full bg-white px-14 text-base font-semibold text-[#1d1d1f] shadow-xl shadow-white/10 hover:bg-white/90">
-              <Link to="/signup">Start Free</Link>
+              <Link to="/signup" onClick={() => trackEvent("Landing CTA Clicked", { placement: "footer" })}>Start Free</Link>
             </Button>
           </div>
         </div>
@@ -824,7 +829,7 @@ export const LandingPage: React.FC = () => {
       <footer className="border-t border-white/[0.07] bg-[#1d1d1f] px-6 py-8">
         <div className="mx-auto flex max-w-[88rem] flex-col items-center gap-3 sm:flex-row sm:justify-between">
           <Link to="/" className="inline-flex items-center">
-            <img src="/stampee.svg" alt="Cookees" className="h-7 w-auto opacity-35 invert" />
+            <img src="/stampee.svg" alt="Stampee" className="h-7 w-auto opacity-35 invert" />
           </Link>
           <div className="flex flex-col items-center gap-3 sm:flex-row sm:gap-6">
             <Link
@@ -839,7 +844,19 @@ export const LandingPage: React.FC = () => {
             >
               Articles
             </Link>
-            <p className="text-xs text-white/25">© {new Date().getFullYear()} Cookees. All rights reserved.</p>
+            <Link
+              to="/privacy-policy"
+              className="text-xs font-medium text-white/55 transition-colors hover:text-white"
+            >
+              Privacy Policy
+            </Link>
+            <Link
+              to="/terms"
+              className="text-xs font-medium text-white/55 transition-colors hover:text-white"
+            >
+              Terms
+            </Link>
+            <p className="text-xs text-white/25">© {new Date().getFullYear()} Stampee. All rights reserved.</p>
           </div>
         </div>
       </footer>

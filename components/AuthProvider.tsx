@@ -3,10 +3,12 @@ import { TIER_LIMITS, User } from "../types";
 import { isSupabaseConfigured, SUPABASE_CONFIG_ERROR, supabase } from "../lib/supabase";
 import { fetchProfile, fetchProfileDetailed, fetchStaffAccounts, updateProfile as dbUpdateProfile } from "../lib/db/profiles";
 import { normalizeSlug } from "../lib/slug";
+import { buildAppUrl, DEMO_WORKSPACE_ENABLED } from "../lib/siteConfig";
 
 type AuthUserLike = {
   id: string;
   email?: string | null;
+  email_confirmed_at?: string | null;
   user_metadata?: Record<string, unknown> | null;
 };
 
@@ -18,7 +20,7 @@ interface AuthContextValue {
   currentOwner: User | null;
   isOwner: boolean;
   isStaff: boolean;
-  isVerified: boolean;
+  isEmailVerified: boolean;
   loading: boolean;
   staffAccounts: User[];
   login: (email: string, password: string) => Promise<AuthResult>;
@@ -31,7 +33,7 @@ interface AuthContextValue {
   deleteStaff: (staffId: string) => Promise<AuthResult>;
   deleteAccount: () => Promise<AuthResult>;
   logout: () => Promise<void>;
-  verifyAccount: () => Promise<AuthResult>;
+  resendVerificationEmail: () => Promise<AuthResult>;
   isSlugAvailable: (slug: string) => Promise<boolean>;
   updateProfileInfo: (payload: { businessName?: string; email?: string; slug?: string }) => Promise<AuthResult>;
   updatePassword: (newPassword: string) => Promise<AuthResult>;
@@ -45,6 +47,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [currentOwner, setCurrentOwner] = useState<User | null>(null);
   const [staffAccounts, setStaffAccounts] = useState<User[]>([]);
+  const [isEmailVerified, setIsEmailVerified] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const fetchProfileWithRetry = useCallback(async (userId: string, attempts = 5, delayMs = 200): Promise<User | null> => {
@@ -115,6 +118,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const loadFullSession = useCallback(async (userId: string, authUser?: AuthUserLike) => {
     await waitForAuthUser(userId);
+    setIsEmailVerified(Boolean(authUser?.email_confirmed_at));
     let profile = await fetchProfileWithRetry(userId);
     if (!profile && authUser) {
       const repaired = await createMissingProfile(authUser);
@@ -126,6 +130,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setCurrentUser(null);
       setCurrentOwner(null);
       setStaffAccounts([]);
+      setIsEmailVerified(false);
       return;
     }
 
@@ -146,6 +151,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setCurrentUser(null);
       setCurrentOwner(null);
       setStaffAccounts([]);
+      setIsEmailVerified(false);
       setLoading(false);
       return;
     }
@@ -186,6 +192,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setCurrentUser(null);
         setCurrentOwner(null);
         setStaffAccounts([]);
+        setIsEmailVerified(false);
         setLoading(false);
       } else if (event === "INITIAL_SESSION") {
         // Already handled by init()
@@ -200,7 +207,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const refreshProfile = useCallback(async () => {
     if (!isSupabaseConfigured || !currentUser) return;
-    await loadFullSession(currentUser.id);
+    const { data } = await supabase.auth.getUser();
+    await loadFullSession(currentUser.id, data.user ?? undefined);
   }, [currentUser, loadFullSession]);
 
   const login = useCallback(async (email: string, password: string): Promise<AuthResult> => {
@@ -315,6 +323,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             slug: payload.slug,
             role: "owner",
           },
+          emailRedirectTo: buildAppUrl("/login"),
         },
       });
       if (error) return { ok: false, error: error.message };
@@ -332,6 +341,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const loginDemo = useCallback(async () => {
+    if (!DEMO_WORKSPACE_ENABLED) {
+      throw new Error("Demo workspace is disabled in this environment.");
+    }
     if (!isSupabaseConfigured) return;
     const demoEmail = "demo@stampee.co";
     const demoPassword = "demo1234";
@@ -368,7 +380,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (staffAccounts.length >= staffLimit) {
       return {
         ok: false,
-        error: `Free plan allows only ${staffLimit} staff account${staffLimit === 1 ? "" : "s"}. Upgrade to Pro to add more.`,
+        error: `Free beta access allows only ${staffLimit} staff account${staffLimit === 1 ? "" : "s"}. Contact hello@stampee.co if you need higher limits.`,
       };
     }
 
@@ -449,20 +461,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await supabase.auth.signOut();
   }, []);
 
-  const verifyAccount = useCallback(async (): Promise<AuthResult> => {
+  const resendVerificationEmail = useCallback(async (): Promise<AuthResult> => {
     if (!isSupabaseConfigured) {
       return { ok: false, error: SUPABASE_CONFIG_ERROR };
     }
-    if (!currentOwner) {
-      return { ok: false, error: "No owner profile found." };
+    const email = currentUser?.email?.trim().toLowerCase();
+    if (!email) {
+      return { ok: false, error: "No account email found for this session." };
     }
-    const result = await dbUpdateProfile(currentOwner.id, { status: "verified" });
-    if (!result.ok) {
-      return { ok: false, error: result.error ?? "Failed to verify the account." };
+    const { error } = await supabase.auth.resend({
+      type: "signup",
+      email,
+      options: {
+        emailRedirectTo: buildAppUrl("/login"),
+      },
+    });
+    if (error) {
+      return { ok: false, error: error.message };
     }
-    await refreshProfile();
-    return { ok: true };
-  }, [currentOwner, refreshProfile]);
+    return { ok: true, message: "Verification email sent. Check your inbox and spam folder." };
+  }, [currentUser?.email]);
 
   const isSlugAvailable = useCallback(async (slug: string): Promise<boolean> => {
     if (!isSupabaseConfigured) {
@@ -508,7 +526,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return { ok: false, error: SUPABASE_CONFIG_ERROR };
     }
     const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
-      redirectTo: `${window.location.origin}/login`,
+      redirectTo: buildAppUrl("/login"),
     });
     if (error) return { ok: false, error: error.message };
     return { ok: true };
@@ -520,7 +538,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       currentOwner,
       isOwner: currentUser?.role === "owner",
       isStaff: currentUser?.role === "staff",
-      isVerified: currentOwner?.status === "verified",
+      isEmailVerified,
       loading,
       staffAccounts,
       login,
@@ -533,7 +551,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       deleteStaff,
       deleteAccount,
       logout,
-      verifyAccount,
+      resendVerificationEmail,
       isSlugAvailable,
       updateProfileInfo,
       updatePassword,
@@ -541,10 +559,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       refreshProfile,
     }),
     [
-      currentUser, currentOwner, loading, staffAccounts,
+      currentUser, currentOwner, isEmailVerified, loading, staffAccounts,
       login, loginStaff, signup, loginDemo, createStaff,
       updateStaffPin, setStaffAccess, deleteStaff, deleteAccount, logout,
-      verifyAccount, isSlugAvailable, updateProfileInfo,
+      resendVerificationEmail, isSlugAvailable, updateProfileInfo,
       updatePassword, resetPassword, refreshProfile,
     ]
   );

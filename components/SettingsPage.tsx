@@ -361,13 +361,13 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onUpgrade }) => {
             </div>
           </div>
           <Button type="submit" className="rounded-full h-10 px-6 w-full sm:w-auto" disabled={staffBusy}>
-            {staffBusy ? "Adding..." : !canCreateStaff ? "Upgrade to Add Staff" : "Add Staff"}
+            {staffBusy ? "Adding..." : !canCreateStaff ? "Request Higher Limit" : "Add Staff"}
           </Button>
         </form>
 
         {!isProTier && !canCreateStaff && (
           <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-            Free plan allows only 1 staff account. Upgrade to Pro to add more staff.
+            Beta access currently allows only 1 staff account. Contact hello@stampee.co if you need more staff seats.
           </div>
         )}
 

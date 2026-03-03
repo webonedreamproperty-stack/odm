@@ -27,7 +27,19 @@ export const PublicFooter: React.FC = () => {
           >
             Privacy Policy
           </Link>
-          <p className="text-xs text-white/25">© {new Date().getFullYear()} Cookees. All rights reserved.</p>
+          <Link
+            to="/terms"
+            className="text-xs font-medium text-white/55 transition-colors hover:text-white"
+          >
+            Terms
+          </Link>
+          <a
+            href="mailto:support@stampee.co"
+            className="text-xs font-medium text-white/55 transition-colors hover:text-white"
+          >
+            support@stampee.co
+          </a>
+          <p className="text-xs text-white/25">© {new Date().getFullYear()} Stampee. All rights reserved.</p>
         </div>
       </div>
     </footer>

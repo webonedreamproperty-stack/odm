@@ -10,6 +10,7 @@ const staticRoutes = [
   { path: "/showcase", lastmod: "2026-03-03", changefreq: "weekly", priority: "0.8" },
   { path: "/articles", lastmod: "2026-03-03", changefreq: "weekly", priority: "0.8" },
   { path: "/privacy-policy", lastmod: "2026-03-03", changefreq: "monthly", priority: "0.5" },
+  { path: "/terms", lastmod: "2026-03-03", changefreq: "monthly", priority: "0.5" },
 ];
 
 const formatDate = (value) => {

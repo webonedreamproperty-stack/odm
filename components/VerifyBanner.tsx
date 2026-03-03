@@ -1,22 +1,43 @@
 import React from "react";
-import { CheckCircle2, MailOpen } from "lucide-react";
+import { MailOpen, RefreshCcw } from "lucide-react";
 import { useAuth } from "./AuthProvider";
 import { Button } from "./ui/button";
+import { trackEvent } from "../lib/analytics";
 
 export const VerifyBanner: React.FC = () => {
-  const { currentOwner, isVerified, verifyAccount } = useAuth();
-  const [busy, setBusy] = React.useState(false);
+  const { currentOwner, isEmailVerified, resendVerificationEmail, refreshProfile } = useAuth();
+  const [resending, setResending] = React.useState(false);
+  const [refreshing, setRefreshing] = React.useState(false);
   const [error, setError] = React.useState("");
+  const [message, setMessage] = React.useState("");
 
-  if (!currentOwner || isVerified) return null;
+  if (!currentOwner || isEmailVerified) return null;
 
-  const handleVerify = async () => {
+  const handleResend = async () => {
     setError("");
-    setBusy(true);
-    const result = await verifyAccount();
-    setBusy(false);
+    setMessage("");
+    setResending(true);
+    const result = await resendVerificationEmail();
+    setResending(false);
     if (!result.ok) {
       setError(result.error);
+      return;
+    }
+    trackEvent("Verification Email Resent", { role: currentOwner.role });
+    setMessage(result.message ?? "Verification email sent.");
+  };
+
+  const handleRefresh = async () => {
+    setError("");
+    setMessage("");
+    setRefreshing(true);
+    try {
+      await refreshProfile();
+      setMessage("Verification status refreshed.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to refresh verification status.");
+    } finally {
+      setRefreshing(false);
     }
   };
 
@@ -32,19 +53,38 @@ export const VerifyBanner: React.FC = () => {
               Verify to issue cards
             </div>
             <div className="mt-1 text-base font-semibold text-foreground">
-              Your Stampee is ready. Confirm your email to start issuing cards.
+              Check your inbox and confirm your email before issuing cards.
+            </div>
+            <div className="mt-1 text-sm text-muted-foreground">
+              If the email is missing, resend it and then refresh this page after you confirm.
             </div>
           </div>
         </div>
-        <Button
-          onClick={handleVerify}
-          className="h-11 px-6 text-base"
-          disabled={busy}
-        >
-          <CheckCircle2 className="mr-2" size={18} />
-          {busy ? "Verifying..." : "Verify email"}
-        </Button>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Button
+            onClick={handleResend}
+            className="h-11 px-6 text-base"
+            disabled={resending || refreshing}
+          >
+            <MailOpen className="mr-2" size={18} />
+            {resending ? "Sending..." : "Resend email"}
+          </Button>
+          <Button
+            onClick={handleRefresh}
+            variant="outline"
+            className="h-11 px-6 text-base"
+            disabled={resending || refreshing}
+          >
+            <RefreshCcw className="mr-2" size={18} />
+            {refreshing ? "Refreshing..." : "Refresh status"}
+          </Button>
+        </div>
       </div>
+      {message && (
+        <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+          {message}
+        </div>
+      )}
       {error && (
         <div className="mt-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
           {error}
