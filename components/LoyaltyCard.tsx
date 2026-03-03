@@ -20,6 +20,7 @@ interface LoyaltyCardProps {
   className?: string;
   customerName?: string; // For public view
   cardId?: string; // For public view
+  qrValue?: string;
   sizeVariant?: 'default' | 'compact';
   history?: Transaction[];
   isRedeemed?: boolean;
@@ -35,6 +36,7 @@ export const LoyaltyCard: React.FC<LoyaltyCardProps> = ({
     className = "",
     customerName,
     cardId,
+    qrValue,
     sizeVariant = 'default',
     history = [],
     isRedeemed = false
@@ -540,12 +542,22 @@ export const LoyaltyCard: React.FC<LoyaltyCardProps> = ({
                     currentSlide === 1 ? "opacity-100 translate-y-0 delay-200" : "opacity-0 translate-y-8"
                 )}>
                     <div className="relative p-2 rounded-xl border-2 border-gray-100">
-                        <QrCode size={220} className="text-gray-900" />
-                        <div className="absolute inset-0 flex items-center justify-center">
-                            <div className="bg-white p-2 rounded-full shadow-sm border border-gray-100">
-                                <Icon size={40} className="text-gray-900" />
+                        {qrValue ? (
+                          <img
+                            src={`https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(qrValue)}`}
+                            alt="Card QR code"
+                            className="h-[220px] w-[220px] rounded-lg object-contain"
+                          />
+                        ) : (
+                          <>
+                            <QrCode size={220} className="text-gray-900" />
+                            <div className="absolute inset-0 flex items-center justify-center">
+                                <div className="bg-white p-2 rounded-full shadow-sm border border-gray-100">
+                                    <Icon size={40} className="text-gray-900" />
+                                </div>
                             </div>
-                        </div>
+                          </>
+                        )}
                     </div>
                     {(customerName || cardId) && (
                       <div className="text-center space-y-1">

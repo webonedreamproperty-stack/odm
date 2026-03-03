@@ -1,6 +1,19 @@
 import { supabase } from '../supabase';
 import type { IssuedCard, Transaction, StoredTemplate } from '../../types';
 
+export type ScannedCardStatus = 'owned' | 'foreign' | 'missing';
+
+export interface PublicScanEntryContext {
+  owner: {
+    id: string;
+    slug: string;
+    businessName: string;
+  };
+  card: {
+    uniqueId: string;
+  };
+}
+
 export async function insertIssuedCard(
   card: {
     id: string;
@@ -83,4 +96,56 @@ export async function countIssuedCards(ownerId: string): Promise<number> {
     .eq('owner_id', ownerId);
   if (error) return 0;
   return count ?? 0;
+}
+
+export async function inspectScannedCard(uniqueId: string): Promise<{ status: ScannedCardStatus; error?: string }> {
+  const { data, error } = await supabase.rpc('inspect_scanned_card', {
+    card_unique_id: uniqueId,
+  });
+  if (error) {
+    return { status: 'missing', error: error.message };
+  }
+
+  const status = typeof data === 'object' && data && 'status' in data
+    ? (data as { status?: string }).status
+    : undefined;
+
+  if (status === 'owned' || status === 'foreign' || status === 'missing') {
+    return { status };
+  }
+
+  return { status: 'missing' };
+}
+
+export async function fetchPublicScanEntryContext(
+  slug: string,
+  uniqueId: string
+): Promise<PublicScanEntryContext | null> {
+  const { data, error } = await supabase.rpc('get_scan_entry_context', {
+    slug_input: slug,
+    card_unique_id: uniqueId,
+  });
+  if (error || !data || typeof data !== 'object') {
+    return null;
+  }
+
+  const payload = data as {
+    owner?: { id?: string; slug?: string; businessName?: string };
+    card?: { uniqueId?: string };
+  };
+
+  if (!payload.owner?.id || !payload.owner.slug || !payload.card?.uniqueId) {
+    return null;
+  }
+
+  return {
+    owner: {
+      id: payload.owner.id,
+      slug: payload.owner.slug,
+      businessName: payload.owner.businessName ?? '',
+    },
+    card: {
+      uniqueId: payload.card.uniqueId,
+    },
+  };
 }

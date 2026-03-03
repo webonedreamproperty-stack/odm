@@ -8,25 +8,55 @@ import { Label } from "./ui/label";
 
 QrScanner.WORKER_PATH = QrScannerWorkerPath;
 
+export type ScanDetectionResult =
+  | { ok: true }
+  | { ok: false; message: string };
+
 interface ScanQrDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  onDetected: (value: string) => boolean;
+  onDetected: (value: string) => Promise<ScanDetectionResult> | ScanDetectionResult;
 }
 
 export const ScanQrDialog: React.FC<ScanQrDialogProps> = ({ isOpen, onClose, onDetected }) => {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const scannerRef = useRef<QrScanner | null>(null);
+  const detectingRef = useRef(false);
   const [status, setStatus] = useState("Point the camera at the QR code.");
   const [error, setError] = useState("");
   const [manualValue, setManualValue] = useState("");
 
   useEffect(() => {
     if (!isOpen) return;
+    detectingRef.current = false;
     setError("");
     setStatus("Requesting camera...");
 
     let active = true;
+    const handleDetectedValue = async (value: string) => {
+      if (!active || detectingRef.current) return;
+      detectingRef.current = true;
+      setError("");
+      setStatus("Checking card...");
+
+      try {
+        const result = await onDetected(value);
+        if (!active) return;
+        if (!result.ok) {
+          setError(result.message);
+          setStatus("Scanning...");
+          detectingRef.current = false;
+          return;
+        }
+        onClose();
+      } catch {
+        if (!active) return;
+        setError("Unable to validate this card right now.");
+        setStatus("Scanning...");
+        detectingRef.current = false;
+      }
+    };
+
     const startScanner = async () => {
       const hasCamera = await QrScanner.hasCamera();
       if (!hasCamera) {
@@ -38,13 +68,7 @@ export const ScanQrDialog: React.FC<ScanQrDialogProps> = ({ isOpen, onClose, onD
       const scanner = new QrScanner(
         videoRef.current,
         (result) => {
-          if (!active) return;
-          const ok = onDetected(result.data);
-          if (!ok) {
-            setError("Card not found. Try scanning again.");
-            return;
-          }
-          onClose();
+          void handleDetectedValue(result.data);
         },
         {
           returnDetailedScanResult: true,
@@ -70,14 +94,26 @@ export const ScanQrDialog: React.FC<ScanQrDialogProps> = ({ isOpen, onClose, onD
     };
   }, [isOpen, onDetected, onClose]);
 
-  const handleManualSubmit = () => {
-    if (!manualValue.trim()) return;
-    const ok = onDetected(manualValue.trim());
-    if (ok) {
+  const handleManualSubmit = async () => {
+    if (!manualValue.trim() || detectingRef.current) return;
+    detectingRef.current = true;
+    setError("");
+    setStatus("Checking card...");
+
+    try {
+      const result = await onDetected(manualValue.trim());
+      if (!result.ok) {
+        setError(result.message);
+        setStatus("Scanning...");
+        detectingRef.current = false;
+        return;
+      }
       onClose();
-      return;
+    } catch {
+      setError("Unable to validate this card right now.");
+      setStatus("Scanning...");
+      detectingRef.current = false;
     }
-    setError("Card not found. Check the ID and try again.");
   };
 
   return (

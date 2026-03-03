@@ -1,16 +1,17 @@
 import React, { useEffect, useState } from "react";
-import { Link, Navigate, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { AuthLayout } from "./AuthLayout";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { useAuth } from "./AuthProvider";
+import { buildIssuedCardsKioskUrl } from "../lib/links";
 
 export const StaffLoginPage: React.FC = () => {
   const { currentUser, loginStaff } = useAuth();
   const navigate = useNavigate();
-  const { slug } = useParams<{ slug: string }>();
   const [searchParams] = useSearchParams();
+  const kioskId = searchParams.get("kiosk") ?? "";
   const [email, setEmail] = useState("");
   const [pin, setPin] = useState("");
   const [orgId, setOrgId] = useState("");
@@ -41,7 +42,7 @@ export const StaffLoginPage: React.FC = () => {
   }, [searchParams]);
 
   if (currentUser) {
-    return <Navigate to="/issued-cards" replace />;
+    return <Navigate to={kioskId ? buildIssuedCardsKioskUrl(kioskId) : "/issued-cards"} replace />;
   }
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -54,7 +55,7 @@ export const StaffLoginPage: React.FC = () => {
         setError(result.error);
         return;
       }
-      navigate("/issued-cards");
+      navigate(kioskId ? buildIssuedCardsKioskUrl(kioskId) : "/issued-cards");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to log in right now.");
     } finally {

@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "./ui/table";
@@ -17,8 +18,8 @@ import { IssueCardDialog } from './IssueCardDialog';
 import { resolveCardTemplate, toStoredTemplate } from '../lib/templateSerialization';
 import { useAuth } from './AuthProvider';
 import { buildPublicCardUrl } from '../lib/links';
-import { ScanQrDialog } from './ScanQrDialog';
-import { insertIssuedCard, updateIssuedCard, deleteIssuedCard, insertTransaction } from '../lib/db/issuedCards';
+import { ScanDetectionResult, ScanQrDialog } from './ScanQrDialog';
+import { insertIssuedCard, updateIssuedCard, deleteIssuedCard, insertTransaction, inspectScannedCard } from '../lib/db/issuedCards';
 import { upsertCustomer } from '../lib/db/customers';
 import { useSubscriptionContext } from './SubscriptionContext';
 
@@ -26,11 +27,13 @@ interface IssuedCardsPageProps {
   customers: Customer[];
   campaigns: Template[];
   setCustomers: React.Dispatch<React.SetStateAction<Customer[]>>;
-  refreshData?: () => void;
+  refreshData?: () => Promise<void>;
+  dataReady?: boolean;
   onUpgrade?: () => void;
 }
 
-export const IssuedCardsPage: React.FC<IssuedCardsPageProps> = ({ customers, campaigns, setCustomers, refreshData, onUpgrade }) => {
+export const IssuedCardsPage: React.FC<IssuedCardsPageProps> = ({ customers, campaigns, setCustomers, refreshData, dataReady = false, onUpgrade }) => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState("");
   const { currentOwner, isVerified, isStaff, currentUser } = useAuth();
   const { canIssueCard, issuedCardCount, cardLimit, isProTier } = useSubscriptionContext();
@@ -50,6 +53,17 @@ export const IssuedCardsPage: React.FC<IssuedCardsPageProps> = ({ customers, cam
 
   const [preSelectedCampaign, setPreSelectedCampaign] = useState<Template | null>(null);
   const [preSelectedCustomer, setPreSelectedCustomer] = useState<Customer | null>(null);
+
+  const findKioskMatch = useCallback((cardId: string) => {
+    for (const customer of customers) {
+      const found = customer.cards.find((card) => card.uniqueId === cardId);
+      if (!found) continue;
+      const template = resolveCardTemplate(found, campaigns);
+      if (!template) return null;
+      return { customer, card: found, template };
+    }
+    return null;
+  }, [campaigns, customers]);
 
   const handleUpdateCard = async (customerId: string, cardId: string, updates: Partial<IssuedCard>) => {
     setMutationBusy(true);
@@ -264,20 +278,62 @@ export const IssuedCardsPage: React.FC<IssuedCardsPageProps> = ({ customers, cam
     return segments[segments.length - 1] ?? raw;
   };
 
-  const handleScanResult = (value: string) => {
-    const cardId = extractCardId(value);
-    if (!cardId) return false;
-    for (const customer of customers) {
-      const found = customer.cards.find((card) => card.uniqueId === cardId);
-      if (found) {
-        const template = resolveCardTemplate(found, campaigns);
-        if (!template) return false;
-        setActiveKioskData({ customer, card: found, template });
-        return true;
-      }
+  const clearKioskQuery = useCallback(() => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.delete('kiosk');
+      return next;
+    }, { replace: true });
+  }, [setSearchParams]);
+
+  useEffect(() => {
+    const kioskId = searchParams.get('kiosk');
+    if (!kioskId || !dataReady || activeKioskData) return;
+
+    const match = findKioskMatch(kioskId);
+    clearKioskQuery();
+
+    if (!match) {
+      setMutationError("Card not found. Try scanning again.");
+      return;
     }
-    return false;
-  };
+
+    setMutationError("");
+    setActiveKioskData(match);
+  }, [activeKioskData, clearKioskQuery, dataReady, findKioskMatch, searchParams]);
+
+  const handleScanResult = useCallback(async (value: string): Promise<ScanDetectionResult> => {
+    const cardId = extractCardId(value);
+    if (!cardId) {
+      return { ok: false, message: "QR code is invalid. Try scanning again." };
+    }
+
+    const match = findKioskMatch(cardId);
+    if (match) {
+      setMutationError("");
+      setActiveKioskData(match);
+      return { ok: true };
+    }
+
+    const inspection = await inspectScannedCard(cardId);
+    if (inspection.status === 'foreign') {
+      return { ok: false, message: "This card is not part of your business." };
+    }
+
+    if (inspection.status === 'owned') {
+      if (refreshData) {
+        await refreshData();
+      }
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.set('kiosk', cardId);
+        return next;
+      }, { replace: true });
+      return { ok: true };
+    }
+
+    return { ok: false, message: "Card not found. Try scanning again." };
+  }, [findKioskMatch, refreshData, setSearchParams]);
 
   const flatList = customers.flatMap(c => c.cards.map(card => ({ customer: c, card })));
 

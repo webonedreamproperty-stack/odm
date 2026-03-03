@@ -13,7 +13,7 @@ interface CustomerDirectoryProps {
   customers: Customer[];
   setCustomers: React.Dispatch<React.SetStateAction<Customer[]>>;
   readOnly?: boolean;
-  refreshData?: () => void;
+  refreshData?: () => Promise<void>;
 }
 
 export const CustomerDirectory: React.FC<CustomerDirectoryProps> = ({ customers, setCustomers, readOnly = false, refreshData }) => {
@@ -41,7 +41,7 @@ export const CustomerDirectory: React.FC<CustomerDirectoryProps> = ({ customers,
     setBusy(false);
     if (result.ok) {
       if (refreshData) {
-        refreshData();
+        void refreshData();
       } else {
         setCustomers(prev => prev.map(c => c.id === editingCustomer.id ? { ...c, ...formData } : c));
       }
@@ -63,7 +63,7 @@ export const CustomerDirectory: React.FC<CustomerDirectoryProps> = ({ customers,
     setBusy(false);
     if (result.ok) {
       if (refreshData) {
-        refreshData();
+        void refreshData();
       } else {
         const newCustomer: Customer = {
           id: newId,

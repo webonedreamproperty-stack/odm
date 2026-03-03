@@ -12,6 +12,8 @@ import { RequireRole } from './components/RequireRole';
 import { VerifyBanner } from './components/VerifyBanner';
 import { fetchCampaigns, upsertCampaign, deleteCampaign as dbDeleteCampaign } from './lib/db/campaigns';
 import { fetchCustomersWithCards } from './lib/db/customers';
+import { fetchPublicScanEntryContext } from './lib/db/issuedCards';
+import { buildIssuedCardsKioskUrl, buildStaffPortalUrl, buildStaffScanEntryUrl } from './lib/links';
 import { isSupabaseConfigured, SUPABASE_CONFIG_ERROR, supabase } from './lib/supabase';
 import { useSubscription } from './lib/useSubscription';
 import { SubscriptionProvider } from './components/SubscriptionContext';
@@ -148,6 +150,7 @@ const PublicCardWrapper: React.FC = () => {
               currentStamps={card.stamps}
               customerName={customer.name}
               cardId={card.uniqueId}
+              qrValue={buildStaffScanEntryUrl(slug ?? '', card.uniqueId)}
               className="h-full w-full"
               history={card.history}
               isRedeemed={isRedeemed}
@@ -169,6 +172,94 @@ const PublicCardWrapper: React.FC = () => {
           </div>
         )}
       </div>
+    </div>
+  );
+};
+
+const StaffScanEntryWrapper: React.FC = () => {
+  const { slug, uniqueId } = useParams<{ slug: string; uniqueId: string }>();
+  const navigate = useNavigate();
+  const { currentOwner, currentUser, loading } = useAuth();
+  const [loadingContext, setLoadingContext] = useState(true);
+  const [context, setContext] = useState<Awaited<ReturnType<typeof fetchPublicScanEntryContext>>>(null);
+
+  useEffect(() => {
+    if (!slug || !uniqueId) {
+      setLoadingContext(false);
+      setContext(null);
+      return;
+    }
+
+    let active = true;
+    setLoadingContext(true);
+
+    void (async () => {
+      const nextContext = await fetchPublicScanEntryContext(slug, uniqueId);
+      if (!active) return;
+      setContext(nextContext);
+      setLoadingContext(false);
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [slug, uniqueId]);
+
+  useEffect(() => {
+    if (loading || loadingContext || !context) return;
+
+    if (!currentUser || !currentOwner) {
+      window.location.replace(buildStaffPortalUrl(context.owner.slug, context.owner.id, context.card.uniqueId));
+      return;
+    }
+
+    if (currentOwner.id !== context.owner.id) {
+      return;
+    }
+
+    navigate(buildIssuedCardsKioskUrl(context.card.uniqueId), { replace: true });
+  }, [context, currentOwner, currentUser, loading, loadingContext, navigate]);
+
+  if (loading || loadingContext) {
+    return (
+      <div className="h-screen flex items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+      </div>
+    );
+  }
+
+  if (!context) {
+    return (
+      <div className="h-screen flex items-center justify-center px-6 text-center text-muted-foreground">
+        Card not found.
+      </div>
+    );
+  }
+
+  if (!currentUser || !currentOwner) {
+    return (
+      <div className="h-screen flex items-center justify-center px-6 text-center text-muted-foreground">
+        Redirecting to staff login...
+      </div>
+    );
+  }
+
+  if (currentOwner.id !== context.owner.id) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-background px-6">
+        <div className="w-full max-w-md rounded-2xl border bg-card p-6 text-center shadow-sm">
+          <h1 className="text-xl font-semibold text-foreground">Wrong business</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            This card is not part of your business.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="h-screen flex items-center justify-center px-6 text-center text-muted-foreground">
+      Opening kiosk...
     </div>
   );
 };
@@ -326,31 +417,37 @@ const AppRoutes: React.FC = () => {
   const { currentOwner, isStaff } = useAuth();
   const [createdCards, setCreatedCards] = useState<Template[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [dataReady, setDataReady] = useState(false);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [upgradeReason, setUpgradeReason] = useState<'campaign' | 'card' | 'staff' | undefined>();
 
   const sub = useSubscription(createdCards, customers);
 
   const loadData = useCallback(async (ownerId: string) => {
+    setDataReady(false);
     const [storedCampaigns, storedCustomers] = await Promise.all([
       fetchCampaigns(ownerId),
       fetchCustomersWithCards(ownerId),
     ]);
     setCreatedCards(storedCampaigns.map(fromStoredTemplate));
     setCustomers(storedCustomers);
+    setDataReady(true);
   }, []);
 
   useEffect(() => {
     if (!currentOwner) {
       setCreatedCards([]);
       setCustomers([]);
+      setDataReady(true);
       return;
     }
-    loadData(currentOwner.id);
+    void loadData(currentOwner.id);
   }, [currentOwner?.id, loadData]);
 
-  const refreshData = useCallback(() => {
-    if (currentOwner) loadData(currentOwner.id);
+  const refreshData = useCallback(async () => {
+    if (currentOwner) {
+      await loadData(currentOwner.id);
+    }
   }, [currentOwner, loadData]);
 
   const showUpgrade = useCallback((reason: 'campaign' | 'card' | 'staff') => {
@@ -408,6 +505,7 @@ const AppRoutes: React.FC = () => {
         <Route path="/showcase" element={withSuspense(<ShowcasePage />)} />
         <Route path="/articles/getting-started" element={withSuspense(<GettingStartedArticlePage />)} />
         <Route path="/:slug/staff" element={withSuspense(<StaffLoginPage />)} />
+        <Route path="/:slug/scan/:uniqueId" element={<StaffScanEntryWrapper />} />
         <Route path="/:slug/:uniqueId" element={<PublicCardWrapper />} />
         <Route path="/login" element={withSuspense(<LoginPage />)} />
         <Route path="/signup" element={withSuspense(<SignupPage />)} />
@@ -443,6 +541,7 @@ const AppRoutes: React.FC = () => {
                     campaigns={createdCards}
                     setCustomers={setCustomers}
                     refreshData={refreshData}
+                    dataReady={dataReady}
                     onUpgrade={() => showUpgrade('card')}
                   />
                 )

@@ -4,9 +4,25 @@ export const buildPublicCardUrl = (slug: string, uniqueId: string) => {
   return `${window.location.origin}/${slug}/${uniqueId}`;
 };
 
-export const buildStaffPortalUrl = (slug: string, orgId: string) => {
+export const buildStaffPortalUrl = (slug: string, orgId: string, kioskUniqueId?: string) => {
   if (!slug || !orgId) return "";
-  const path = `/${slug}/staff?id=${encodeURIComponent(orgId)}`;
+  const params = new URLSearchParams({ id: orgId });
+  if (kioskUniqueId) {
+    params.set("kiosk", kioskUniqueId);
+  }
+  const path = `/${slug}/staff?${params.toString()}`;
   if (typeof window === "undefined") return path;
   return `${window.location.origin}${path}`;
+};
+
+export const buildStaffScanEntryUrl = (slug: string, uniqueId: string) => {
+  if (!slug || !uniqueId) return "";
+  const path = `/${slug}/scan/${encodeURIComponent(uniqueId)}`;
+  if (typeof window === "undefined") return path;
+  return `${window.location.origin}${path}`;
+};
+
+export const buildIssuedCardsKioskUrl = (uniqueId: string) => {
+  if (!uniqueId) return "/issued-cards";
+  return `/issued-cards?kiosk=${encodeURIComponent(uniqueId)}`;
 };

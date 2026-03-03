@@ -352,6 +352,76 @@ begin
 end;
 $$ language plpgsql security definer;
 
+create or replace function public.get_scan_entry_context(slug_input text, card_unique_id uuid)
+returns jsonb as $$
+declare
+  owner_row record;
+  card_row record;
+begin
+  select id, slug, business_name into owner_row
+  from public.profiles
+  where slug = slug_input and role = 'owner';
+  if not found then return null; end if;
+
+  select unique_id into card_row
+  from public.issued_cards
+  where unique_id = card_unique_id and owner_id = owner_row.id;
+  if not found then return null; end if;
+
+  return jsonb_build_object(
+    'owner', jsonb_build_object(
+      'id', owner_row.id,
+      'slug', owner_row.slug,
+      'businessName', owner_row.business_name
+    ),
+    'card', jsonb_build_object(
+      'uniqueId', card_row.unique_id
+    )
+  );
+end;
+$$ language plpgsql security definer
+set search_path = public;
+
+create or replace function public.inspect_scanned_card(card_unique_id uuid)
+returns jsonb as $$
+declare
+  actor_row record;
+  card_row record;
+  actor_owner_id uuid;
+begin
+  select id, role, owner_id into actor_row
+  from public.profiles
+  where id = auth.uid();
+  if not found then
+    return jsonb_build_object('status', 'missing');
+  end if;
+
+  actor_owner_id := case
+    when actor_row.role = 'owner' then actor_row.id
+    else actor_row.owner_id
+  end;
+
+  if actor_owner_id is null then
+    return jsonb_build_object('status', 'missing');
+  end if;
+
+  select owner_id into card_row
+  from public.issued_cards
+  where unique_id = card_unique_id;
+
+  if not found then
+    return jsonb_build_object('status', 'missing');
+  end if;
+
+  if card_row.owner_id <> actor_owner_id then
+    return jsonb_build_object('status', 'foreign');
+  end if;
+
+  return jsonb_build_object('status', 'owned');
+end;
+$$ language plpgsql security definer
+set search_path = public;
+
 
 -- 9. CREATE STAFF ACCOUNT (RPC)
 create or replace function public.create_staff_account(
