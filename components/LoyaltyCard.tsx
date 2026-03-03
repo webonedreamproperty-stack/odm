@@ -2,6 +2,7 @@ import React, { Suspense, lazy, useState, useEffect, useRef } from 'react';
 import { BackgroundDoodles } from './BackgroundDoodles';
 import { StampSlot } from './StampSlot';
 import { RewardModal } from './RewardModal';
+import { QrCodeDisplay } from './ui/qr-code-display';
 import { generateReward } from '../services/geminiService';
 import { Template, Transaction } from '../types';
 import { cn, resolveHexAndOpacity, hexToRgba } from '../lib/utils';
@@ -543,11 +544,7 @@ export const LoyaltyCard: React.FC<LoyaltyCardProps> = ({
                 )}>
                     <div className="relative p-2 rounded-xl border-2 border-gray-100">
                         {qrValue ? (
-                          <img
-                            src={`https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(qrValue)}`}
-                            alt="Card QR code"
-                            className="h-[220px] w-[220px] rounded-lg object-contain"
-                          />
+                          <QrCodeDisplay value={qrValue} label="Card QR code" className="h-[220px] w-[220px] rounded-lg" />
                         ) : (
                           <>
                             <QrCode size={220} className="text-gray-900" />

@@ -333,7 +333,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const loginDemo = useCallback(async () => {
     if (!isSupabaseConfigured) return;
-    const demoEmail = "demo@stampee.com";
+    const demoEmail = "demo@stampee.co";
     const demoPassword = "demo1234";
     const { error } = await supabase.auth.signInWithPassword({
       email: demoEmail,

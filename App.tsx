@@ -19,6 +19,19 @@ import { useSubscription } from './lib/useSubscription';
 import { SubscriptionProvider } from './components/SubscriptionContext';
 import { UpgradePrompt } from './components/UpgradePrompt';
 
+const SITE_ORIGIN = 'https://stampee.co';
+const DEFAULT_SOCIAL_DESCRIPTION = 'Your future loyalty game-changer! \u{1F440} #SmallBizSuperhero #digitalloyalty #stampee';
+const DEFAULT_OG_IMAGE = `${SITE_ORIGIN}/image_1.jpg`;
+
+type SeoConfig = {
+  title: string;
+  description: string;
+  socialDescription?: string;
+  canonical: string;
+  robots: string;
+  type?: 'website' | 'article';
+};
+
 const LoyaltyCard = lazy(() => import('./components/LoyaltyCard').then((module) => ({ default: module.LoyaltyCard })));
 const CardEditor = lazy(() => import('./components/CardEditor').then((module) => ({ default: module.CardEditor })));
 const MyCards = lazy(() => import('./components/MyCards').then((module) => ({ default: module.MyCards })));
@@ -27,13 +40,15 @@ const CustomerDirectory = lazy(() => import('./components/CustomerDirectory').th
 const TemplatesGallery = lazy(() => import('./components/TemplatesGallery').then((module) => ({ default: module.TemplatesGallery })));
 const TransactionsPage = lazy(() => import('./components/TransactionsPage').then((module) => ({ default: module.TransactionsPage })));
 const AnalyticsPage = lazy(() => import('./components/AnalyticsPage').then((module) => ({ default: module.AnalyticsPage })));
-const LoginPage = lazy(() => import('./components/LoginClassicPage').then((module) => ({ default: module.LoginClassicPage })));
-const SignupPage = lazy(() => import('./components/SignupClassicPage').then((module) => ({ default: module.SignupClassicPage })));
+const LoginPage = lazy(() => import('./components/LoginPage').then((module) => ({ default: module.LoginPage })));
+const SignupPage = lazy(() => import('./components/SignupPage').then((module) => ({ default: module.SignupPage })));
 const StaffLoginPage = lazy(() => import('./components/StaffLoginPage').then((module) => ({ default: module.StaffLoginPage })));
 const SettingsPage = lazy(() => import('./components/SettingsPage').then((module) => ({ default: module.SettingsPage })));
 const LandingPage = lazy(() => import('./components/LandingPage').then((module) => ({ default: module.LandingPage })));
 const ForgotPasswordPage = lazy(() => import('./components/ForgotPasswordPage').then((module) => ({ default: module.ForgotPasswordPage })));
 const DashboardPage = lazy(() => import('./components/DashboardPage').then((module) => ({ default: module.DashboardPage })));
+const ArticlesPage = lazy(() => import('./components/ArticlesPage').then((module) => ({ default: module.ArticlesPage })));
+const PrivacyPolicyPage = lazy(() => import('./components/PrivacyPolicyPage').then((module) => ({ default: module.PrivacyPolicyPage })));
 const GettingStartedArticlePage = lazy(() => import('./components/GettingStartedArticlePage').then((module) => ({ default: module.GettingStartedArticlePage })));
 const ShowcasePage = lazy(() => import('./components/ShowcasePage').then((module) => ({ default: module.ShowcasePage })));
 
@@ -48,6 +63,144 @@ const withSuspense = (node: React.ReactNode) => (
     {node}
   </Suspense>
 );
+
+const setMetaTag = (attribute: 'name' | 'property', key: string, content: string) => {
+  let tag = document.head.querySelector(`meta[${attribute}="${key}"]`) as HTMLMetaElement | null;
+  if (!tag) {
+    tag = document.createElement('meta');
+    tag.setAttribute(attribute, key);
+    document.head.appendChild(tag);
+  }
+  tag.setAttribute('content', content);
+};
+
+const setCanonicalLink = (href: string) => {
+  let link = document.head.querySelector('link[rel="canonical"]') as HTMLLinkElement | null;
+  if (!link) {
+    link = document.createElement('link');
+    link.setAttribute('rel', 'canonical');
+    document.head.appendChild(link);
+  }
+  link.setAttribute('href', href);
+};
+
+const getSeoForPathname = (pathname: string): SeoConfig => {
+  const normalizedPath = pathname === '/' ? '/' : pathname.replace(/\/+$/, '');
+  const canonical = `${SITE_ORIGIN}${normalizedPath}`;
+  const defaultSeo: SeoConfig = {
+    title: 'Stampee | Digital Loyalty Cards for Small Businesses',
+    description: 'Launch digital loyalty cards for your small business. Reward repeat customers, track visits, and grow without paper cards or app installs.',
+    socialDescription: DEFAULT_SOCIAL_DESCRIPTION,
+    canonical,
+    robots: 'index,follow',
+    type: 'website',
+  };
+
+  if (normalizedPath === '/') {
+    return defaultSeo;
+  }
+
+  if (normalizedPath === '/showcase') {
+    return {
+      ...defaultSeo,
+      title: 'Showcase | Stampee',
+      description: 'Explore digital loyalty card demos built for cafes, retail stores, salons, and other small businesses using Stampee.',
+      canonical,
+    };
+  }
+
+  if (normalizedPath === '/articles') {
+    return {
+      ...defaultSeo,
+      title: 'Articles | Stampee',
+      description: 'Read practical guides on launching digital loyalty cards, improving customer retention, and running better small business campaigns.',
+      canonical,
+    };
+  }
+
+  if (normalizedPath === '/articles/getting-started') {
+    return {
+      ...defaultSeo,
+      title: 'Getting Started With Digital Loyalty Cards | Stampee',
+      description: 'Learn how to launch your first Stampee campaign, issue cards, and start tracking repeat visits without paper punch cards.',
+      canonical,
+      type: 'article',
+    };
+  }
+
+  if (normalizedPath === '/privacy-policy') {
+    return {
+      ...defaultSeo,
+      title: 'Privacy Policy | Stampee',
+      description: 'Review the Stampee privacy policy and how customer, campaign, and account information is handled.',
+      canonical,
+    };
+  }
+
+  const isNoIndexRoute =
+    normalizedPath === '/login' ||
+    normalizedPath === '/signup' ||
+    normalizedPath === '/forgot-password' ||
+    normalizedPath === '/dashboard' ||
+    normalizedPath === '/campaigns' ||
+    normalizedPath === '/gallery' ||
+    normalizedPath === '/analytics' ||
+    normalizedPath === '/transactions' ||
+    normalizedPath === '/settings' ||
+    normalizedPath === '/issued-cards' ||
+    normalizedPath === '/customers' ||
+    normalizedPath.startsWith('/active/') ||
+    normalizedPath.startsWith('/preview/') ||
+    normalizedPath.startsWith('/editor/') ||
+    /^\/[^/]+\/staff$/.test(normalizedPath) ||
+    /^\/[^/]+\/scan\/[^/]+$/.test(normalizedPath) ||
+    /^\/[^/]+\/[^/]+$/.test(normalizedPath);
+
+  if (isNoIndexRoute) {
+    return {
+      ...defaultSeo,
+      title: 'Stampee',
+      description: defaultSeo.description,
+      canonical,
+      robots: 'noindex,nofollow',
+    };
+  }
+
+  return defaultSeo;
+};
+
+const SeoManager: React.FC = () => {
+  const location = useLocation();
+
+  useEffect(() => {
+    const seo = getSeoForPathname(location.pathname);
+    const socialDescription = seo.socialDescription ?? seo.description;
+
+    document.title = seo.title;
+    setCanonicalLink(seo.canonical);
+    setMetaTag('name', 'description', seo.description);
+    setMetaTag('name', 'robots', seo.robots);
+    setMetaTag('property', 'og:locale', 'en_US');
+    setMetaTag('property', 'og:type', seo.type ?? 'website');
+    setMetaTag('property', 'og:site_name', 'Stampee');
+    setMetaTag('property', 'og:title', seo.title);
+    setMetaTag('property', 'og:description', socialDescription);
+    setMetaTag('property', 'og:url', seo.canonical);
+    setMetaTag('property', 'og:image', DEFAULT_OG_IMAGE);
+    setMetaTag('property', 'og:image:secure_url', DEFAULT_OG_IMAGE);
+    setMetaTag('property', 'og:image:type', 'image/jpeg');
+    setMetaTag('property', 'og:image:width', '1536');
+    setMetaTag('property', 'og:image:height', '1024');
+    setMetaTag('property', 'og:image:alt', 'Stampee digital loyalty card preview');
+    setMetaTag('name', 'twitter:card', 'summary_large_image');
+    setMetaTag('name', 'twitter:title', seo.title);
+    setMetaTag('name', 'twitter:description', socialDescription);
+    setMetaTag('name', 'twitter:image', DEFAULT_OG_IMAGE);
+    setMetaTag('name', 'twitter:image:alt', 'Stampee digital loyalty card preview');
+  }, [location.pathname]);
+
+  return null;
+};
 
 const PublicCardWrapper: React.FC = () => {
   const { slug, uniqueId } = useParams<{ slug: string; uniqueId: string }>();
@@ -508,6 +661,8 @@ const AppRoutes: React.FC = () => {
         {/* Public Routes */}
         <Route path="/" element={withSuspense(<LandingPage />)} />
         <Route path="/showcase" element={withSuspense(<ShowcasePage />)} />
+        <Route path="/articles" element={withSuspense(<ArticlesPage />)} />
+        <Route path="/privacy-policy" element={withSuspense(<PrivacyPolicyPage />)} />
         <Route path="/articles/getting-started" element={withSuspense(<GettingStartedArticlePage />)} />
         <Route path="/:slug/staff" element={withSuspense(<StaffLoginPage />)} />
         <Route path="/:slug/scan/:uniqueId" element={<StaffScanEntryWrapper />} />
@@ -575,6 +730,7 @@ const App: React.FC = () => {
   return (
     <AuthProvider>
       <BrowserRouter>
+        <SeoManager />
         <AppRoutes />
       </BrowserRouter>
     </AuthProvider>

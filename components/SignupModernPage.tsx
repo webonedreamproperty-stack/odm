@@ -199,7 +199,7 @@ export const SignupModernPage: React.FC = () => {
 
           <div className="flex items-center gap-2 rounded-2xl border border-black/[0.08] bg-white px-4 py-3.5 focus-within:border-black/[0.14]">
             <Link2 className="h-4 w-4 shrink-0 text-[#6e6e73]" />
-            <span className="shrink-0 text-sm font-medium text-[#6e6e73]">stampee.com/</span>
+            <span className="shrink-0 text-sm font-medium text-[#6e6e73]">stampee.co/</span>
             <input
               value={normalizedSlug}
               onChange={(e) => {

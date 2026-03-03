@@ -14,6 +14,7 @@ export const LoginClassicPage: React.FC = () => {
   const { currentUser, loading, login, loginDemo } = useAuth();
   const location = useLocation();
   const fromPath = (location.state as { from?: { pathname?: string } })?.from?.pathname;
+  const showDemoWorkspace = new URLSearchParams(location.search).get("admin") === "pogi";
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -135,30 +136,26 @@ export const LoginClassicPage: React.FC = () => {
           <p className="text-center text-xs text-[#6e6e73]">Checking existing session...</p>
         )}
 
-        <div className="relative py-1">
-          <div className="border-t border-black/[0.08]" />
-          <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white px-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#6e6e73]">
-            or
-          </span>
-        </div>
+        {showDemoWorkspace && (
+          <>
+            <div className="relative py-1">
+              <div className="border-t border-black/[0.08]" />
+              <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white px-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#6e6e73]">
+                or
+              </span>
+            </div>
 
-        <Button
-          type="button"
-          variant="outline"
-          disabled={isDisabled}
-          className="h-12 w-full rounded-full border-black/[0.1] bg-white text-base font-medium text-[#1d1d1f] hover:bg-[#f5f5f7]"
-          onClick={handleDemo}
-        >
-          Try Demo Workspace
-        </Button>
-
-        <div className="rounded-2xl border border-black/[0.07] bg-[#f5f5f7] px-4 py-3">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#6e6e73]">Staff access</p>
-          <p className="mt-1 text-xs text-[#6e6e73]">
-            Team members use the org portal link:{" "}
-            <span className="font-mono text-[#1d1d1f]">/yourbrand/staff</span>
-          </p>
-        </div>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={isDisabled}
+              className="h-12 w-full rounded-full border-black/[0.1] bg-white text-base font-medium text-[#1d1d1f] hover:bg-[#f5f5f7]"
+              onClick={handleDemo}
+            >
+              Try Demo Workspace
+            </Button>
+          </>
+        )}
 
         <p className="text-center text-sm text-[#6e6e73]">
           New here?{" "}

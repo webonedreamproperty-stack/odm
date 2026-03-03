@@ -8,8 +8,8 @@ import { useAuth } from "./AuthProvider";
 import { getSlugHint, isSlugValid, normalizeSlug } from "../lib/slug";
 
 const inputCls =
-  "h-14 rounded-2xl border-black/[0.06] bg-[#f4f3ee] px-5 text-base text-[#111111] placeholder:text-[#6f7066] focus-visible:border-black/[0.12] focus-visible:ring-0";
-const labelCls = "block text-[11px] font-semibold uppercase tracking-[0.16em] text-[#6e6e73]";
+  "h-14 rounded-[1.2rem] border border-black/[0.08] bg-[#f4f1ea] px-4 text-[15px] text-[#171512] shadow-none placeholder:text-[#8a8276] focus-visible:border-black/25 focus-visible:bg-white focus-visible:ring-0";
+const labelCls = "block text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-[#777062]";
 
 export const SignupPage: React.FC = () => {
   const { currentUser, loading, signup, isSlugAvailable } = useAuth();
@@ -120,7 +120,6 @@ export const SignupPage: React.FC = () => {
     } finally {
       setBusy(false);
     }
-    // Redirect happens automatically when currentUser is set by onAuthStateChange
   };
 
   if (!loading && currentUser) {
@@ -137,9 +136,8 @@ export const SignupPage: React.FC = () => {
       badge="Get started"
       mode="signup"
     >
-      <form className="space-y-4" onSubmit={handleSubmit}>
-
-          <p className="mt-1 text-sm text-[#6e6e73]">Free to start — no credit card required.</p>
+      <form className="space-y-5" onSubmit={handleSubmit}>
+        <p className="text-sm leading-6 text-[#6d6658]">Free to start, no credit card required.</p>
 
         <div className="space-y-1.5">
           <label className={labelCls}>Business name</label>
@@ -178,8 +176,8 @@ export const SignupPage: React.FC = () => {
           />
         </div>
 
-        <div className="space-y-2 rounded-2xl border border-black/[0.07] bg-[#f5f5f7] p-3">
-          <div className="flex items-center justify-between">
+        <div className="space-y-3 rounded-[1.35rem] border border-black/[0.08] bg-[#f5f1e8] p-4">
+          <div className="flex items-center justify-between gap-3">
             <label className={labelCls}>Your public URL</label>
             {normalizedSlug && (
               <span
@@ -196,38 +194,38 @@ export const SignupPage: React.FC = () => {
             )}
           </div>
 
-          <div className="flex items-center gap-2 rounded-xl border border-black/[0.1] bg-white px-4 py-3 focus-within:border-[#1d1d1f]">
-            <Link2 className="h-4 w-4 shrink-0 text-[#6e6e73]" />
-            <span className="shrink-0 text-sm font-medium text-[#6e6e73]">stampee.com/</span>
+          <div className="flex items-center gap-2 rounded-[1.2rem] border border-black/[0.08] bg-white px-4 py-3.5 focus-within:border-black/25">
+            <Link2 className="h-4 w-4 shrink-0 text-[#777062]" />
+            <span className="shrink-0 text-sm font-medium text-[#777062]">stampee.co/</span>
             <input
               value={normalizedSlug}
               onChange={(e) => {
                 setSlugTouched(true);
                 setSlugInput(e.target.value);
               }}
-              className="min-w-0 flex-1 bg-transparent font-mono text-sm text-[#1d1d1f] outline-none placeholder:text-[#6e6e73]/50"
+              className="min-w-0 flex-1 bg-transparent font-mono text-sm text-[#171512] outline-none placeholder:text-[#8a8276]"
               placeholder="yourbrand"
               required
             />
           </div>
 
-          <p className="text-xs text-[#6e6e73]">
+          <p className="text-xs leading-6 text-[#6d6658]">
             {slugHint} Lowercase letters, numbers, and hyphens only.
           </p>
           {slugCheckFailed && (
-            <p className="text-xs text-amber-700">
+            <p className="text-xs leading-6 text-amber-700">
               Could not verify URL availability right now. You can still continue.
             </p>
           )}
         </div>
 
         {error && (
-          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+          <div className="rounded-[1.2rem] border border-red-200 bg-red-50/90 px-4 py-3 text-sm text-red-600">
             {error}
           </div>
         )}
         {info && (
-          <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+          <div className="rounded-[1.2rem] border border-emerald-200 bg-emerald-50/90 px-4 py-3 text-sm text-emerald-700">
             {info}
           </div>
         )}
@@ -235,23 +233,22 @@ export const SignupPage: React.FC = () => {
         <Button
           type="submit"
           disabled={isDisabled}
-          className="h-11 w-full rounded-full bg-[#1d1d1f] text-sm font-medium text-white shadow-sm hover:bg-black/80 disabled:opacity-40"
+          className="h-14 w-full rounded-[1.2rem] bg-[#1b1813] text-base font-semibold text-white shadow-none hover:bg-[#11100d] disabled:opacity-40"
         >
           {isSubmitting ? "Creating..." : "Create Workspace"}
           {!isSubmitting && <ArrowRight className="ml-2 h-4 w-4" />}
         </Button>
         {loading && !busy && (
-          <p className="text-center text-xs text-[#6e6e73]">Checking existing session...</p>
+          <p className="text-center text-xs text-[#777062]">Checking existing session...</p>
         )}
 
-        <p className="text-center text-sm text-[#6e6e73]">
+        <p className="text-center text-sm text-[#6d6658]">
           Already have an account?{" "}
-          <Link to="/login" className="font-semibold text-[#1d1d1f] underline-offset-2 hover:underline">
+          <Link to="/login" className="font-semibold text-[#171512] underline-offset-2 hover:underline">
             Log in
           </Link>
         </p>
-
       </form>
-    </AuthLayout>
+    </AuthSplitLayout>
   );
 };

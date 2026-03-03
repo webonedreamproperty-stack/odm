@@ -4,6 +4,7 @@ import { ArrowRight, LayoutGrid, MonitorPlay } from "lucide-react";
 import { templates } from "../data/templates";
 import { Template } from "../types";
 import { LoyaltyCard } from "./LoyaltyCard";
+import { PublicFooter } from "./PublicFooter";
 import { Button } from "./ui/button";
 import { useAuth } from "./AuthProvider";
 import { cn } from "../lib/utils";
@@ -118,7 +119,7 @@ export const ShowcasePage: React.FC = () => {
           </Link>
           <nav className="flex items-center gap-2">
             <Button asChild variant="ghost" className="hidden rounded-full text-sm font-medium text-[#1d1d1f] hover:bg-black/[0.06] sm:inline-flex">
-              <Link to="/articles/getting-started">Getting started</Link>
+              <Link to="/articles">Articles</Link>
             </Button>
             <Button asChild className="rounded-full bg-[#1d1d1f] px-5 text-sm font-medium text-white hover:bg-black/80">
               <Link to={primaryPath}>{primaryLabel}</Link>
@@ -152,7 +153,7 @@ export const ShowcasePage: React.FC = () => {
                   <Link to="#templates">Browse templates</Link>
                 </Button>
                 <Button asChild variant="ghost" className="h-14 rounded-[1.4rem] bg-white/55 px-8 text-base font-medium text-[#17351a] hover:bg-white/75">
-                  <Link to="/articles/getting-started">How to launch</Link>
+                  <Link to="/articles">Read articles</Link>
                 </Button>
               </div>
             </div>
@@ -232,6 +233,7 @@ export const ShowcasePage: React.FC = () => {
           </div>
         </section>
       </main>
+      <PublicFooter />
     </div>
   );
 };

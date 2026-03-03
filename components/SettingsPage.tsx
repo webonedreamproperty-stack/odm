@@ -211,7 +211,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onUpgrade }) => {
               <div className="space-y-1.5">
                 <Label>Public URL Slug</Label>
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground shrink-0">stampee.com/</span>
+                  <span className="text-sm text-muted-foreground shrink-0">stampee.co/</span>
                   <Input
                     value={profileForm.slug}
                     readOnly

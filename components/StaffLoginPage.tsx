@@ -1,11 +1,15 @@
 import React, { useEffect, useState } from "react";
 import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
-import { AuthLayout } from "./AuthLayout";
+import { ArrowRight } from "lucide-react";
+import { AuthSplitLayout } from "./AuthSplitLayout";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
-import { Label } from "./ui/label";
 import { useAuth } from "./AuthProvider";
 import { buildIssuedCardsKioskUrl } from "../lib/links";
+
+const inputCls =
+  "h-14 rounded-[1.2rem] border border-black/[0.08] bg-[#f4f1ea] px-4 text-[15px] text-[#171512] shadow-none placeholder:text-[#8a8276] focus-visible:border-black/25 focus-visible:bg-white focus-visible:ring-0";
+const labelCls = "block text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-[#777062]";
 
 export const StaffLoginPage: React.FC = () => {
   const { currentUser, loginStaff } = useAuth();
@@ -63,69 +67,92 @@ export const StaffLoginPage: React.FC = () => {
     }
   };
 
+  const hasPrefilledOrgId = Boolean(searchParams.get("id"));
+
   return (
-    <AuthLayout
-      title="Staff Portal"
-      subtitle="Log in with your email, PIN, and Org ID to start issuing cards."
+    <AuthSplitLayout
+      title="Staff portal"
+      subtitle="Log in with your email, PIN, and Org ID to issue cards, scan kiosk traffic, and keep the line moving."
       badge="Team access"
+      mode="staff"
     >
-      <form className="space-y-6" onSubmit={handleSubmit}>
-        <div>
-          <Label>Email</Label>
+      <form className="space-y-5" onSubmit={handleSubmit}>
+        <p className="text-sm leading-6 text-[#6d6658]">
+          Staff credentials remain separate from owner login and stay tied to the correct business Org ID.
+        </p>
+
+        {kioskId && (
+          <div className="rounded-[1.35rem] border border-black/[0.08] bg-[#fbf3e6] px-4 py-4 text-sm text-[#6a5845]">
+            Kiosk session detected. After login you will be sent straight into the scan flow for this device.
+          </div>
+        )}
+
+        <div className="space-y-1.5">
+          <label className={labelCls}>Email</label>
           <Input
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             placeholder="you@brand.com"
-            className="mt-2"
+            className={inputCls}
             type="email"
             autoComplete="email"
             required
           />
         </div>
-        <div>
-          <Label>PIN</Label>
+
+        <div className="space-y-1.5">
+          <label className={labelCls}>PIN</label>
           <Input
             value={pin}
             onChange={(event) => setPin(event.target.value)}
             placeholder="4-6 digits"
-            className="mt-2"
+            className={inputCls}
             type="password"
             inputMode="numeric"
             maxLength={6}
             required
           />
         </div>
-        <div>
-          <Label>Org ID</Label>
+
+        <div className="space-y-1.5">
+          <label className={labelCls}>Org ID</label>
           <Input
             value={orgId}
             onChange={(event) => setOrgId(event.target.value)}
             placeholder="owner business ID"
-            className="mt-2 font-mono"
+            className={`${inputCls} font-mono`}
             required
-            disabled={!!searchParams.get("id")}
+            disabled={hasPrefilledOrgId}
           />
-          <p className="mt-2 text-xs text-muted-foreground">
-            {searchParams.get("id")
-              ? "This Org ID is pre-filled from your portal link."
-              : "Ask your owner for the Org ID from Settings."}
+          <p className="text-xs leading-6 text-[#6d6658]">
+            {hasPrefilledOrgId
+              ? "This Org ID was pre-filled from your staff portal link."
+              : "Ask your owner for the Org ID from Settings if you do not already have the portal link."}
           </p>
         </div>
+
         {error && (
-          <div className="rounded-md border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          <div className="rounded-[1.2rem] border border-red-200 bg-red-50/90 px-4 py-3 text-sm text-red-600">
             {error}
           </div>
         )}
-        <Button type="submit" className="h-12 w-full text-base" disabled={busy}>
+
+        <Button
+          type="submit"
+          className="h-14 w-full rounded-[1.2rem] bg-[#1b1813] text-base font-semibold text-white shadow-none hover:bg-[#11100d]"
+          disabled={busy}
+        >
           {busy ? "Logging in..." : "Log in as Staff"}
+          {!busy && <ArrowRight className="ml-2 h-4 w-4" />}
         </Button>
-        <div className="text-center text-sm text-muted-foreground">
+
+        <div className="rounded-[1.35rem] border border-black/[0.08] bg-[#f5f1e8] px-4 py-4 text-sm text-[#6d6658]">
           Owner login?{" "}
-          <Link to="/login" className="font-semibold text-foreground underline">
+          <Link to="/login" className="font-semibold text-[#171512] underline-offset-2 hover:underline">
             Go to main login
           </Link>
         </div>
       </form>
-    </AuthLayout>
+    </AuthSplitLayout>
   );
 };

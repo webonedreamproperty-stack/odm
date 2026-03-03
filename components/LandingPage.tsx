@@ -339,6 +339,9 @@ export const LandingPage: React.FC = () => {
             <Button asChild variant="ghost" className="hidden rounded-full text-sm font-medium text-[#1d1d1f] hover:bg-black/[0.06] sm:inline-flex">
               <Link to="/showcase">Demos</Link>
             </Button>
+            <Button asChild variant="ghost" className="hidden rounded-full text-sm font-medium text-[#1d1d1f] hover:bg-black/[0.06] sm:inline-flex">
+              <Link to="/articles">Articles</Link>
+            </Button>
             {currentUser ? (
               <Button asChild className="rounded-full bg-[#1d1d1f] px-4 text-sm font-medium text-white hover:bg-black/80 sm:px-5">
                 <Link to={dashboardPath}>Go to Dashboard</Link>
@@ -831,10 +834,10 @@ export const LandingPage: React.FC = () => {
               Demos & Templates
             </Link>
             <Link
-              to="/articles/getting-started"
+              to="/articles"
               className="text-xs font-medium text-white/55 transition-colors hover:text-white"
             >
-              Getting Started
+              Articles
             </Link>
             <p className="text-xs text-white/25">© {new Date().getFullYear()} Cookees. All rights reserved.</p>
           </div>

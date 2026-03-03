@@ -4,6 +4,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
+import { QrCodeDisplay } from "./ui/qr-code-display";
 import { Search, CreditCard, ChevronRight, UserPlus, CheckCircle2, User, ArrowLeft, Copy, ExternalLink } from "lucide-react";
 import { useAuth } from './AuthProvider';
 import { buildPublicCardUrl } from '../lib/links';
@@ -211,11 +212,7 @@ export const IssueCardDialog: React.FC<IssueCardDialogProps> = ({
                     {step === 'success' && createdCard && (
                         <div className="flex h-full flex-col items-center justify-center space-y-6 p-4 animate-fade-in sm:p-6">
                             <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-                                <img 
-                                    src={`https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(publicUrl)}`} 
-                                    alt="QR Code" 
-                                    className="h-56 w-56 object-contain sm:h-72 sm:w-72"
-                                />
+                                <QrCodeDisplay value={publicUrl} label="QR code" className="h-56 w-56 sm:h-72 sm:w-72" />
                             </div>
                             <div className="text-center space-y-2 w-full max-w-xs">
                                 <p className="text-sm text-muted-foreground">Scan to access loyalty card</p>

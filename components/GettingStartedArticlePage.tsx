@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { ArrowLeft, ArrowRight, CheckCircle2, Clock3, Sparkles } from "lucide-react";
 import { Button } from "./ui/button";
 import { useAuth } from "./AuthProvider";
+import { PublicFooter } from "./PublicFooter";
 
 const steps = [
   {
@@ -111,6 +112,9 @@ export const GettingStartedArticlePage: React.FC = () => {
                 <ArrowLeft className="mr-2 h-4 w-4" />
                 Home
               </Link>
+            </Button>
+            <Button asChild variant="ghost" className="hidden rounded-full text-sm text-[#1d1d1f] hover:bg-black/[0.06] sm:inline-flex">
+              <Link to="/articles">Articles</Link>
             </Button>
             <Button asChild className="rounded-full bg-[#1d1d1f] px-5 text-sm font-medium text-white hover:bg-black/80">
               <Link to={primaryPath}>{primaryLabel}</Link>
@@ -277,6 +281,7 @@ export const GettingStartedArticlePage: React.FC = () => {
           </div>
         </section>
       </main>
+      <PublicFooter />
     </div>
   );
 };

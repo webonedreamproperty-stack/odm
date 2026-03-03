@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "generate:sitemap": "node scripts/generate-sitemap.mjs",
+    "build": "npm run generate:sitemap && vite build",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -23,6 +24,7 @@
     "qr-scanner": "^1.4.2",
     "react": "18.3.1",
     "react-dom": "18.3.1",
+    "react-qr-code": "^2.0.18",
     "react-router-dom": "6.22.3",
     "simple-icons": "^16.7.0",
     "tailwind-merge": "^2.6.1"

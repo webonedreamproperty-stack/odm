@@ -7,13 +7,14 @@ import { Input } from "./ui/input";
 import { useAuth } from "./AuthProvider";
 
 const inputCls =
-  "h-14 rounded-2xl border-black/[0.06] bg-[#f4f3ee] px-5 text-base text-[#111111] placeholder:text-[#6f7066] focus-visible:border-black/[0.12] focus-visible:ring-0";
-const labelCls = "block text-[11px] font-semibold uppercase tracking-[0.16em] text-[#6e6e73]";
+  "h-14 rounded-[1.2rem] border border-black/[0.08] bg-[#f4f1ea] px-4 text-[15px] text-[#171512] shadow-none placeholder:text-[#8a8276] focus-visible:border-black/25 focus-visible:bg-white focus-visible:ring-0";
+const labelCls = "block text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-[#777062]";
 
 export const LoginPage: React.FC = () => {
   const { currentUser, loading, login, loginDemo } = useAuth();
   const location = useLocation();
   const fromPath = (location.state as { from?: { pathname?: string } })?.from?.pathname;
+  const showDemoWorkspace = new URLSearchParams(location.search).get("admin") === "pogi";
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -80,7 +81,11 @@ export const LoginPage: React.FC = () => {
       badge="Sign in"
       mode="login"
     >
-      <form className="space-y-4" onSubmit={handleSubmit}>
+      <form className="space-y-5" onSubmit={handleSubmit}>
+        <p className="text-sm leading-6 text-[#6d6658]">
+          Owner access only. Staff members should continue using their dedicated portal link and PIN.
+        </p>
+
         <div className="space-y-1.5">
           <label className={labelCls}>Email</label>
           <Input
@@ -116,7 +121,7 @@ export const LoginPage: React.FC = () => {
         </div>
 
         {error && (
-          <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+          <div className="rounded-[1.2rem] border border-red-200 bg-red-50/90 px-4 py-3 text-sm text-red-600">
             {error}
           </div>
         )}
@@ -124,42 +129,38 @@ export const LoginPage: React.FC = () => {
         <Button
           type="submit"
           disabled={isDisabled}
-          className="h-14 w-full rounded-2xl bg-[#cccec2] text-base font-semibold text-[#111111] shadow-none hover:bg-[#c3c5b8] disabled:opacity-60"
+          className="h-14 w-full rounded-[1.2rem] bg-[#1b1813] text-base font-semibold text-white shadow-none hover:bg-[#11100d] disabled:opacity-60"
         >
           {isSubmitting ? "Signing in..." : <>Continue <ArrowRight className="ml-2 h-4 w-4" /></>}
         </Button>
         {loading && !busy && (
-          <p className="text-center text-xs text-[#6e6e73]">Checking existing session...</p>
+          <p className="text-center text-xs text-[#777062]">Checking existing session...</p>
         )}
 
-        <div className="relative py-1">
-          <div className="border-t border-black/[0.08]" />
-          <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-[#ecebe6] px-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#6e6e73]">
-            or
-          </span>
-        </div>
+        {showDemoWorkspace && (
+          <>
+            <div className="relative py-1">
+              <div className="border-t border-black/[0.08]" />
+              <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white px-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#777062]">
+                or
+              </span>
+            </div>
 
-        <Button
-          type="button"
-          variant="outline"
-          disabled={isDisabled}
-          className="h-14 w-full rounded-2xl border-black/[0.08] bg-transparent text-base font-semibold text-[#111111] hover:bg-white/45"
-          onClick={handleDemo}
-        >
-          Try Demo Workspace
-        </Button>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={isDisabled}
+              className="h-14 w-full rounded-[1.2rem] border-black/[0.08] bg-white text-base font-semibold text-[#171512] shadow-none hover:bg-[#f8f5ef]"
+              onClick={handleDemo}
+            >
+              Try Demo Workspace
+            </Button>
+          </>
+        )}
 
-        <div className="rounded-[1.6rem] border border-black/[0.07] bg-white/40 px-4 py-3">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#6e6e73]">Staff access</p>
-          <p className="mt-1 text-xs text-[#6e6e73]">
-            Team members use the org portal link:{" "}
-            <span className="font-mono text-[#1d1d1f]">/yourbrand/staff</span>
-          </p>
-        </div>
-
-        <p className="text-center text-sm text-[#6e6e73]">
+        <p className="text-center text-sm text-[#6d6658]">
           New here?{" "}
-          <Link to="/signup" className="font-semibold text-[#1d1d1f] underline-offset-2 hover:underline">
+          <Link to="/signup" className="font-semibold text-[#171512] underline-offset-2 hover:underline">
             Create your workspace
           </Link>
         </p>
