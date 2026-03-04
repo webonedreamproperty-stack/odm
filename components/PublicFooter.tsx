@@ -34,10 +34,10 @@ export const PublicFooter: React.FC = () => {
             Terms
           </Link>
           <a
-            href="mailto:support@stampee.co"
+            href="mailto:hello@stampee.co"
             className="text-xs font-medium text-white/55 transition-colors hover:text-white"
           >
-            support@stampee.co
+            hello@stampee.co
           </a>
           <p className="text-xs text-white/25">© {new Date().getFullYear()} Stampee. All rights reserved.</p>
         </div>
