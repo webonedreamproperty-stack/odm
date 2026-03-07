@@ -381,7 +381,7 @@ export const IssuedCardsPage: React.FC<IssuedCardsPageProps> = ({ customers, cam
   };
 
   return (
-    <div className="min-h-full space-y-6 bg-gray-50/50 p-4 md:p-8">
+    <div className="min-h-full space-y-6 bg-gray-50/50 p-4 md:h-full md:overflow-y-auto md:p-8">
 
       {activeKioskData && (
         <KioskMode

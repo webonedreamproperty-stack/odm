@@ -46,12 +46,18 @@ const CONFIG_ERROR_MESSAGE = "Service is temporarily unavailable. Please try aga
 const AUTH_REQUEST_ERROR = "We couldn't complete your request right now. Please try again.";
 const SIGNIN_ERROR_MESSAGE = "Unable to sign in right now. Please try again.";
 const SIGNUP_ERROR_MESSAGE = "Unable to create your account right now. Please try again.";
+const SIGNUP_EMAIL_EXISTS_MESSAGE = "An account with this email already exists. Please log in instead.";
 const ACCOUNT_SETUP_ERROR = "We couldn't finish setting up your account. Please try again.";
 const PROFILE_UPDATE_ERROR = "Unable to update your profile right now. Please try again.";
 const PASSWORD_UPDATE_ERROR = "Unable to update your password right now. Please try again.";
 const PASSWORD_RESET_ERROR = "Unable to send a reset link right now. Please try again.";
 const STAFF_ACTION_ERROR = "Unable to complete this staff action right now. Please try again.";
 const ACCOUNT_ACTION_ERROR = "Unable to complete this account action right now. Please try again.";
+
+const isDuplicateSignupError = (message: string | undefined) => {
+  const normalized = (message || "").trim().toLowerCase();
+  return normalized.includes("already registered") || normalized.includes("already exists");
+};
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -331,7 +337,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           emailRedirectTo: buildAppUrl("/login"),
         },
       });
-      if (error) return { ok: false, error: SIGNUP_ERROR_MESSAGE };
+      if (error) {
+        if (isDuplicateSignupError(error.message)) {
+          return { ok: false, error: SIGNUP_EMAIL_EXISTS_MESSAGE };
+        }
+        return { ok: false, error: SIGNUP_ERROR_MESSAGE };
+      }
+      if (Array.isArray(data.user?.identities) && data.user.identities.length === 0) {
+        return { ok: false, error: SIGNUP_EMAIL_EXISTS_MESSAGE };
+      }
       if (!data.session) {
         return {
           ok: true,

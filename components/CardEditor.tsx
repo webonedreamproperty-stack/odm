@@ -6,6 +6,7 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Switch } from './ui/switch';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from './ui/accordion';
+import { Dialog, DialogContent, DialogTitle } from './ui/dialog';
 import { ArrowLeft, Check as CheckIcon, Smartphone, Image as ImageIcon, Type, Palette, Grid } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { ICON_OPTIONS } from '../lib/iconRegistry';
@@ -20,6 +21,8 @@ export const CardEditor: React.FC<CardEditorProps> = ({ initialTemplate, onSave 
   const [template, setTemplate] = useState<Template>(initialTemplate);
   const [saveBusy, setSaveBusy] = useState(false);
   const [saveError, setSaveError] = useState("");
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [openSections, setOpenSections] = useState<string[]>([]);
   
   const [bgHex, setBgHex] = useState(template.colors.background || '#ffffff');
   const [bgIntensity, setBgIntensity] = useState(template.backgroundOpacity ?? 100);
@@ -114,20 +117,46 @@ export const CardEditor: React.FC<CardEditorProps> = ({ initialTemplate, onSave 
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col lg:flex-row font-sans">
-      <div className="w-full lg:w-1/3 p-6 lg:p-10 border-r bg-white flex flex-col gap-6 h-screen overflow-hidden z-20 shadow-xl lg:shadow-none">
-        <div className="flex items-center gap-2 mb-2 shrink-0">
-            <Button variant="ghost" size="icon" onClick={handleCancel} className="rounded-full">
-                <ArrowLeft size={20} />
-            </Button>
-            <div>
-                <h1 className="text-2xl font-bold tracking-tight">Customize</h1>
-                <p className="text-sm text-muted-foreground">Design your perfect loyalty card.</p>
+    <div className="min-h-[100dvh] bg-gray-50 font-sans lg:flex lg:min-h-screen">
+      <div className="hidden lg:static lg:order-2 lg:flex lg:flex-1 lg:items-center lg:justify-center lg:border-b-0 lg:bg-gray-100 lg:p-12">
+        <div className="relative mx-auto w-full max-w-[430px] lg:max-w-[380px]">
+          <div className="h-[56dvh] min-h-[340px] max-h-[520px] w-full overflow-hidden rounded-3xl bg-white ring-1 ring-black/5 shadow-lg lg:h-[750px] lg:max-h-none lg:rounded-[3rem] lg:shadow-none">
+            <LoyaltyCard
+              template={template}
+              mode="preview"
+              sizeVariant="default"
+              className="h-full w-full"
+            />
+          </div>
+          <p className="mt-3 text-center text-sm font-medium uppercase tracking-widest text-muted-foreground lg:mt-8">
+            Live Preview
+          </p>
+        </div>
+      </div>
+
+      <div className="order-2 w-full bg-white p-4 pb-6 sm:p-6 lg:order-1 lg:h-[100dvh] lg:w-1/3 lg:border-r lg:p-10 lg:pb-10 lg:overflow-hidden">
+        <div className="mb-2 flex items-center justify-between gap-3 shrink-0">
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="icon" onClick={handleCancel} className="rounded-full">
+                  <ArrowLeft size={20} />
+              </Button>
+              <div>
+                  <h1 className="text-2xl font-bold tracking-tight">Customize</h1>
+                  <p className="text-sm text-muted-foreground">Design your perfect loyalty card.</p>
+              </div>
             </div>
+            <Button
+              type="button"
+              variant="outline"
+              className="lg:hidden shrink-0"
+              onClick={() => setIsPreviewOpen(true)}
+            >
+              Live Preview
+            </Button>
         </div>
 
-        <div className="flex-1 overflow-y-auto pr-2 no-scrollbar">
-            <Accordion type="single" collapsible defaultValue="design" className="w-full">
+        <div className="px-3 sm:px-4 lg:flex-1 lg:overflow-y-auto lg:px-3 lg:pr-3 xl:px-4 lg:no-scrollbar">
+            <Accordion type="multiple" value={openSections} onValueChange={setOpenSections} className="w-full">
                 <AccordionItem value="general">
                     <AccordionTrigger>
                         <span className="flex items-center gap-2"><Type size={16}/> General Info</span>
@@ -446,7 +475,7 @@ export const CardEditor: React.FC<CardEditorProps> = ({ initialTemplate, onSave 
             </Accordion>
         </div>
 
-        <div className="pt-6 border-t mt-auto shrink-0">
+        <div className="mt-8 border-t pt-6 lg:mt-auto lg:shrink-0">
             {saveError && (
                 <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
                     {saveError}
@@ -458,18 +487,27 @@ export const CardEditor: React.FC<CardEditorProps> = ({ initialTemplate, onSave 
         </div>
       </div>
 
-      <div className="flex-1 bg-gray-100 p-6 lg:p-12 flex flex-col items-center justify-center relative overflow-hidden">
-        <div className="relative w-full h-full max-w-none overflow-hidden lg:max-w-[380px] lg:h-[750px] lg:rounded-[3rem]">
-          <div className="w-full h-full overflow-hidden">
-            <LoyaltyCard 
-              template={template} 
-              mode="preview" 
-              className="h-full w-full"
-            />
+      <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
+        <DialogContent
+          className="
+            h-[100dvh] w-screen max-w-none rounded-none border-0 bg-gray-100 p-4 shadow-none lg:hidden
+            [&>button]:right-4 [&>button]:top-4 [&>button]:z-50 [&>button]:rounded-full
+            [&>button]:bg-black/55 [&>button]:p-1 [&>button]:text-white [&>button]:opacity-100
+          "
+        >
+          <DialogTitle className="sr-only">Live card preview</DialogTitle>
+          <div className="mx-auto flex h-full w-full max-w-[430px] items-center justify-center py-6">
+            <div className="h-full min-h-[360px] max-h-[86dvh] w-full overflow-hidden rounded-3xl bg-white ring-1 ring-black/5 shadow-lg">
+              <LoyaltyCard
+                template={template}
+                mode="preview"
+                sizeVariant="compact"
+                className="h-full w-full"
+              />
+            </div>
           </div>
-        </div>
-        <p className="mt-8 text-muted-foreground text-sm font-medium uppercase tracking-widest">Live Preview</p>
-      </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

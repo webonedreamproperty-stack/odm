@@ -138,6 +138,7 @@ export const LoyaltyCard: React.FC<LoyaltyCardProps> = ({
 
   const isHighDensity = totalStamps > 12;
   const isCompleted = stamps >= totalStamps;
+  const shouldShowRewardModal = mode !== 'preview';
 
   const textColor = resolveHexAndOpacity(colors.text, '#111111');
   const mutedColor = resolveHexAndOpacity(colors.muted, '#666666');
@@ -195,7 +196,7 @@ export const LoyaltyCard: React.FC<LoyaltyCardProps> = ({
     if (index === stamps) {
       const newCount = stamps + 1;
       setStamps(newCount);
-      if (newCount === totalStamps) {
+      if (newCount === totalStamps && shouldShowRewardModal) {
         triggerReward();
       }
     } else if (index < stamps) {
@@ -461,7 +462,7 @@ export const LoyaltyCard: React.FC<LoyaltyCardProps> = ({
               </div>
 
               {/* Congratulations Message or Reward Label */}
-              {isCompleted && !isRedeemed ? (
+              {isCompleted && !isRedeemed && shouldShowRewardModal ? (
                  <div className="mt-3 flex flex-col items-center text-center">
                    <h3 className={cn("text-lg md:text-2xl font-bold text-gray-900 mt-1", isMobileCompleted && "text-base")}>
                      🎉 Congratulations! 🎉
@@ -648,13 +649,15 @@ export const LoyaltyCard: React.FC<LoyaltyCardProps> = ({
         </div>
       )}
 
-      <RewardModal 
-        isOpen={showReward} 
-        loading={loadingReward} 
-        reward={rewardData} 
-        onClose={resetCard}
-        colors={colors}
-      />
+      {shouldShowRewardModal && (
+        <RewardModal 
+          isOpen={showReward} 
+          loading={loadingReward} 
+          reward={rewardData} 
+          onClose={resetCard}
+          colors={colors}
+        />
+      )}
     </div>
   );
 };
