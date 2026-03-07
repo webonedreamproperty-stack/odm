@@ -34,8 +34,8 @@ export const VerifyBanner: React.FC = () => {
     try {
       await refreshProfile();
       setMessage("Verification status refreshed.");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to refresh verification status.");
+    } catch {
+      setError("Unable to refresh verification status right now. Please try again.");
     } finally {
       setRefreshing(false);
     }

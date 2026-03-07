@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Link, Navigate } from "react-router-dom";
+import { Link, Navigate, useNavigate } from "react-router-dom";
 import { ArrowRight, Link2 } from "lucide-react";
 import { AuthSplitLayout } from "./AuthSplitLayout";
 import { Button } from "./ui/button";
@@ -14,13 +14,13 @@ const labelCls = "block text-[0.72rem] font-semibold uppercase tracking-[0.18em]
 
 export const SignupPage: React.FC = () => {
   const { currentUser, loading, signup, isSlugAvailable } = useAuth();
+  const navigate = useNavigate();
   const [businessName, setBusinessName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [slugInput, setSlugInput] = useState("");
   const [slugTouched, setSlugTouched] = useState(false);
   const [error, setError] = useState("");
-  const [info, setInfo] = useState("");
   const [busy, setBusy] = useState(false);
   const [slugAvailable, setSlugAvailable] = useState(false);
   const [slugChecking, setSlugChecking] = useState(false);
@@ -29,7 +29,7 @@ export const SignupPage: React.FC = () => {
   const withTimeout = async <T,>(promise: Promise<T>, ms = 15000): Promise<T> =>
     new Promise<T>((resolve, reject) => {
       const timeoutId = window.setTimeout(() => {
-        reject(new Error("Signup timed out. Please check your internet connection and Supabase settings."));
+        reject(new Error("Signup timed out. Please try again."));
       }, ms);
       promise
         .then((value) => {
@@ -99,7 +99,6 @@ export const SignupPage: React.FC = () => {
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     setError("");
-    setInfo("");
     if (!slugValid) {
       setError("Your public URL is invalid. Use lowercase letters, numbers, and hyphens only.");
       return;
@@ -117,9 +116,14 @@ export const SignupPage: React.FC = () => {
         return;
       }
       trackEvent("Signup Success", { slug: normalizedSlug });
-      if (result.message) setInfo(result.message);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to create account right now.");
+      if (result.message) {
+        navigate("/signup-confirmation", {
+          replace: true,
+          state: { email: email.trim().toLowerCase() },
+        });
+      }
+    } catch {
+      setError("Unable to create account right now. Please try again.");
     } finally {
       setBusy(false);
     }
@@ -227,12 +231,6 @@ export const SignupPage: React.FC = () => {
             {error}
           </div>
         )}
-        {info && (
-          <div className="rounded-[1.2rem] border border-emerald-200 bg-emerald-50/90 px-4 py-3 text-sm text-emerald-700">
-            {info}
-          </div>
-        )}
-
         <Button
           type="submit"
           disabled={isDisabled}

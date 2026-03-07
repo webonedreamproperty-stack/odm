@@ -102,8 +102,8 @@ export const CardEditor: React.FC<CardEditorProps> = ({ initialTemplate, onSave 
     try {
       await onSave(template);
       navigate('/campaigns');
-    } catch (error) {
-      setSaveError(error instanceof Error ? error.message : 'Unable to save this campaign right now.');
+    } catch {
+      setSaveError('Unable to save this campaign right now. Please try again.');
     } finally {
       setSaveBusy(false);
     }

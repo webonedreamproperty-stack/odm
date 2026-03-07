@@ -153,8 +153,8 @@ export const KioskMode: React.FC<KioskModeProps> = ({
           }
           setConfirmAction(null);
           setRedemptionRemarks("");
-      } catch (error) {
-          setActionError(error instanceof Error ? error.message : "Unable to update this card right now.");
+      } catch {
+          setActionError("Unable to update this card right now. Please try again.");
       }
   };
 

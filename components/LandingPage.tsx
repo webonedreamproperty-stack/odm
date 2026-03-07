@@ -398,6 +398,9 @@ export const LandingPage: React.FC = () => {
               <p className="text-[clamp(1.08rem,1.65vw,1.48rem)] leading-[1.45] text-[#23461d]/82">
                 Stampee is the modern, no-app loyalty system that turns one-time visitors into loyal customers — simple, smart, and instantly rewarding.
               </p>
+              <p className="text-sm leading-7 text-[#23461d]/78 sm:text-base">
+                Launch a digital loyalty card with Stampee and run a loyalty program for cafes, loyalty program for spa, loyalty program for laundry, loyalty program for carwash, and loyalty program for salons.
+              </p>
             </div>
             <div style={rise(hero.visible, 260)} className="mt-10 flex flex-col gap-4 sm:flex-row sm:flex-wrap">
               <Button asChild className="glow-button h-16 rounded-[1.55rem] bg-[#17351a] px-10 text-lg font-semibold text-white shadow-[0_26px_50px_-28px_rgba(23,53,26,0.85)] hover:bg-[#102712] sm:min-w-[17rem]">

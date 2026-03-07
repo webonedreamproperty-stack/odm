@@ -73,16 +73,16 @@ export async function upsertCampaign(template: StoredTemplate, ownerId: string):
   const { error } = await supabase
     .from('campaigns')
     .upsert(row, { onConflict: 'id' });
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: 'Unable to save this campaign right now. Please try again.' };
   return { ok: true };
 }
 
 export async function deleteCampaign(campaignId: string): Promise<{ ok: boolean; error?: string }> {
   const { data, error } = await supabase
     .rpc('delete_campaign_preserve_cards', { campaign_id_input: campaignId });
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: 'Unable to delete this campaign right now. Please try again.' };
   if (typeof data === 'object' && data && 'success' in data && (data as { success?: boolean }).success === false) {
-    return { ok: false, error: 'Failed to delete the campaign.' };
+    return { ok: false, error: 'Unable to delete this campaign right now. Please try again.' };
   }
   return { ok: true };
 }

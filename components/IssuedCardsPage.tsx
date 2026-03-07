@@ -120,8 +120,7 @@ export const IssuedCardsPage: React.FC<IssuedCardsPageProps> = ({ customers, cam
       if (wroteData) {
         await refreshData?.();
       }
-      const message = error instanceof Error ? error.message : "Unable to update this card right now.";
-      setMutationError(message);
+      setMutationError("Unable to update this card right now. Please try again.");
       throw error;
     } finally {
       setMutationBusy(false);
@@ -144,8 +143,7 @@ export const IssuedCardsPage: React.FC<IssuedCardsPageProps> = ({ customers, cam
           return c;
         }));
       } catch (error) {
-        const message = error instanceof Error ? error.message : "Unable to revoke this card right now.";
-        setMutationError(message);
+        setMutationError("Unable to revoke this card right now. Please try again.");
       } finally {
         setMutationBusy(false);
       }

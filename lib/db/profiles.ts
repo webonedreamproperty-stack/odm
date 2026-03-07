@@ -72,7 +72,7 @@ export async function updateProfile(
     .from('profiles')
     .update(updates)
     .eq('id', userId);
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: 'Unable to update this profile right now. Please try again.' };
   return { ok: true };
 }
 

@@ -25,7 +25,7 @@ export const StaffLoginPage: React.FC = () => {
   const withTimeout = async <T,>(promise: Promise<T>, ms = 15000): Promise<T> =>
     new Promise<T>((resolve, reject) => {
       const timeoutId = window.setTimeout(() => {
-        reject(new Error("Login timed out. Please check your internet connection and Supabase settings."));
+        reject(new Error("Login timed out. Please try again."));
       }, ms);
       promise
         .then((value) => {
@@ -60,8 +60,8 @@ export const StaffLoginPage: React.FC = () => {
         return;
       }
       navigate(kioskId ? buildIssuedCardsKioskUrl(kioskId) : "/issued-cards");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to log in right now.");
+    } catch {
+      setError("Unable to log in right now. Please try again.");
     } finally {
       setBusy(false);
     }

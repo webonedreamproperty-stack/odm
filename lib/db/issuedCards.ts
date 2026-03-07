@@ -37,7 +37,7 @@ export async function insertIssuedCard(
     status: 'Active',
     template_snapshot: card.templateSnapshot ?? null,
   });
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: 'Unable to issue this card right now. Please try again.' };
   return { ok: true };
 }
 
@@ -55,7 +55,7 @@ export async function updateIssuedCard(
     .from('issued_cards')
     .update(row)
     .eq('id', cardId);
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: 'Unable to update this card right now. Please try again.' };
   return { ok: true };
 }
 
@@ -64,7 +64,7 @@ export async function deleteIssuedCard(cardId: string): Promise<{ ok: boolean; e
     .from('issued_cards')
     .delete()
     .eq('id', cardId);
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: 'Unable to revoke this card right now. Please try again.' };
   return { ok: true };
 }
 
@@ -85,7 +85,7 @@ export async function insertTransaction(
     actor_name: tx.actorName ?? null,
     actor_role: tx.actorRole ?? null,
   });
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: 'Unable to save this activity right now. Please try again.' };
   return { ok: true };
 }
 
@@ -103,7 +103,7 @@ export async function inspectScannedCard(uniqueId: string): Promise<{ status: Sc
     card_unique_id: uniqueId,
   });
   if (error) {
-    return { status: 'missing', error: error.message };
+    return { status: 'missing', error: 'Unable to validate this card right now. Please try again.' };
   }
 
   const status = typeof data === 'object' && data && 'status' in data

@@ -1,6 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { TIER_LIMITS, User } from "../types";
-import { isSupabaseConfigured, SUPABASE_CONFIG_ERROR, supabase } from "../lib/supabase";
+import { isSupabaseConfigured, supabase } from "../lib/supabase";
 import { fetchProfile, fetchProfileDetailed, fetchStaffAccounts, updateProfile as dbUpdateProfile } from "../lib/db/profiles";
 import { normalizeSlug } from "../lib/slug";
 import { buildAppUrl, DEMO_WORKSPACE_ENABLED } from "../lib/siteConfig";
@@ -12,7 +12,7 @@ type AuthUserLike = {
   user_metadata?: Record<string, unknown> | null;
 };
 
-type AuthResult = { ok: true; user?: User; message?: string } | { ok: false; error: string };
+export type AuthResult = { ok: true; user?: User; message?: string } | { ok: false; error: string };
 type RepairResult = { ok: true } | { ok: false; error: string };
 
 interface AuthContextValue {
@@ -42,6 +42,16 @@ interface AuthContextValue {
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
+const CONFIG_ERROR_MESSAGE = "Service is temporarily unavailable. Please try again later.";
+const AUTH_REQUEST_ERROR = "We couldn't complete your request right now. Please try again.";
+const SIGNIN_ERROR_MESSAGE = "Unable to sign in right now. Please try again.";
+const SIGNUP_ERROR_MESSAGE = "Unable to create your account right now. Please try again.";
+const ACCOUNT_SETUP_ERROR = "We couldn't finish setting up your account. Please try again.";
+const PROFILE_UPDATE_ERROR = "Unable to update your profile right now. Please try again.";
+const PASSWORD_UPDATE_ERROR = "Unable to update your password right now. Please try again.";
+const PASSWORD_RESET_ERROR = "Unable to send a reset link right now. Please try again.";
+const STAFF_ACTION_ERROR = "Unable to complete this staff action right now. Please try again.";
+const ACCOUNT_ACTION_ERROR = "Unable to complete this account action right now. Please try again.";
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -113,7 +123,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (error.message.toLowerCase().includes("duplicate key value")) {
       return { ok: true };
     }
-    return { ok: false, error: error.message };
+    return { ok: false, error: ACCOUNT_SETUP_ERROR };
   }, []);
 
   const loadFullSession = useCallback(async (userId: string, authUser?: AuthUserLike) => {
@@ -188,7 +198,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }
           })();
         }, 0);
-      } else if (event === "SIGNED_OUT" || event === "USER_DELETED") {
+      } else if (event === "SIGNED_OUT") {
         setCurrentUser(null);
         setCurrentOwner(null);
         setStaffAccounts([]);
@@ -213,7 +223,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = useCallback(async (email: string, password: string): Promise<AuthResult> => {
     if (!isSupabaseConfigured) {
-      return { ok: false, error: SUPABASE_CONFIG_ERROR };
+      return { ok: false, error: CONFIG_ERROR_MESSAGE };
     }
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -222,9 +232,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
       if (error) {
         if (error.message.toLowerCase().includes("email not confirmed")) {
-          return { ok: false, error: "Please confirm your email before signing in, or disable email confirmation in your Supabase project settings." };
+          return { ok: false, error: "Please confirm your email before signing in." };
         }
-        return { ok: false, error: error.message };
+        return { ok: false, error: "Unable to sign in. Please check your credentials and try again." };
       }
 
       await waitForAuthUser(data.user.id);
@@ -239,33 +249,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           await supabase.auth.signOut();
           return {
             ok: false,
-            error: `Account found but profile repair failed: ${repaired.error}`,
+            error: ACCOUNT_SETUP_ERROR,
           };
         }
       }
       if (!profile) {
         await supabase.auth.signOut();
-        const detailed = await fetchProfileDetailed(data.user.id);
-        const reason = detailed.error
-          ? `Database error: ${detailed.error}${detailed.code ? ` (code: ${detailed.code})` : ""}`
-          : "No profile row found for this user ID in public.profiles.";
+        await fetchProfileDetailed(data.user.id);
         return {
           ok: false,
-          error: `Account found but profile is missing. ${reason} Run supabase/migration.sql and supabase/repair_profiles.sql in your Supabase project, then try again.`,
+          error: ACCOUNT_SETUP_ERROR,
         };
       }
 
       await loadFullSession(data.user.id, data.user);
       return { ok: true, user: profile };
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Unexpected authentication error.";
-      return { ok: false, error: message };
+    } catch {
+      return { ok: false, error: SIGNIN_ERROR_MESSAGE };
     }
   }, [createMissingProfile, fetchProfileWithRetry, loadFullSession, waitForAuthUser]);
 
   const loginStaff = useCallback(async (email: string, pin: string, orgId: string): Promise<AuthResult> => {
     if (!isSupabaseConfigured) {
-      return { ok: false, error: SUPABASE_CONFIG_ERROR };
+      return { ok: false, error: CONFIG_ERROR_MESSAGE };
     }
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -284,7 +290,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           await supabase.auth.signOut();
           return {
             ok: false,
-            error: `Staff account found but profile repair failed: ${repaired.error}`,
+            error: AUTH_REQUEST_ERROR,
           };
         }
       }
@@ -301,9 +307,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return { ok: false, error: "Org ID doesn't match this staff account." };
       }
       return { ok: true, user: profile };
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Unexpected authentication error.";
-      return { ok: false, error: message };
+    } catch {
+      return { ok: false, error: SIGNIN_ERROR_MESSAGE };
     }
   }, [createMissingProfile, fetchProfileWithRetry, waitForAuthUser]);
 
@@ -311,7 +316,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     businessName: string; email: string; password: string; slug: string;
   }): Promise<AuthResult> => {
     if (!isSupabaseConfigured) {
-      return { ok: false, error: SUPABASE_CONFIG_ERROR };
+      return { ok: false, error: CONFIG_ERROR_MESSAGE };
     }
     try {
       const { data, error } = await supabase.auth.signUp({
@@ -326,7 +331,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           emailRedirectTo: buildAppUrl("/login"),
         },
       });
-      if (error) return { ok: false, error: error.message };
+      if (error) return { ok: false, error: SIGNUP_ERROR_MESSAGE };
       if (!data.session) {
         return {
           ok: true,
@@ -334,15 +339,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
       }
       return { ok: true };
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Unexpected signup error.";
-      return { ok: false, error: message };
+    } catch {
+      return { ok: false, error: SIGNUP_ERROR_MESSAGE };
     }
   }, []);
 
   const loginDemo = useCallback(async () => {
     if (!DEMO_WORKSPACE_ENABLED) {
-      throw new Error("Demo workspace is disabled in this environment.");
+      throw new Error("Demo workspace is currently unavailable.");
     }
     if (!isSupabaseConfigured) return;
     const demoEmail = "demo@stampee.co";
@@ -368,7 +372,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const createStaff = useCallback(async (payload: { name: string; email: string; pin: string }): Promise<AuthResult> => {
     if (!isSupabaseConfigured) {
-      return { ok: false, error: SUPABASE_CONFIG_ERROR };
+      return { ok: false, error: CONFIG_ERROR_MESSAGE };
     }
     if (!currentOwner || currentUser?.role !== "owner") {
       return { ok: false, error: "Only owners can manage staff." };
@@ -390,14 +394,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       staff_name: payload.name.trim(),
     });
 
-    if (error) return { ok: false, error: error.message };
+    if (error) return { ok: false, error: STAFF_ACTION_ERROR };
     setStaffAccounts(await fetchStaffAccounts(currentOwner.id));
     return { ok: true };
   }, [currentOwner, currentUser, staffAccounts]);
 
   const updateStaffPin = useCallback(async (staffId: string, pin: string): Promise<AuthResult> => {
     if (!isSupabaseConfigured) {
-      return { ok: false, error: SUPABASE_CONFIG_ERROR };
+      return { ok: false, error: CONFIG_ERROR_MESSAGE };
     }
     if (!currentOwner || currentUser?.role !== "owner") {
       return { ok: false, error: "Only owners can manage staff." };
@@ -409,20 +413,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       staff_id: staffId,
       new_pin: pin,
     });
-    if (error) return { ok: false, error: error.message };
+    if (error) return { ok: false, error: STAFF_ACTION_ERROR };
     return { ok: true };
   }, [currentOwner, currentUser]);
 
   const setStaffAccess = useCallback(async (staffId: string, access: "active" | "disabled"): Promise<AuthResult> => {
     if (!isSupabaseConfigured) {
-      return { ok: false, error: SUPABASE_CONFIG_ERROR };
+      return { ok: false, error: CONFIG_ERROR_MESSAGE };
     }
     if (!currentOwner || currentUser?.role !== "owner") {
       return { ok: false, error: "Only owners can manage staff." };
     }
     const updateResult = await dbUpdateProfile(staffId, { access });
     if (!updateResult.ok) {
-      return { ok: false, error: updateResult.error ?? "Failed to update staff access." };
+      return { ok: false, error: updateResult.error ?? STAFF_ACTION_ERROR };
     }
     setStaffAccounts(await fetchStaffAccounts(currentOwner.id));
     return { ok: true };
@@ -430,7 +434,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const deleteStaff = useCallback(async (staffId: string): Promise<AuthResult> => {
     if (!isSupabaseConfigured) {
-      return { ok: false, error: SUPABASE_CONFIG_ERROR };
+      return { ok: false, error: CONFIG_ERROR_MESSAGE };
     }
     if (!currentOwner || currentUser?.role !== "owner") {
       return { ok: false, error: "Only owners can manage staff." };
@@ -438,20 +442,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const { error } = await supabase.rpc("delete_staff_account", {
       staff_id: staffId,
     });
-    if (error) return { ok: false, error: error.message };
+    if (error) return { ok: false, error: STAFF_ACTION_ERROR };
     setStaffAccounts(await fetchStaffAccounts(currentOwner.id));
     return { ok: true };
   }, [currentOwner, currentUser]);
 
   const deleteAccount = useCallback(async (): Promise<AuthResult> => {
     if (!isSupabaseConfigured) {
-      return { ok: false, error: SUPABASE_CONFIG_ERROR };
+      return { ok: false, error: CONFIG_ERROR_MESSAGE };
     }
     if (!currentOwner || currentUser?.role !== "owner") {
       return { ok: false, error: "Only owners can delete the account." };
     }
     const { error } = await supabase.rpc("delete_own_account");
-    if (error) return { ok: false, error: error.message };
+    if (error) return { ok: false, error: ACCOUNT_ACTION_ERROR };
     await supabase.auth.signOut();
     return { ok: true };
   }, [currentOwner, currentUser]);
@@ -463,11 +467,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const resendVerificationEmail = useCallback(async (): Promise<AuthResult> => {
     if (!isSupabaseConfigured) {
-      return { ok: false, error: SUPABASE_CONFIG_ERROR };
+      return { ok: false, error: CONFIG_ERROR_MESSAGE };
     }
     const email = currentUser?.email?.trim().toLowerCase();
     if (!email) {
-      return { ok: false, error: "No account email found for this session." };
+      return { ok: false, error: AUTH_REQUEST_ERROR };
     }
     const { error } = await supabase.auth.resend({
       type: "signup",
@@ -477,14 +481,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       },
     });
     if (error) {
-      return { ok: false, error: error.message };
+      return { ok: false, error: "Unable to resend verification email right now. Please try again." };
     }
     return { ok: true, message: "Verification email sent. Check your inbox and spam folder." };
   }, [currentUser?.email]);
 
   const isSlugAvailable = useCallback(async (slug: string): Promise<boolean> => {
     if (!isSupabaseConfigured) {
-      throw new Error(SUPABASE_CONFIG_ERROR);
+      throw new Error(CONFIG_ERROR_MESSAGE);
     }
     const { data, error } = await supabase.rpc("is_slug_available", { slug_input: slug });
     if (error) throw error;
@@ -495,40 +499,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     businessName?: string; email?: string; slug?: string;
   }): Promise<AuthResult> => {
     if (!isSupabaseConfigured) {
-      return { ok: false, error: SUPABASE_CONFIG_ERROR };
+      return { ok: false, error: CONFIG_ERROR_MESSAGE };
     }
-    if (!currentUser) return { ok: false, error: "Not logged in." };
+    if (!currentUser) return { ok: false, error: AUTH_REQUEST_ERROR };
 
     const updates: Record<string, string> = {};
     if (payload.businessName?.trim()) updates.business_name = payload.businessName.trim();
     if (payload.email?.trim()) updates.email = payload.email.trim().toLowerCase();
 
     const { error } = await supabase.from("profiles").update(updates).eq("id", currentUser.id);
-    if (error) return { ok: false, error: error.message };
+    if (error) return { ok: false, error: PROFILE_UPDATE_ERROR };
     await refreshProfile();
     return { ok: true };
   }, [currentUser, refreshProfile]);
 
   const updatePassword = useCallback(async (newPassword: string): Promise<AuthResult> => {
     if (!isSupabaseConfigured) {
-      return { ok: false, error: SUPABASE_CONFIG_ERROR };
+      return { ok: false, error: CONFIG_ERROR_MESSAGE };
     }
     if (newPassword.length < 6) {
       return { ok: false, error: "New password must be at least 6 characters." };
     }
     const { error } = await supabase.auth.updateUser({ password: newPassword });
-    if (error) return { ok: false, error: error.message };
+    if (error) return { ok: false, error: PASSWORD_UPDATE_ERROR };
     return { ok: true };
   }, []);
 
   const resetPassword = useCallback(async (email: string): Promise<AuthResult> => {
     if (!isSupabaseConfigured) {
-      return { ok: false, error: SUPABASE_CONFIG_ERROR };
+      return { ok: false, error: CONFIG_ERROR_MESSAGE };
     }
     const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
       redirectTo: buildAppUrl("/login"),
     });
-    if (error) return { ok: false, error: error.message };
+    if (error) return { ok: false, error: PASSWORD_RESET_ERROR };
     return { ok: true };
   }, []);
 

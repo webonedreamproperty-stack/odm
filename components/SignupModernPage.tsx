@@ -28,7 +28,7 @@ export const SignupModernPage: React.FC = () => {
   const withTimeout = async <T,>(promise: Promise<T>, ms = 15000): Promise<T> =>
     new Promise<T>((resolve, reject) => {
       const timeoutId = window.setTimeout(() => {
-        reject(new Error("Signup timed out. Please check your internet connection and Supabase settings."));
+        reject(new Error("Signup timed out. Please try again."));
       }, ms);
       promise
         .then((value) => {
@@ -120,8 +120,8 @@ export const SignupModernPage: React.FC = () => {
         return;
       }
       if (result.message) setInfo(result.message);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to create account right now.");
+    } catch {
+      setError("Unable to create account right now. Please try again.");
     } finally {
       setBusy(false);
     }

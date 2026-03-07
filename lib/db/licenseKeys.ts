@@ -9,7 +9,7 @@ interface ActivationResult {
 export async function activateLicenseKey(key: string): Promise<ActivationResult> {
   const { data, error } = await supabase
     .rpc('activate_license_key', { key_input: key });
-  if (error) return { success: false, error: error.message };
-  if (!data) return { success: false, error: 'Unexpected response' };
+  if (error) return { success: false, error: 'Unable to activate this key right now. Please try again.' };
+  if (!data) return { success: false, error: 'Unable to activate this key right now. Please try again.' };
   return data as ActivationResult;
 }

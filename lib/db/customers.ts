@@ -114,7 +114,7 @@ export async function upsertCustomer(
     status: customer.status,
   };
   const { error } = await supabase.from('customers').upsert(row, { onConflict: 'id' });
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: 'Unable to save this customer right now. Please try again.' };
   return { ok: true, id: customer.id };
 }
 
@@ -126,6 +126,6 @@ export async function updateCustomerStatus(
     .from('customers')
     .update({ status })
     .eq('id', customerId);
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: 'Unable to update this customer right now. Please try again.' };
   return { ok: true };
 }

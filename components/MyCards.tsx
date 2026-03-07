@@ -148,8 +148,8 @@ export const MyCards: React.FC<MyCardsProps> = ({
       try {
         await onDeleteCard(deleteId);
         setDeleteId(null);
-      } catch (error) {
-        setDeleteError(error instanceof Error ? error.message : "Unable to delete this campaign right now.");
+      } catch {
+        setDeleteError("Unable to delete this campaign right now. Please try again.");
       } finally {
         setDeleteBusy(false);
       }

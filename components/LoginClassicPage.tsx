@@ -26,7 +26,7 @@ export const LoginClassicPage: React.FC = () => {
   const withTimeout = async <T,>(promise: Promise<T>, ms = 15000): Promise<T> =>
     new Promise<T>((resolve, reject) => {
       const timeoutId = window.setTimeout(() => {
-        reject(new Error("Sign in timed out. Please check your internet connection and Supabase settings."));
+        reject(new Error("Sign in timed out. Please try again."));
       }, ms);
       promise
         .then((value) => {
@@ -54,8 +54,8 @@ export const LoginClassicPage: React.FC = () => {
       } else {
         trackEvent("Login Success", { role: result.user?.role ?? "owner" });
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to sign in right now.");
+    } catch {
+      setError("Unable to sign in right now. Please try again.");
     } finally {
       setBusy(false);
     }
@@ -66,8 +66,8 @@ export const LoginClassicPage: React.FC = () => {
     setError("");
     try {
       await withTimeout(loginDemo());
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to sign in to demo right now.");
+    } catch {
+      setError("Unable to sign in to demo right now. Please try again.");
     } finally {
       setBusy(false);
     }

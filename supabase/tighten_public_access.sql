@@ -90,7 +90,8 @@ begin
     'campaign', campaign_payload
   );
 end;
-$$ language plpgsql security definer;
+$$ language plpgsql security definer
+set search_path = public;
 
 create or replace function public.get_scan_entry_context(slug_input text, card_unique_id uuid)
 returns jsonb as $$

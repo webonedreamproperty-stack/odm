@@ -5,6 +5,7 @@ import { AuthSplitLayout } from "./AuthSplitLayout";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { useAuth } from "./AuthProvider";
+import type { AuthResult } from "./AuthProvider";
 import { trackEvent } from "../lib/analytics";
 import { DEMO_WORKSPACE_ENABLED } from "../lib/siteConfig";
 
@@ -26,7 +27,7 @@ export const LoginPage: React.FC = () => {
   const withTimeout = async <T,>(promise: Promise<T>, ms = 15000): Promise<T> =>
     new Promise<T>((resolve, reject) => {
       const timeoutId = window.setTimeout(() => {
-        reject(new Error("Sign in timed out. Please check your internet connection and Supabase settings."));
+        reject(new Error("Sign in timed out. Please try again."));
       }, ms);
       promise
         .then((value) => {
@@ -49,14 +50,14 @@ export const LoginPage: React.FC = () => {
     setError("");
     setBusy(true);
     try {
-      const result = await withTimeout(login(email, password));
-      if (!result.ok) {
+      const result = await withTimeout<AuthResult>(login(email, password));
+      if ("error" in result) {
         setError(result.error);
       } else {
         trackEvent("Login Success", { role: result.user?.role ?? "owner" });
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to sign in right now.");
+    } catch {
+      setError("Unable to sign in right now. Please try again.");
     } finally {
       setBusy(false);
     }
@@ -68,8 +69,8 @@ export const LoginPage: React.FC = () => {
     setError("");
     try {
       await withTimeout(loginDemo());
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to sign in to demo right now.");
+    } catch {
+      setError("Unable to sign in to demo right now. Please try again.");
     } finally {
       setBusy(false);
     }

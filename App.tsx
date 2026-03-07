@@ -15,15 +15,16 @@ import { fetchCampaigns, upsertCampaign, deleteCampaign as dbDeleteCampaign } fr
 import { fetchCustomersWithCards } from './lib/db/customers';
 import { fetchPublicScanEntryContext } from './lib/db/issuedCards';
 import { buildIssuedCardsKioskUrl, buildStaffPortalUrl, buildStaffScanEntryUrl } from './lib/links';
-import { isSupabaseConfigured, SUPABASE_CONFIG_ERROR, supabase } from './lib/supabase';
+import { isSupabaseConfigured, supabase } from './lib/supabase';
 import { useSubscription } from './lib/useSubscription';
 import { SubscriptionProvider } from './components/SubscriptionContext';
 import { UpgradePrompt } from './components/UpgradePrompt';
 import { APP_ORIGIN } from './lib/siteConfig';
 
 const SITE_ORIGIN = APP_ORIGIN;
-const DEFAULT_SOCIAL_DESCRIPTION = 'Launch digital loyalty cards for your small business. Reward repeat customers, track visits, and grow without paper cards or app installs.';
+const DEFAULT_SOCIAL_DESCRIPTION = 'Stampee is a digital loyalty card platform for small businesses, including loyalty program for cafes, loyalty program for spa, loyalty program for laundry, loyalty program for carwash, and loyalty program for salons.';
 const DEFAULT_OG_IMAGE = `${SITE_ORIGIN}/social-preview-v2.jpg`;
+const SERVICE_UNAVAILABLE_MESSAGE = 'Service is temporarily unavailable. Please try again later.';
 
 type SeoConfig = {
   title: string;
@@ -79,6 +80,7 @@ const TransactionsPage = lazy(() => import('./components/TransactionsPage').then
 const AnalyticsPage = lazy(() => import('./components/AnalyticsPage').then((module) => ({ default: module.AnalyticsPage })));
 const LoginPage = lazy(() => import('./components/LoginPage').then((module) => ({ default: module.LoginPage })));
 const SignupPage = lazy(() => import('./components/SignupPage').then((module) => ({ default: module.SignupPage })));
+const SignupConfirmationPage = lazy(() => import('./components/SignupConfirmationPage').then((module) => ({ default: module.SignupConfirmationPage })));
 const StaffLoginPage = lazy(() => import('./components/StaffLoginPage').then((module) => ({ default: module.StaffLoginPage })));
 const SettingsPage = lazy(() => import('./components/SettingsPage').then((module) => ({ default: module.SettingsPage })));
 const LandingPage = lazy(() => import('./components/LandingPage').then((module) => ({ default: module.LandingPage })));
@@ -127,7 +129,7 @@ const getSeoForPathname = (pathname: string): SeoConfig => {
   const canonical = `${SITE_ORIGIN}${normalizedPath}`;
   const defaultSeo: SeoConfig = {
     title: 'Stampee | Digital Loyalty Cards for Small Businesses',
-    description: 'Launch digital loyalty cards for your small business. Reward repeat customers, track visits, and grow without paper cards or app installs.',
+    description: DEFAULT_SOCIAL_DESCRIPTION,
     socialDescription: DEFAULT_SOCIAL_DESCRIPTION,
     canonical,
     robots: 'index,follow',
@@ -187,6 +189,7 @@ const getSeoForPathname = (pathname: string): SeoConfig => {
   const isNoIndexRoute =
     normalizedPath === '/login' ||
     normalizedPath === '/signup' ||
+    normalizedPath === '/signup-confirmation' ||
     normalizedPath === '/forgot-password' ||
     normalizedPath === '/dashboard' ||
     normalizedPath === '/campaigns' ||
@@ -330,7 +333,7 @@ const PublicCardWrapper: React.FC = () => {
   if (!cardData) {
     return (
       <div className="h-screen flex items-center justify-center px-6 text-center text-muted-foreground">
-        {isSupabaseConfigured ? 'Card not found.' : SUPABASE_CONFIG_ERROR}
+        {isSupabaseConfigured ? 'Card not found.' : SERVICE_UNAVAILABLE_MESSAGE}
       </div>
     );
   }
@@ -714,7 +717,7 @@ const AppRoutes: React.FC = () => {
     <SubscriptionProvider value={sub}>
       {!isSupabaseConfigured && (
         <div className="border-b border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          {SUPABASE_CONFIG_ERROR}
+          {SERVICE_UNAVAILABLE_MESSAGE}
         </div>
       )}
       <UpgradePrompt
@@ -736,6 +739,7 @@ const AppRoutes: React.FC = () => {
         <Route path="/:slug/:uniqueId" element={<PublicCardWrapper />} />
         <Route path="/login" element={withSuspense(<LoginPage />)} />
         <Route path="/signup" element={withSuspense(<SignupPage />)} />
+        <Route path="/signup-confirmation" element={withSuspense(<SignupConfirmationPage />)} />
         <Route path="/forgot-password" element={withSuspense(<ForgotPasswordPage />)} />
 
         {/* Authenticated Routes */}

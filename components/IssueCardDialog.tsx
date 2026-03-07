@@ -101,8 +101,8 @@ export const IssueCardDialog: React.FC<IssueCardDialogProps> = ({
             const card = await onIssue(selectedCampaign, selectedCustomer, newCustomerData);
             setCreatedCard(card);
             setStep('success');
-        } catch (error) {
-            setSubmitError(error instanceof Error ? error.message : "Unable to issue card right now.");
+        } catch {
+            setSubmitError("Unable to issue this card right now. Please try again.");
         } finally {
             setIssuing(false);
         }

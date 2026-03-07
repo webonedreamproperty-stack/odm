@@ -39,13 +39,13 @@ $$;
 drop policy if exists "Users can read own profile" on public.profiles;
 create policy "Users can read own profile"
   on public.profiles for select
-  using (auth.uid() = id);
+  using ((select auth.uid()) = id);
 
 drop policy if exists "Owners can read own staff profiles" on public.profiles;
 create policy "Owners can read own staff profiles"
   on public.profiles for select
   using (
-    role = 'staff' and owner_id = auth.uid()
+    role = 'staff' and owner_id = (select auth.uid())
   );
 
 drop policy if exists "Staff can read owner profile" on public.profiles;
@@ -58,20 +58,20 @@ create policy "Staff can read owner profile"
 drop policy if exists "Users can update own profile" on public.profiles;
 create policy "Users can update own profile"
   on public.profiles for update
-  using (auth.uid() = id);
+  using ((select auth.uid()) = id);
 
 drop policy if exists "Owners can update own staff profiles" on public.profiles;
 create policy "Owners can update own staff profiles"
   on public.profiles for update
   using (
-    role = 'staff' and owner_id = auth.uid()
+    role = 'staff' and owner_id = (select auth.uid())
   );
 
 drop policy if exists "Owners can insert staff profiles" on public.profiles;
 create policy "Owners can insert staff profiles"
   on public.profiles for insert
   with check (
-    role = 'staff' AND owner_id = auth.uid()
+    role = 'staff' AND owner_id = (select auth.uid())
   );
 
 drop policy if exists "Allow trigger insert for new signups" on public.profiles;
@@ -111,7 +111,8 @@ begin
   on conflict (id) do nothing;
   return new;
 end;
-$$ language plpgsql security definer;
+$$ language plpgsql security definer
+set search_path = public;
 
 drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
@@ -144,7 +145,7 @@ alter table public.campaigns enable row level security;
 drop policy if exists "Owners can manage own campaigns" on public.campaigns;
 create policy "Owners can manage own campaigns"
   on public.campaigns for all
-  using (auth.uid() = owner_id);
+  using ((select auth.uid()) = owner_id);
 
 drop policy if exists "Staff can read owner campaigns" on public.campaigns;
 create policy "Staff can read owner campaigns"
@@ -361,7 +362,7 @@ alter table public.license_keys enable row level security;
 drop policy if exists "Users can read own license keys" on public.license_keys;
 create policy "Users can read own license keys"
   on public.license_keys for select
-  using (profile_id = auth.uid());
+  using (profile_id = (select auth.uid()));
 
 -- License activation is handled through activate_license_key().
 drop policy if exists "Users can read unclaimed keys by key value" on public.license_keys;
@@ -414,7 +415,8 @@ begin
 
   return jsonb_build_object('success', true, 'expires_at', one_year_later);
 end;
-$$ language plpgsql security definer;
+$$ language plpgsql security definer
+set search_path = public;
 
 create or replace function public.get_scan_entry_context(slug_input text, card_unique_id uuid)
 returns jsonb as $$
@@ -559,7 +561,8 @@ begin
 
   return new_uid;
 end;
-$$ language plpgsql security definer;
+$$ language plpgsql security definer
+set search_path = public;
 
 
 -- 10. UPDATE STAFF PIN (RPC)
@@ -578,7 +581,8 @@ begin
       updated_at = now()
   where id = staff_id;
 end;
-$$ language plpgsql security definer;
+$$ language plpgsql security definer
+set search_path = public;
 
 
 -- 11. DELETE STAFF ACCOUNT (RPC)
@@ -595,7 +599,8 @@ begin
   delete from auth.users
   where id = staff_id;
 end;
-$$ language plpgsql security definer;
+$$ language plpgsql security definer
+set search_path = public;
 
 
 -- 12. DELETE OWN ACCOUNT (RPC)
@@ -609,7 +614,8 @@ begin
   );
   delete from auth.users where id = uid;
 end;
-$$ language plpgsql security definer;
+$$ language plpgsql security definer
+set search_path = public;
 
 
 -- 13. CHECK SLUG AVAILABILITY (RPC)
@@ -738,4 +744,5 @@ begin
     'campaign', campaign_payload
   );
 end;
-$$ language plpgsql security definer;
+$$ language plpgsql security definer
+set search_path = public;
