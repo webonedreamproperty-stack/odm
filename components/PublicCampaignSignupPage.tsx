@@ -13,6 +13,7 @@ export const PublicCampaignSignupPage: React.FC = () => {
   const { slug, campaignId } = useParams<{ slug: string; campaignId: string }>();
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [preRedirectMessage, setPreRedirectMessage] = useState('');
   const [error, setError] = useState('');
   const [context, setContext] = useState<Awaited<ReturnType<typeof fetchPublicCampaignSignupContext>>>(null);
 
@@ -40,6 +41,7 @@ export const PublicCampaignSignupPage: React.FC = () => {
   }, [campaignId, slug]);
 
   const disabled = context?.campaign.isEnabled === false;
+  const isShowingPreRedirectLoader = preRedirectMessage.length > 0;
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -63,12 +65,19 @@ export const PublicCampaignSignupPage: React.FC = () => {
       email,
       mobile,
     });
-    setSubmitting(false);
 
     if (result.outcome === 'issued' || result.outcome === 'redirect_existing') {
+      setPreRedirectMessage(
+        result.outcome === 'issued'
+          ? 'Generating your loyalty card. Please wait...'
+          : 'Redirecting to your loyalty card. Please wait...'
+      );
+      await new Promise((resolve) => setTimeout(resolve, 900));
       navigate(`/${slug}/${result.uniqueId}`, { replace: true });
       return;
     }
+
+    setSubmitting(false);
 
     if (result.outcome === 'campaign_disabled_no_existing') {
       setError('New signups are paused for this campaign. If you already have an in-progress card, enter the same email or mobile number you used before.');
@@ -104,6 +113,19 @@ export const PublicCampaignSignupPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#f5f5f7] px-4 py-10 sm:px-6 sm:py-14">
+      {isShowingPreRedirectLoader && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/90 px-6 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-2xl border border-black/10 bg-white p-6 text-center shadow-[0_18px_52px_-36px_rgba(0,0,0,0.45)]">
+            <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-[#1d1d1f] border-t-transparent" />
+            <p className="mt-4 text-sm font-medium text-[#1d1d1f]" aria-live="polite">
+              {preRedirectMessage}
+            </p>
+            <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-[#efeff1]">
+              <div className="h-full w-full origin-left animate-pulse rounded-full bg-[#1d1d1f]" />
+            </div>
+          </div>
+        </div>
+      )}
       <div className="mx-auto w-full max-w-xl">
         <section className="rounded-[2rem] border border-black/[0.08] bg-white p-6 shadow-[0_24px_64px_-38px_rgba(0,0,0,0.35)] sm:p-8">
           <p className="text-[0.68rem] font-semibold uppercase tracking-[0.26em] text-[#6e6e73]">Loyalty Signup</p>
@@ -178,7 +200,7 @@ export const PublicCampaignSignupPage: React.FC = () => {
               className="h-12 w-full rounded-xl bg-[#1d1d1f] text-sm font-semibold text-white hover:bg-black/85"
               disabled={submitting}
             >
-              {submitting ? 'Submitting...' : 'Get My Loyalty Card'}
+              {submitting ? 'Checking your card...' : 'Get My Loyalty Card'}
             </Button>
           </form>
         </section>
