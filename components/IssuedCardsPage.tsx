@@ -152,6 +152,10 @@ export const IssuedCardsPage: React.FC<IssuedCardsPageProps> = ({ customers, cam
 
   const handleKioskIssueNew = (customer: Customer, template: Template) => {
     if (!canIssue) return;
+    if (template.isEnabled === false) {
+      setMutationError("This campaign is disabled and cannot issue new cards.");
+      return;
+    }
     setPreSelectedCampaign(template);
     setPreSelectedCustomer(customer);
     setIsIssueOpen(true);
@@ -171,6 +175,9 @@ export const IssuedCardsPage: React.FC<IssuedCardsPageProps> = ({ customers, cam
   const handleIssueCard = async (campaign: Template, customer: Customer | null, newCustomerData: { name: string, email: string, mobile: string }): Promise<IssuedCard> => {
     if (!currentOwner) {
       throw new Error("You must be signed in as an owner or staff member to issue cards.");
+    }
+    if (campaign.isEnabled === false) {
+      throw new Error("This campaign is disabled and cannot issue new cards.");
     }
 
     const actorName = currentUser?.businessName ?? "Owner";

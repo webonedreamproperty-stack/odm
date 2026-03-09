@@ -4,6 +4,13 @@ export const buildPublicCardUrl = (slug: string, uniqueId: string) => {
   return `${window.location.origin}/${slug}/${uniqueId}`;
 };
 
+export const buildCampaignSignupUrl = (slug: string, campaignId: string) => {
+  if (!slug || !campaignId) return "";
+  const path = `/${slug}/join/${encodeURIComponent(campaignId)}`;
+  if (typeof window === "undefined") return path;
+  return `${window.location.origin}${path}`;
+};
+
 export const buildStaffPortalUrl = (slug: string, orgId: string, kioskUniqueId?: string) => {
   if (!slug || !orgId) return "";
   const params = new URLSearchParams({ id: orgId });

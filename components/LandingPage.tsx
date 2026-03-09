@@ -5,6 +5,7 @@ import { Button } from "./ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "./ui/accordion";
 import { useAuth } from "./AuthProvider";
 import { trackEvent } from "../lib/analytics";
+import { CookiePreferencesBanner } from "./CookiePreferencesBanner";
 
 // ── Hooks ─────────────────────────────────────────────────────────────────────
 
@@ -857,6 +858,12 @@ export const LandingPage: React.FC = () => {
               Privacy Policy
             </Link>
             <Link
+              to="/cookie"
+              className="text-xs font-medium text-white/55 transition-colors hover:text-white"
+            >
+              Cookie Policy
+            </Link>
+            <Link
               to="/terms"
               className="text-xs font-medium text-white/55 transition-colors hover:text-white"
             >
@@ -867,6 +874,7 @@ export const LandingPage: React.FC = () => {
         </div>
       </footer>
 
+      <CookiePreferencesBanner />
     </div>
   );
 };

@@ -5,7 +5,7 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { QrCodeDisplay } from "./ui/qr-code-display";
-import { Search, CreditCard, ChevronRight, UserPlus, CheckCircle2, User, ArrowLeft, Copy, ExternalLink } from "lucide-react";
+import { Search, CreditCard, ChevronRight, UserPlus, CheckCircle2, User, ArrowLeft, Copy, ExternalLink, Ban } from "lucide-react";
 import { useAuth } from './AuthProvider';
 import { buildPublicCardUrl } from '../lib/links';
 
@@ -38,6 +38,7 @@ export const IssueCardDialog: React.FC<IssueCardDialogProps> = ({
     const [newCustomerData, setNewCustomerData] = useState({ name: '', email: '', mobile: '' });
     const [createdCard, setCreatedCard] = useState<IssuedCard | null>(null);
     const [submitError, setSubmitError] = useState("");
+    const [flowError, setFlowError] = useState("");
     const [issuing, setIssuing] = useState(false);
     const publicUrl = createdCard ? buildPublicCardUrl(slug, createdCard.uniqueId) : "";
     const displayUrl = publicUrl.length > 42 ? `${publicUrl.slice(0, 42)}...` : publicUrl;
@@ -50,15 +51,30 @@ export const IssueCardDialog: React.FC<IssueCardDialogProps> = ({
             setNewCustomerData({ name: '', email: '', mobile: '' });
             setCreatedCard(null);
             setSubmitError("");
+            setFlowError("");
             setIssuing(false);
 
             if (preSelectedCampaign && preSelectedCustomer) {
-                setSelectedCampaign(preSelectedCampaign);
-                setSelectedCustomer(preSelectedCustomer);
-                setStep('review');
+                if (preSelectedCampaign.isEnabled === false) {
+                    setSelectedCampaign(null);
+                    setSelectedCustomer(null);
+                    setStep('campaign');
+                    setFlowError(`"${preSelectedCampaign.name}" is disabled and cannot issue new cards.`);
+                } else {
+                    setSelectedCampaign(preSelectedCampaign);
+                    setSelectedCustomer(preSelectedCustomer);
+                    setStep('review');
+                }
             } else if (preSelectedCampaign) {
-                setSelectedCampaign(preSelectedCampaign);
-                setStep('customer');
+                if (preSelectedCampaign.isEnabled === false) {
+                    setSelectedCampaign(null);
+                    setSelectedCustomer(null);
+                    setStep('campaign');
+                    setFlowError(`"${preSelectedCampaign.name}" is disabled and cannot issue new cards.`);
+                } else {
+                    setSelectedCampaign(preSelectedCampaign);
+                    setStep('customer');
+                }
             } else {
                 setSelectedCampaign(null);
                 setSelectedCustomer(null);
@@ -75,6 +91,11 @@ export const IssueCardDialog: React.FC<IssueCardDialogProps> = ({
 
     // Handlers
     const handleSelectCampaign = (c: Template) => {
+        if (c.isEnabled === false) {
+            setFlowError(`"${c.name}" is disabled and cannot issue new cards.`);
+            return;
+        }
+        setFlowError("");
         setSelectedCampaign(c);
         setSearchQuery("");
         setStep('customer');
@@ -90,19 +111,28 @@ export const IssueCardDialog: React.FC<IssueCardDialogProps> = ({
         setSelectedCustomer(null);
         setNewCustomerData({ name: searchQuery, email: '', mobile: '' });
         setSubmitError("");
+        setFlowError("");
         setStep('new-customer');
     };
 
     const handleConfirmIssue = async () => {
         if (!selectedCampaign) return;
+        if (selectedCampaign.isEnabled === false) {
+            setSubmitError("This campaign is disabled and cannot issue new cards.");
+            return;
+        }
         setSubmitError("");
         setIssuing(true);
         try {
             const card = await onIssue(selectedCampaign, selectedCustomer, newCustomerData);
             setCreatedCard(card);
             setStep('success');
-        } catch {
-            setSubmitError("Unable to issue this card right now. Please try again.");
+        } catch (error) {
+            if (error instanceof Error && error.message) {
+                setSubmitError(error.message);
+            } else {
+                setSubmitError("Unable to issue this card right now. Please try again.");
+            }
         } finally {
             setIssuing(false);
         }
@@ -152,15 +182,30 @@ export const IssueCardDialog: React.FC<IssueCardDialogProps> = ({
                             <div className="grid gap-2">
                                 {filteredCampaigns.length === 0 ? <p className="text-center text-sm text-muted-foreground py-8">No campaigns found.</p> :
                                 filteredCampaigns.map(c => (
-                                    <button key={c.id} onClick={() => handleSelectCampaign(c)} className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors text-left group">
+                                    <button
+                                        key={c.id}
+                                        onClick={() => handleSelectCampaign(c)}
+                                        className={`flex items-center justify-between p-3 rounded-lg border transition-colors text-left group ${c.isEnabled === false ? 'opacity-70 bg-muted/20 cursor-not-allowed' : 'hover:bg-muted/50'}`}
+                                        disabled={c.isEnabled === false}
+                                    >
                                         <div className="flex items-center gap-3">
-                                            <div className="h-10 w-10 rounded-md bg-muted flex items-center justify-center text-muted-foreground"><CreditCard size={20} /></div>
-                                            <div><p className="font-semibold text-sm">{c.name}</p><p className="text-xs text-muted-foreground">{c.totalStamps} stamps</p></div>
+                                            <div className="h-10 w-10 rounded-md bg-muted flex items-center justify-center text-muted-foreground">
+                                                {c.isEnabled === false ? <Ban size={18} /> : <CreditCard size={20} />}
+                                            </div>
+                                            <div>
+                                                <p className="font-semibold text-sm">{c.name}</p>
+                                                <p className="text-xs text-muted-foreground">{c.totalStamps} stamps {c.isEnabled === false ? '• Disabled' : ''}</p>
+                                            </div>
                                         </div>
-                                        <ChevronRight size={16} className="text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity"/>
+                                        <ChevronRight size={16} className={`text-muted-foreground transition-opacity ${c.isEnabled === false ? 'opacity-0' : 'opacity-0 group-hover:opacity-100'}`}/>
                                     </button>
                                 ))}
                             </div>
+                            {flowError && (
+                                <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+                                    {flowError}
+                                </div>
+                            )}
                         </div>
                     )}
 

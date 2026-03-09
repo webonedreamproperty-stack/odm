@@ -11,7 +11,7 @@ import { AuthProvider, useAuth } from './components/AuthProvider';
 import { RequireAuth } from './components/RequireAuth';
 import { RequireRole } from './components/RequireRole';
 import { VerifyBanner } from './components/VerifyBanner';
-import { fetchCampaigns, upsertCampaign, deleteCampaign as dbDeleteCampaign } from './lib/db/campaigns';
+import { fetchCampaigns, upsertCampaign, deleteCampaign as dbDeleteCampaign, setCampaignEnabled } from './lib/db/campaigns';
 import { fetchCustomersWithCards } from './lib/db/customers';
 import { fetchPublicScanEntryContext } from './lib/db/issuedCards';
 import { buildIssuedCardsKioskUrl, buildStaffPortalUrl, buildStaffScanEntryUrl } from './lib/links';
@@ -88,9 +88,11 @@ const ForgotPasswordPage = lazy(() => import('./components/ForgotPasswordPage').
 const DashboardPage = lazy(() => import('./components/DashboardPage').then((module) => ({ default: module.DashboardPage })));
 const ArticlesPage = lazy(() => import('./components/ArticlesPage').then((module) => ({ default: module.ArticlesPage })));
 const PrivacyPolicyPage = lazy(() => import('./components/PrivacyPolicyPage').then((module) => ({ default: module.PrivacyPolicyPage })));
+const CookiePolicyPage = lazy(() => import('./components/CookiePolicyPage').then((module) => ({ default: module.CookiePolicyPage })));
 const TermsPage = lazy(() => import('./components/TermsPage').then((module) => ({ default: module.TermsPage })));
 const GettingStartedArticlePage = lazy(() => import('./components/GettingStartedArticlePage').then((module) => ({ default: module.GettingStartedArticlePage })));
 const ShowcasePage = lazy(() => import('./components/ShowcasePage').then((module) => ({ default: module.ShowcasePage })));
+const PublicCampaignSignupPage = lazy(() => import('./components/PublicCampaignSignupPage').then((module) => ({ default: module.PublicCampaignSignupPage })));
 
 const RouteLoader: React.FC = () => (
   <div className="flex min-h-[40vh] w-full items-center justify-center">
@@ -177,6 +179,15 @@ const getSeoForPathname = (pathname: string): SeoConfig => {
     };
   }
 
+  if (normalizedPath === '/cookie' || normalizedPath === '/cokkie' || normalizedPath === '/cookie-policy') {
+    return {
+      ...defaultSeo,
+      title: 'Cookie Policy | Stampee',
+      description: 'Learn how Stampee uses essential and analytics cookies and how cookie preferences can be managed.',
+      canonical,
+    };
+  }
+
   if (normalizedPath === '/terms') {
     return {
       ...defaultSeo,
@@ -204,6 +215,7 @@ const getSeoForPathname = (pathname: string): SeoConfig => {
     normalizedPath.startsWith('/editor/') ||
     /^\/[^/]+\/staff$/.test(normalizedPath) ||
     /^\/[^/]+\/scan\/[^/]+$/.test(normalizedPath) ||
+    /^\/[^/]+\/join\/[^/]+$/.test(normalizedPath) ||
     /^\/[^/]+\/[^/]+$/.test(normalizedPath);
 
   if (isNoIndexRoute) {
@@ -691,7 +703,9 @@ const AppRoutes: React.FC = () => {
       showUpgrade('campaign');
       throw new Error('Campaign limit reached for the beta. Contact hello@stampee.co for higher limits.');
     }
-    const saved = isNew ? { ...template, id: `custom-${Date.now()}` } : template;
+    const saved = isNew
+      ? { ...template, id: `custom-${Date.now()}`, isEnabled: template.isEnabled ?? true }
+      : { ...template, isEnabled: template.isEnabled ?? true };
     const stored = toStoredTemplate(saved);
     const result = await upsertCampaign(stored, currentOwner.id);
     if (!result.ok) {
@@ -713,6 +727,17 @@ const AppRoutes: React.FC = () => {
     setCreatedCards(prev => prev.filter(c => c.id !== cardId));
   };
 
+  const handleToggleCampaignEnabled = async (cardId: string, isEnabled: boolean) => {
+    if (!currentOwner) {
+      throw new Error('No active owner account found.');
+    }
+    const result = await setCampaignEnabled(cardId, currentOwner.id, isEnabled);
+    if (!result.ok) {
+      throw new Error(result.error ?? 'Failed to update campaign status.');
+    }
+    setCreatedCards(prev => prev.map(card => (card.id === cardId ? { ...card, isEnabled } : card)));
+  };
+
   return (
     <SubscriptionProvider value={sub}>
       {!isSupabaseConfigured && (
@@ -732,10 +757,14 @@ const AppRoutes: React.FC = () => {
         <Route path="/showcase" element={withSuspense(<ShowcasePage />)} />
         <Route path="/articles" element={withSuspense(<ArticlesPage />)} />
         <Route path="/privacy-policy" element={withSuspense(<PrivacyPolicyPage />)} />
+        <Route path="/cookie" element={withSuspense(<CookiePolicyPage />)} />
+        <Route path="/cokkie" element={<Navigate to="/cookie" replace />} />
+        <Route path="/cookie-policy" element={<Navigate to="/cookie" replace />} />
         <Route path="/terms" element={withSuspense(<TermsPage />)} />
         <Route path="/articles/getting-started" element={withSuspense(<GettingStartedArticlePage />)} />
         <Route path="/:slug/staff" element={withSuspense(<StaffLoginPage />)} />
         <Route path="/:slug/scan/:uniqueId" element={<StaffScanEntryWrapper />} />
+        <Route path="/:slug/join/:campaignId" element={withSuspense(<PublicCampaignSignupPage />)} />
         <Route path="/:slug/:uniqueId" element={<PublicCardWrapper />} />
         <Route path="/login" element={withSuspense(<LoginPage />)} />
         <Route path="/signup" element={withSuspense(<SignupPage />)} />
@@ -756,7 +785,14 @@ const AppRoutes: React.FC = () => {
                 withSuspense(<DashboardPage campaigns={createdCards} customers={customers} />)
               } />
               <Route path="/campaigns" element={
-                withSuspense(<MyCards cards={createdCards} onDeleteCard={handleDeleteCard} onUpgrade={() => showUpgrade('campaign')} />)
+                withSuspense(
+                  <MyCards
+                    cards={createdCards}
+                    onDeleteCard={handleDeleteCard}
+                    onToggleCampaignEnabled={handleToggleCampaignEnabled}
+                    onUpgrade={() => showUpgrade('campaign')}
+                  />
+                )
               } />
               <Route path="/gallery" element={withSuspense(<TemplatesGallery />)} />
               <Route path="/analytics" element={withSuspense(<AnalyticsPage customers={customers} campaigns={createdCards} />)} />

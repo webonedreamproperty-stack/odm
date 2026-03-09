@@ -5,6 +5,7 @@ interface CampaignRow {
   id: string;
   owner_id: string;
   name: string;
+  is_enabled: boolean;
   description: string;
   reward_name: string;
   tagline: string | null;
@@ -23,6 +24,7 @@ export function rowToStoredTemplate(row: CampaignRow): StoredTemplate {
   return {
     id: row.id,
     name: row.name,
+    isEnabled: row.is_enabled,
     description: row.description,
     rewardName: row.reward_name,
     tagline: row.tagline ?? undefined,
@@ -43,6 +45,7 @@ function templateToRow(t: StoredTemplate, ownerId: string) {
     id: t.id,
     owner_id: ownerId,
     name: t.name,
+    is_enabled: t.isEnabled ?? true,
     description: t.description,
     reward_name: t.rewardName,
     tagline: t.tagline ?? null,
@@ -74,6 +77,20 @@ export async function upsertCampaign(template: StoredTemplate, ownerId: string):
     .from('campaigns')
     .upsert(row, { onConflict: 'id' });
   if (error) return { ok: false, error: 'Unable to save this campaign right now. Please try again.' };
+  return { ok: true };
+}
+
+export async function setCampaignEnabled(
+  campaignId: string,
+  ownerId: string,
+  isEnabled: boolean
+): Promise<{ ok: boolean; error?: string }> {
+  const { error } = await supabase
+    .from('campaigns')
+    .update({ is_enabled: isEnabled })
+    .eq('id', campaignId)
+    .eq('owner_id', ownerId);
+  if (error) return { ok: false, error: 'Unable to update this campaign status right now. Please try again.' };
   return { ok: true };
 }
 

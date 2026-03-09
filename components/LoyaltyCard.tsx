@@ -25,6 +25,8 @@ interface LoyaltyCardProps {
   sizeVariant?: 'default' | 'compact';
   history?: Transaction[];
   isRedeemed?: boolean;
+  onStampAddTap?: () => void;
+  onStampRemoveTap?: () => void;
 }
 
 export const LoyaltyCard: React.FC<LoyaltyCardProps> = ({ 
@@ -40,7 +42,9 @@ export const LoyaltyCard: React.FC<LoyaltyCardProps> = ({
     qrValue,
     sizeVariant = 'default',
     history = [],
-    isRedeemed = false
+    isRedeemed = false,
+    onStampAddTap,
+    onStampRemoveTap
 }) => {
   const [stamps, setStamps] = useState<number>(0);
   const [showReward, setShowReward] = useState<boolean>(false);
@@ -191,15 +195,23 @@ export const LoyaltyCard: React.FC<LoyaltyCardProps> = ({
   })();
 
   const handleStampClick = (index: number) => {
-    if (readOnly) return;
+    if (readOnly && !onStampAddTap && !onStampRemoveTap) return;
 
     if (index === stamps) {
+      if (readOnly && onStampAddTap) {
+        onStampAddTap();
+        return;
+      }
       const newCount = stamps + 1;
       setStamps(newCount);
       if (newCount === totalStamps && shouldShowRewardModal) {
         triggerReward();
       }
     } else if (index < stamps) {
+      if (readOnly && onStampRemoveTap) {
+        onStampRemoveTap();
+        return;
+      }
       setStamps(index); 
       setRewardData(null); 
     }
@@ -218,6 +230,21 @@ export const LoyaltyCard: React.FC<LoyaltyCardProps> = ({
       setLoadingReward(false);
     }
   };
+
+  useEffect(() => {
+    const shouldAutoShowReward = mode === 'public' || (mode === 'active' && readOnly);
+    if (!shouldAutoShowReward) return;
+    if (isRedeemed) {
+      setShowReward(false);
+      return;
+    }
+    if (isCompleted) {
+      setShowReward(true);
+      setLoadingReward(false);
+      return;
+    }
+    setShowReward(false);
+  }, [isCompleted, isRedeemed, mode, readOnly]);
 
   const resetCard = () => {
     if (readOnly) {
@@ -427,7 +454,7 @@ export const LoyaltyCard: React.FC<LoyaltyCardProps> = ({
                   "relative grid grid-cols-4 justify-items-center max-w-sm transition-all",
                   isCompleted ? "mb-6" : "mb-12",
                   isHighDensity ? "gap-2" : "gap-4",
-                  readOnly && "pointer-events-none" // Disable interaction in read-only
+                  readOnly && !onStampAddTap && !onStampRemoveTap && "pointer-events-none" // Disable interaction in read-only unless tap callbacks are provided
               )}>
                 {Array.from({ length: totalStamps }).map((_, index) => (
                   <StampSlot 
@@ -447,7 +474,7 @@ export const LoyaltyCard: React.FC<LoyaltyCardProps> = ({
                   />
                 ))}
 
-                {isCompleted && !isRedeemed && (
+                {isCompleted && !isRedeemed && !showReward && (
                   <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
                     <div className="w-[80vw] h-[80vw] max-w-[520px] max-h-[520px] md:w-[520px] md:h-[520px]">
                       {giftAnimation && (
@@ -650,10 +677,15 @@ export const LoyaltyCard: React.FC<LoyaltyCardProps> = ({
       )}
 
       {shouldShowRewardModal && (
+        // Public cards and read-only active cards (issued-cards kiosk) should not have a close button.
         <RewardModal 
           isOpen={showReward} 
           loading={loadingReward} 
           reward={rewardData} 
+          rewardName={rewardName}
+          businessName={template.name}
+          showCloseButton={!(mode === 'public' || (mode === 'active' && readOnly))}
+          scope={mode === 'active' && readOnly ? 'container' : 'fullscreen'}
           onClose={resetCard}
           colors={colors}
         />

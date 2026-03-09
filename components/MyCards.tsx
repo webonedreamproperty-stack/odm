@@ -1,9 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Template } from '../types';
 import { Button } from './ui/button';
-import { PlusCircle, Edit2, Trash2, CreditCard, Play, Crown } from 'lucide-react';
+import { PlusCircle, Edit2, Trash2, CreditCard, Play, QrCode, Power, Copy, ExternalLink } from 'lucide-react';
 import { LoyaltyCard } from './LoyaltyCard';
-import { cn } from '../lib/utils';
 import { useNavigate } from 'react-router-dom';
 import {
   Dialog,
@@ -13,11 +12,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from "./ui/dialog";
+import { QrCodeDisplay } from './ui/qr-code-display';
+import { Input } from './ui/input';
+import { Label } from './ui/label';
 import { useSubscriptionContext } from './SubscriptionContext';
+import { buildCampaignSignupUrl } from '../lib/links';
+import { useAuth } from './AuthProvider';
 
 interface MyCardsProps {
   cards: Template[];
   onDeleteCard: (cardId: string) => Promise<void>;
+  onToggleCampaignEnabled: (cardId: string, isEnabled: boolean) => Promise<void>;
   onUpgrade?: () => void;
 }
 
@@ -25,13 +30,19 @@ interface ResponsiveCardItemProps {
   card: Template;
   onEdit: (id: string) => void;
   onDelete: (id: string) => void;
+  onShowSignupQr: (card: Template) => void;
+  onToggleEnabled: (id: string, isEnabled: boolean) => void;
+  toggleBusy: boolean;
 }
 
 // Internal component for responsive card scaling
 const ResponsiveCardItem: React.FC<ResponsiveCardItemProps> = ({ 
     card, 
     onEdit, 
-    onDelete 
+    onDelete,
+    onShowSignupQr,
+    onToggleEnabled,
+    toggleBusy,
 }) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const [scale, setScale] = useState(1);
@@ -88,9 +99,14 @@ const ResponsiveCardItem: React.FC<ResponsiveCardItemProps> = ({
             {/* Actions & Labels */}
             <div className="text-center space-y-4 w-full px-2">
                 <div className="space-y-1 cursor-pointer" onClick={openActiveView}>
-                    <h3 className="font-bold text-2xl text-foreground tracking-tight group-hover:text-primary transition-colors truncate">
+                    <div className="flex items-center justify-center gap-2">
+                      <h3 className="font-bold text-2xl text-foreground tracking-tight group-hover:text-primary transition-colors truncate">
                         {card.name}
-                    </h3>
+                      </h3>
+                      <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${card.isEnabled === false ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                        {card.isEnabled === false ? 'Disabled' : 'Enabled'}
+                      </span>
+                    </div>
                     <p className="text-sm text-muted-foreground truncate" title={card.rewardName}>
                        Reward: {card.rewardName}
                     </p>
@@ -104,7 +120,27 @@ const ResponsiveCardItem: React.FC<ResponsiveCardItemProps> = ({
                     >
                         <Play size={16} fill="currentColor" /> Open
                     </Button>
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1.5">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className="rounded-full gap-1.5"
+                            onClick={() => onShowSignupQr(card)}
+                            title="Show signup QR"
+                        >
+                            <QrCode size={14} /> QR
+                        </Button>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className="rounded-full gap-1.5"
+                            onClick={() => onToggleEnabled(card.id, card.isEnabled === false)}
+                            disabled={toggleBusy}
+                            title={card.isEnabled === false ? 'Enable campaign' : 'Disable campaign'}
+                        >
+                            <Power size={14} />
+                            {card.isEnabled === false ? 'Enable' : 'Disable'}
+                        </Button>
                         <Button 
                             variant="ghost" 
                             size="icon" 
@@ -133,13 +169,19 @@ const ResponsiveCardItem: React.FC<ResponsiveCardItemProps> = ({
 export const MyCards: React.FC<MyCardsProps> = ({ 
   cards, 
   onDeleteCard,
+  onToggleCampaignEnabled,
   onUpgrade,
 }) => {
   const navigate = useNavigate();
+  const { currentOwner } = useAuth();
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [qrCard, setQrCard] = useState<Template | null>(null);
+  const [toggleBusyId, setToggleBusyId] = useState<string | null>(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [deleteError, setDeleteError] = useState("");
   const { canCreateCampaign, campaignCount, campaignLimit, isProTier } = useSubscriptionContext();
+  const qrUrl = qrCard && currentOwner?.slug ? buildCampaignSignupUrl(currentOwner.slug, qrCard.id) : "";
+  const qrDisplayUrl = qrUrl.length > 42 ? `${qrUrl.slice(0, 42)}...` : qrUrl;
 
   const confirmDelete = async () => {
     if (deleteId) {
@@ -164,6 +206,28 @@ export const MyCards: React.FC<MyCardsProps> = ({
     navigate('/gallery');
   };
   const handleEdit = (id: string) => navigate(`/editor/${id}`);
+
+  const handleToggleEnabled = async (id: string, isEnabled: boolean) => {
+    setDeleteError("");
+    setToggleBusyId(id);
+    try {
+      await onToggleCampaignEnabled(id, isEnabled);
+    } catch {
+      setDeleteError("Unable to update this campaign status right now. Please try again.");
+    } finally {
+      setToggleBusyId(null);
+    }
+  };
+
+  const handleCopyQrUrl = () => {
+    if (!qrUrl) return;
+    void navigator.clipboard.writeText(qrUrl);
+  };
+
+  const handleOpenQrUrl = () => {
+    if (!qrUrl) return;
+    window.open(qrUrl, '_blank');
+  };
 
   return (
     <div className="p-4 md:p-8 space-y-8 animate-fade-in h-full overflow-y-auto bg-gray-50/50">
@@ -211,6 +275,9 @@ export const MyCards: React.FC<MyCardsProps> = ({
                 card={card} 
                 onEdit={handleEdit} 
                 onDelete={(id) => setDeleteId(id)}
+                onShowSignupQr={setQrCard}
+                onToggleEnabled={handleToggleEnabled}
+                toggleBusy={toggleBusyId === card.id}
             />
           ))}
         </div>
@@ -235,6 +302,36 @@ export const MyCards: React.FC<MyCardsProps> = ({
               {deleteBusy ? "Deleting..." : "Delete"}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!qrCard} onOpenChange={(open) => !open && setQrCard(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Campaign Signup QR</DialogTitle>
+            <DialogDescription>
+              Customers can scan this QR code at reception to join <strong>{qrCard?.name}</strong>.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col items-center gap-4 py-2">
+            {qrUrl && (
+              <div className="rounded-xl border bg-white p-3">
+                <QrCodeDisplay value={qrUrl} className="h-56 w-56" label="Campaign signup QR code" />
+              </div>
+            )}
+            <div className="w-full space-y-2">
+              <Label className="text-xs text-muted-foreground">Signup link</Label>
+              <div className="flex items-center gap-2">
+                <Input readOnly value={qrDisplayUrl || qrUrl} className="text-xs font-mono bg-muted/40" />
+                <Button type="button" variant="outline" size="icon" onClick={handleCopyQrUrl} title="Copy link">
+                  <Copy size={14} />
+                </Button>
+                <Button type="button" variant="outline" size="icon" onClick={handleOpenQrUrl} title="Open link">
+                  <ExternalLink size={14} />
+                </Button>
+              </div>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

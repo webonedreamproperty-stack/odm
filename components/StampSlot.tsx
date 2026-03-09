@@ -40,7 +40,7 @@ export const StampSlot: React.FC<StampSlotProps> = ({
     <button
       onClick={onClick}
       className={cn(
-        "relative flex items-center justify-center rounded-full transition-all duration-300 ease-in-out hover:scale-105 active:scale-95",
+        "relative flex items-center justify-center rounded-full transition-all duration-300 ease-in-out hover:scale-105 active:scale-95 touch-manipulation",
         sizeClassName || "w-20 h-20 sm:w-20 sm:h-20",
         active ? "shadow-inner" : "",
         className

@@ -26,6 +26,7 @@ export interface ThemeColors {
 export interface Template {
   id: string;
   name: string;
+  isEnabled?: boolean;
   description: string;
   rewardName: string;
   tagline?: string; // Custom instruction text e.g. "Buy 10 get 1 free"

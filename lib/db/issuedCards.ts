@@ -37,7 +37,12 @@ export async function insertIssuedCard(
     status: 'Active',
     template_snapshot: card.templateSnapshot ?? null,
   });
-  if (error) return { ok: false, error: 'Unable to issue this card right now. Please try again.' };
+  if (error) {
+    if (error.message.includes('CAMPAIGN_DISABLED')) {
+      return { ok: false, error: 'This campaign is disabled and cannot issue new cards.' };
+    }
+    return { ok: false, error: 'Unable to issue this card right now. Please try again.' };
+  }
   return { ok: true };
 }
 

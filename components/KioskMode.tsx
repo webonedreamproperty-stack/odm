@@ -200,6 +200,16 @@ export const KioskMode: React.FC<KioskModeProps> = ({
       setTimeout(() => onIssueNew(customer, template), 100);
   };
 
+  const handlePreviewStampAddTap = () => {
+    if (mutationBusy || !canAdd) return;
+    setConfirmAction('stamp');
+  };
+
+  const handlePreviewStampRemoveTap = () => {
+    if (mutationBusy || !canRemove) return;
+    setConfirmAction('remove');
+  };
+
   return (
     <div className="fixed inset-0 z-[100] overflow-y-auto bg-[#f5f4ef] animate-fade-in overscroll-y-contain md:overflow-hidden">
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
@@ -229,6 +239,8 @@ export const KioskMode: React.FC<KioskModeProps> = ({
                     mode="active"
                     currentStamps={card.stamps}
                     readOnly={true} 
+                    onStampAddTap={handlePreviewStampAddTap}
+                    onStampRemoveTap={handlePreviewStampRemoveTap}
                     className={cn("w-full h-full transition-opacity", isLocked && "opacity-50 grayscale-[0.5]")}
                     history={card.history}
                     isRedeemed={isLocked}
@@ -257,6 +269,11 @@ export const KioskMode: React.FC<KioskModeProps> = ({
                     </div>
                 )}
             </div>
+            {!isLocked && (
+              <p className="mt-3 text-center text-xs font-medium tracking-wide text-[#5f6368] sm:text-sm">
+                Tap the next empty stamp to add. Tap a filled stamp to remove.
+              </p>
+            )}
           </div>
         </div>
 

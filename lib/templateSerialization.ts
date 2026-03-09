@@ -7,7 +7,7 @@ const iconKeyByRef = new Map(Object.entries(ICON_REGISTRY).map(([key, icon]) => 
 export const toStoredTemplate = (template: Template): StoredTemplate => {
   const { icon, ...rest } = template;
   const iconKey = iconKeyByRef.get(icon) ?? "cookie";
-  return { ...rest, iconKey };
+  return { ...rest, isEnabled: rest.isEnabled ?? true, iconKey };
 };
 
 const normalizeHex = (value?: string, fallback?: string) => {
@@ -41,6 +41,7 @@ export const fromStoredTemplate = (stored: StoredTemplate): Template => {
   const backgroundOpacity = stored.backgroundOpacity ?? extractIntensity(stored.colors?.background);
   return {
     ...stored,
+    isEnabled: stored.isEnabled ?? true,
     icon,
     backgroundOpacity: backgroundOpacity ?? 100,
     colors: normalizeColors(stored.colors)

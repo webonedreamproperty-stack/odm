@@ -28,6 +28,12 @@ export const PublicFooter: React.FC = () => {
             Privacy Policy
           </Link>
           <Link
+            to="/cookie"
+            className="text-xs font-medium text-white/55 transition-colors hover:text-white"
+          >
+            Cookie Policy
+          </Link>
+          <Link
             to="/terms"
             className="text-xs font-medium text-white/55 transition-colors hover:text-white"
           >

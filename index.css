@@ -91,8 +91,28 @@ h3 {
   }
 }
 
+@keyframes reward-confetti-fall {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, -4vh, 0) rotate(0deg);
+  }
+
+  6% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate3d(var(--x-drift, 0px), 110vh, 0) rotate(var(--confetti-spin, 540deg));
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .dashboard-route-transition {
     animation: none;
+  }
+
+  .reward-confetti-piece {
+    animation: none !important;
   }
 }
