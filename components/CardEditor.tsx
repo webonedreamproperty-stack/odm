@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { Template } from '../types';
 import { LoyaltyCard } from './LoyaltyCard';
 import { Button } from './ui/button';
@@ -7,22 +7,369 @@ import { Label } from './ui/label';
 import { Switch } from './ui/switch';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from './ui/accordion';
 import { Dialog, DialogContent, DialogTitle } from './ui/dialog';
-import { ArrowLeft, Check as CheckIcon, Smartphone, Image as ImageIcon, Type, Palette, Grid } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
+import { ArrowLeft, Check as CheckIcon, Smartphone, Image as ImageIcon, Type, Palette, Grid, X, ChevronDown } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { ICON_OPTIONS } from '../lib/iconRegistry';
+import { useAuth } from './AuthProvider';
+import { deleteCampaignAssetByUrl, type CampaignAssetKind, uploadCampaignAsset } from '../lib/storage/campaignAssets';
 
 interface CardEditorProps {
   initialTemplate: Template;
   onSave: (template: Template) => Promise<void>;
 }
 
+type PalettePreset = {
+  id: string;
+  name: string;
+  swatches: [string, string, string, string, string, string];
+  colors: {
+    background: string;
+    text: string;
+    stampInactive: string;
+    iconInactive: string;
+    stampActive: string;
+    iconActive: string;
+    button?: string;
+    buttonText?: string;
+    muted?: string;
+    border?: string;
+    cardBackground?: string;
+  };
+};
+
+const PALETTE_PRESETS: PalettePreset[] = [
+  {
+    id: 'slate-mono',
+    name: 'Slate',
+    swatches: ['#0f172a', '#334155', '#64748b', '#94a3b8', '#e2e8f0', '#f8fafc'],
+    colors: {
+      background: '#f8fafc',
+      text: '#0f172a',
+      stampInactive: '#e2e8f0',
+      iconInactive: '#64748b',
+      stampActive: '#94a3b8',
+      iconActive: '#0f172a',
+      button: '#334155',
+      buttonText: '#ffffff',
+      muted: '#64748b',
+      border: '#cbd5e1',
+      cardBackground: '#ffffff',
+    },
+  },
+  {
+    id: 'gray-mono',
+    name: 'Gray',
+    swatches: ['#111827', '#4b5563', '#6b7280', '#9ca3af', '#e5e7eb', '#f9fafb'],
+    colors: {
+      background: '#f9fafb',
+      text: '#111827',
+      stampInactive: '#e5e7eb',
+      iconInactive: '#6b7280',
+      stampActive: '#9ca3af',
+      iconActive: '#1f2937',
+      button: '#4b5563',
+      buttonText: '#ffffff',
+      muted: '#6b7280',
+      border: '#d1d5db',
+      cardBackground: '#ffffff',
+    },
+  },
+  {
+    id: 'blue-mono',
+    name: 'Blue',
+    swatches: ['#1e3a8a', '#2563eb', '#3b82f6', '#93c5fd', '#dbeafe', '#eff6ff'],
+    colors: {
+      background: '#eff6ff',
+      text: '#1e3a8a',
+      stampInactive: '#dbeafe',
+      iconInactive: '#3b82f6',
+      stampActive: '#93c5fd',
+      iconActive: '#1e40af',
+      button: '#2563eb',
+      buttonText: '#ffffff',
+      muted: '#60a5fa',
+      border: '#bfdbfe',
+      cardBackground: '#ffffff',
+    },
+  },
+  {
+    id: 'sky-mono',
+    name: 'Sky',
+    swatches: ['#0c4a6e', '#0ea5e9', '#38bdf8', '#7dd3fc', '#e0f2fe', '#f0f9ff'],
+    colors: {
+      background: '#f0f9ff',
+      text: '#0c4a6e',
+      stampInactive: '#e0f2fe',
+      iconInactive: '#0284c7',
+      stampActive: '#7dd3fc',
+      iconActive: '#075985',
+      button: '#0ea5e9',
+      buttonText: '#ffffff',
+      muted: '#38bdf8',
+      border: '#bae6fd',
+      cardBackground: '#ffffff',
+    },
+  },
+  {
+    id: 'cyan-mono',
+    name: 'Cyan',
+    swatches: ['#164e63', '#06b6d4', '#22d3ee', '#67e8f9', '#cffafe', '#ecfeff'],
+    colors: {
+      background: '#ecfeff',
+      text: '#164e63',
+      stampInactive: '#cffafe',
+      iconInactive: '#0891b2',
+      stampActive: '#67e8f9',
+      iconActive: '#155e75',
+      button: '#06b6d4',
+      buttonText: '#ffffff',
+      muted: '#22d3ee',
+      border: '#a5f3fc',
+      cardBackground: '#ffffff',
+    },
+  },
+  {
+    id: 'teal-mono',
+    name: 'Teal',
+    swatches: ['#134e4a', '#14b8a6', '#2dd4bf', '#5eead4', '#ccfbf1', '#f0fdfa'],
+    colors: {
+      background: '#f0fdfa',
+      text: '#134e4a',
+      stampInactive: '#ccfbf1',
+      iconInactive: '#0f766e',
+      stampActive: '#5eead4',
+      iconActive: '#115e59',
+      button: '#14b8a6',
+      buttonText: '#ffffff',
+      muted: '#2dd4bf',
+      border: '#99f6e4',
+      cardBackground: '#ffffff',
+    },
+  },
+  {
+    id: 'emerald-mono',
+    name: 'Emerald',
+    swatches: ['#064e3b', '#10b981', '#34d399', '#6ee7b7', '#d1fae5', '#ecfdf5'],
+    colors: {
+      background: '#ecfdf5',
+      text: '#064e3b',
+      stampInactive: '#d1fae5',
+      iconInactive: '#059669',
+      stampActive: '#6ee7b7',
+      iconActive: '#065f46',
+      button: '#10b981',
+      buttonText: '#ffffff',
+      muted: '#34d399',
+      border: '#a7f3d0',
+      cardBackground: '#ffffff',
+    },
+  },
+  {
+    id: 'green-mono',
+    name: 'Green',
+    swatches: ['#14532d', '#22c55e', '#4ade80', '#86efac', '#dcfce7', '#f0fdf4'],
+    colors: {
+      background: '#f0fdf4',
+      text: '#14532d',
+      stampInactive: '#dcfce7',
+      iconInactive: '#16a34a',
+      stampActive: '#86efac',
+      iconActive: '#166534',
+      button: '#22c55e',
+      buttonText: '#ffffff',
+      muted: '#4ade80',
+      border: '#bbf7d0',
+      cardBackground: '#ffffff',
+    },
+  },
+  {
+    id: 'lime-mono',
+    name: 'Lime',
+    swatches: ['#365314', '#84cc16', '#a3e635', '#bef264', '#ecfccb', '#f7fee7'],
+    colors: {
+      background: '#f7fee7',
+      text: '#365314',
+      stampInactive: '#ecfccb',
+      iconInactive: '#65a30d',
+      stampActive: '#bef264',
+      iconActive: '#3f6212',
+      button: '#84cc16',
+      buttonText: '#1f2937',
+      muted: '#a3e635',
+      border: '#d9f99d',
+      cardBackground: '#ffffff',
+    },
+  },
+  {
+    id: 'amber-mono',
+    name: 'Amber',
+    swatches: ['#78350f', '#f59e0b', '#fbbf24', '#fcd34d', '#fef3c7', '#fffbeb'],
+    colors: {
+      background: '#fffbeb',
+      text: '#78350f',
+      stampInactive: '#fef3c7',
+      iconInactive: '#d97706',
+      stampActive: '#fcd34d',
+      iconActive: '#92400e',
+      button: '#f59e0b',
+      buttonText: '#111827',
+      muted: '#fbbf24',
+      border: '#fde68a',
+      cardBackground: '#ffffff',
+    },
+  },
+  {
+    id: 'orange-mono',
+    name: 'Orange',
+    swatches: ['#7c2d12', '#f97316', '#fb923c', '#fdba74', '#ffedd5', '#fff7ed'],
+    colors: {
+      background: '#fff7ed',
+      text: '#7c2d12',
+      stampInactive: '#ffedd5',
+      iconInactive: '#ea580c',
+      stampActive: '#fdba74',
+      iconActive: '#9a3412',
+      button: '#f97316',
+      buttonText: '#ffffff',
+      muted: '#fb923c',
+      border: '#fed7aa',
+      cardBackground: '#ffffff',
+    },
+  },
+  {
+    id: 'red-mono',
+    name: 'Red',
+    swatches: ['#7f1d1d', '#ef4444', '#f87171', '#fca5a5', '#fee2e2', '#fef2f2'],
+    colors: {
+      background: '#fef2f2',
+      text: '#7f1d1d',
+      stampInactive: '#fee2e2',
+      iconInactive: '#dc2626',
+      stampActive: '#fca5a5',
+      iconActive: '#991b1b',
+      button: '#ef4444',
+      buttonText: '#ffffff',
+      muted: '#f87171',
+      border: '#fecaca',
+      cardBackground: '#ffffff',
+    },
+  },
+  {
+    id: 'rose-mono',
+    name: 'Rose',
+    swatches: ['#881337', '#f43f5e', '#fb7185', '#fda4af', '#ffe4e6', '#fff1f2'],
+    colors: {
+      background: '#fff1f2',
+      text: '#881337',
+      stampInactive: '#ffe4e6',
+      iconInactive: '#e11d48',
+      stampActive: '#fda4af',
+      iconActive: '#9f1239',
+      button: '#f43f5e',
+      buttonText: '#ffffff',
+      muted: '#fb7185',
+      border: '#fecdd3',
+      cardBackground: '#ffffff',
+    },
+  },
+  {
+    id: 'pink-mono',
+    name: 'Pink',
+    swatches: ['#831843', '#ec4899', '#f472b6', '#f9a8d4', '#fbcfe8', '#fdf2f8'],
+    colors: {
+      background: '#fdf2f8',
+      text: '#831843',
+      stampInactive: '#fbcfe8',
+      iconInactive: '#db2777',
+      stampActive: '#f9a8d4',
+      iconActive: '#9d174d',
+      button: '#ec4899',
+      buttonText: '#ffffff',
+      muted: '#f472b6',
+      border: '#fbcfe8',
+      cardBackground: '#ffffff',
+    },
+  },
+  {
+    id: 'fuchsia-mono',
+    name: 'Fuchsia',
+    swatches: ['#701a75', '#d946ef', '#e879f9', '#f0abfc', '#fae8ff', '#fdf4ff'],
+    colors: {
+      background: '#fdf4ff',
+      text: '#701a75',
+      stampInactive: '#fae8ff',
+      iconInactive: '#c026d3',
+      stampActive: '#f0abfc',
+      iconActive: '#86198f',
+      button: '#d946ef',
+      buttonText: '#ffffff',
+      muted: '#e879f9',
+      border: '#f5d0fe',
+      cardBackground: '#ffffff',
+    },
+  },
+  {
+    id: 'violet-mono',
+    name: 'Violet',
+    swatches: ['#4c1d95', '#8b5cf6', '#a78bfa', '#c4b5fd', '#ede9fe', '#f5f3ff'],
+    colors: {
+      background: '#f5f3ff',
+      text: '#4c1d95',
+      stampInactive: '#ede9fe',
+      iconInactive: '#7c3aed',
+      stampActive: '#c4b5fd',
+      iconActive: '#5b21b6',
+      button: '#8b5cf6',
+      buttonText: '#ffffff',
+      muted: '#a78bfa',
+      border: '#ddd6fe',
+      cardBackground: '#ffffff',
+    },
+  },
+  {
+    id: 'indigo-mono',
+    name: 'Indigo',
+    swatches: ['#312e81', '#6366f1', '#818cf8', '#a5b4fc', '#e0e7ff', '#eef2ff'],
+    colors: {
+      background: '#eef2ff',
+      text: '#312e81',
+      stampInactive: '#e0e7ff',
+      iconInactive: '#4f46e5',
+      stampActive: '#a5b4fc',
+      iconActive: '#3730a3',
+      button: '#6366f1',
+      buttonText: '#ffffff',
+      muted: '#818cf8',
+      border: '#c7d2fe',
+      cardBackground: '#ffffff',
+    },
+  },
+];
+
+const normalizeHex = (value?: string) => (value ?? '').trim().toLowerCase();
+
+const LOGO_FILE_ACCEPT = '.jpg,.jpeg,.png,.webp,.svg,image/jpeg,image/png,image/webp,image/svg+xml';
+const BACKGROUND_FILE_ACCEPT = '.jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp';
+
 export const CardEditor: React.FC<CardEditorProps> = ({ initialTemplate, onSave }) => {
   const navigate = useNavigate();
+  const { currentOwner } = useAuth();
   const [template, setTemplate] = useState<Template>(initialTemplate);
   const [saveBusy, setSaveBusy] = useState(false);
   const [saveError, setSaveError] = useState("");
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [openSections, setOpenSections] = useState<string[]>([]);
+  const [logoUploadBusy, setLogoUploadBusy] = useState(false);
+  const [logoUploadError, setLogoUploadError] = useState("");
+  const [logoUploadNotice, setLogoUploadNotice] = useState("");
+  const [logoSelectedFileName, setLogoSelectedFileName] = useState('');
+  const [backgroundUploadBusy, setBackgroundUploadBusy] = useState(false);
+  const [backgroundUploadError, setBackgroundUploadError] = useState("");
+  const [backgroundUploadNotice, setBackgroundUploadNotice] = useState("");
+  const [backgroundSelectedFileName, setBackgroundSelectedFileName] = useState('');
+  const logoFileInputRef = useRef<HTMLInputElement | null>(null);
+  const backgroundFileInputRef = useRef<HTMLInputElement | null>(null);
   
   const [bgHex, setBgHex] = useState(template.colors.background || '#ffffff');
   const [bgIntensity, setBgIntensity] = useState(template.backgroundOpacity ?? 100);
@@ -97,6 +444,158 @@ export const CardEditor: React.FC<CardEditorProps> = ({ initialTemplate, onSave 
         }
         return { ...prev, backgroundOpacity: nextOpacity, colors: newColors };
     });
+  };
+
+  const isPaletteSelected = (palette: PalettePreset) => (
+    normalizeHex(template.colors.background) === normalizeHex(palette.colors.background) &&
+    normalizeHex(template.colors.text) === normalizeHex(palette.colors.text) &&
+    normalizeHex(template.colors.stampInactive) === normalizeHex(palette.colors.stampInactive) &&
+    normalizeHex(template.colors.iconInactive) === normalizeHex(palette.colors.iconInactive) &&
+    normalizeHex(template.colors.stampActive) === normalizeHex(palette.colors.stampActive) &&
+    normalizeHex(template.colors.iconActive) === normalizeHex(palette.colors.iconActive)
+  );
+
+  const applyPalette = (palette: PalettePreset) => {
+    const nextBg = palette.colors.background;
+    const nextText = palette.colors.text;
+    const nextInactiveBg = palette.colors.stampInactive;
+    const nextInactiveIcon = palette.colors.iconInactive;
+    const nextActiveBg = palette.colors.stampActive;
+    const nextActiveIcon = palette.colors.iconActive;
+
+    setTemplate((prev) => ({
+      ...prev,
+      colors: {
+        ...prev.colors,
+        background: nextBg,
+        cardBackground: palette.colors.cardBackground ?? nextBg,
+        text: nextText,
+        muted: palette.colors.muted ?? nextText,
+        stampInactive: nextInactiveBg,
+        iconInactive: nextInactiveIcon,
+        stampActive: nextActiveBg,
+        iconActive: nextActiveIcon,
+        button: palette.colors.button ?? nextActiveBg,
+        buttonText: palette.colors.buttonText ?? '#ffffff',
+        border: palette.colors.border ?? nextInactiveBg,
+      },
+    }));
+
+    setBgHex(nextBg);
+    setTextHex(nextText);
+    setStampInactiveBgHex(nextInactiveBg);
+    setStampInactiveIconHex(nextInactiveIcon);
+    setStampActiveBgHex(nextActiveBg);
+    setStampActiveIconHex(nextActiveIcon);
+  };
+
+  const selectedPalette = PALETTE_PRESETS.find((palette) => isPaletteSelected(palette));
+  const previewSwatches = selectedPalette?.swatches ?? [
+    template.colors.text,
+    template.colors.button,
+    template.colors.iconInactive,
+    template.colors.stampActive,
+    template.colors.stampInactive,
+    template.colors.background,
+  ];
+
+  const setUploadBusy = (kind: CampaignAssetKind, busy: boolean) => {
+    if (kind === 'logo') {
+      setLogoUploadBusy(busy);
+      return;
+    }
+    setBackgroundUploadBusy(busy);
+  };
+
+  const setUploadError = (kind: CampaignAssetKind, message: string) => {
+    if (kind === 'logo') {
+      setLogoUploadError(message);
+      return;
+    }
+    setBackgroundUploadError(message);
+  };
+
+  const setUploadNotice = (kind: CampaignAssetKind, message: string) => {
+    if (kind === 'logo') {
+      setLogoUploadNotice(message);
+      return;
+    }
+    setBackgroundUploadNotice(message);
+  };
+
+  const clearUploadMessages = (kind: CampaignAssetKind) => {
+    setUploadError(kind, '');
+    setUploadNotice(kind, '');
+  };
+
+  const tryCleanupPreviousAsset = async (kind: CampaignAssetKind, previousUrl?: string) => {
+    if (!previousUrl) return;
+    const result = await deleteCampaignAssetByUrl(previousUrl);
+    if (result.managed && !result.deleted) {
+      setUploadNotice(kind, result.error ?? 'Unable to clean up previous image from storage.');
+    }
+  };
+
+  const handleAssetUpload = async (kind: CampaignAssetKind, file: File | null) => {
+    if (!file) return;
+    if (!currentOwner?.id) {
+      setUploadError(kind, 'You must be signed in as the account owner to upload images.');
+      return;
+    }
+
+    const previousUrl = kind === 'logo' ? template.logoImage : template.backgroundImage;
+    clearUploadMessages(kind);
+    setUploadBusy(kind, true);
+
+    try {
+      const uploaded = await uploadCampaignAsset({
+        file,
+        ownerId: currentOwner.id,
+        kind,
+      });
+
+      if (kind === 'logo') {
+        handleChange('logoImage', uploaded.publicUrl);
+      } else {
+        handleChange('backgroundImage', uploaded.publicUrl);
+      }
+
+      if (previousUrl && previousUrl !== uploaded.publicUrl) {
+        await tryCleanupPreviousAsset(kind, previousUrl);
+      }
+    } catch (error) {
+      setUploadError(
+        kind,
+        error instanceof Error ? error.message : 'Unable to upload image right now. Please try again.'
+      );
+    } finally {
+      setUploadBusy(kind, false);
+    }
+  };
+
+  const openFilePicker = (kind: CampaignAssetKind) => {
+    if (kind === 'logo') {
+      logoFileInputRef.current?.click();
+      return;
+    }
+    backgroundFileInputRef.current?.click();
+  };
+
+  const handleClearAsset = async (kind: CampaignAssetKind) => {
+    const previousUrl = kind === 'logo' ? template.logoImage : template.backgroundImage;
+    clearUploadMessages(kind);
+
+    if (kind === 'logo') {
+      handleChange('logoImage', '');
+      setLogoSelectedFileName('');
+    } else {
+      handleChange('backgroundImage', '');
+      setBackgroundSelectedFileName('');
+    }
+
+    if (previousUrl) {
+      await tryCleanupPreviousAsset(kind, previousUrl);
+    }
   };
 
   const handleSave = async () => {
@@ -184,16 +683,73 @@ export const CardEditor: React.FC<CardEditorProps> = ({ initialTemplate, onSave 
                         </div>
 
                         {template.showLogo !== false && (
-                             <div className="space-y-2">
-                                <Label htmlFor="logoImage">Brand Logo URL</Label>
-                                <Input 
-                                    id="logoImage" 
-                                    value={template.logoImage || ''} 
-                                    onChange={(e) => handleChange('logoImage', e.target.value)} 
-                                    placeholder="https://example.com/logo.png"
-                                />
-                                <p className="text-xs text-muted-foreground">Replaces the default icon in the header.</p>
+                          <div className="space-y-3">
+                            <div className="space-y-2">
+                              <Label htmlFor="logoUpload">Upload Brand Logo</Label>
+                              <input
+                                id="logoUpload"
+                                ref={logoFileInputRef}
+                                type="file"
+                                accept={LOGO_FILE_ACCEPT}
+                                onChange={(e) => {
+                                  const selected = e.target.files?.[0] ?? null;
+                                  setLogoSelectedFileName(selected?.name ?? '');
+                                  void handleAssetUpload('logo', selected);
+                                  e.target.value = '';
+                                }}
+                                disabled={logoUploadBusy}
+                                className="sr-only"
+                              />
+                              <Button
+                                type="button"
+                                variant="outline"
+                                className="w-full justify-start"
+                                onClick={() => openFilePicker('logo')}
+                                disabled={logoUploadBusy}
+                              >
+                                {logoUploadBusy ? 'Uploading logo...' : 'Upload logo from device'}
+                              </Button>
+                              {logoSelectedFileName && (
+                                <p className="text-xs text-muted-foreground">
+                                  Selected: {logoSelectedFileName}
+                                </p>
+                              )}
+                              <p className="text-xs text-muted-foreground">
+                                JPG, PNG, WebP, or SVG up to 2MB.
+                              </p>
+                              {logoUploadBusy && (
+                                <p className="text-xs text-muted-foreground">Uploading logo...</p>
+                              )}
+                              {logoUploadError && (
+                                <p className="text-xs text-rose-700">{logoUploadError}</p>
+                              )}
+                              {logoUploadNotice && (
+                                <p className="text-xs text-amber-700">{logoUploadNotice}</p>
+                              )}
                             </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="logoImage">Brand Logo URL</Label>
+                              <div className="flex gap-2">
+                                <Input
+                                  id="logoImage"
+                                  value={template.logoImage || ''}
+                                  onChange={(e) => handleChange('logoImage', e.target.value)}
+                                  placeholder="https://example.com/logo.png"
+                                />
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="icon"
+                                  title="Clear Logo"
+                                  onClick={() => void handleClearAsset('logo')}
+                                  disabled={logoUploadBusy || !template.logoImage}
+                                >
+                                  <X size={14} />
+                                </Button>
+                              </div>
+                              <p className="text-xs text-muted-foreground">Replaces the default icon in the header.</p>
+                            </div>
+                          </div>
                         )}
 
                         <div className="space-y-2">
@@ -246,6 +802,74 @@ export const CardEditor: React.FC<CardEditorProps> = ({ initialTemplate, onSave 
                     </AccordionTrigger>
                     <AccordionContent className="space-y-6 pt-2">
                         <div className="space-y-3">
+                            <div className="flex items-center justify-between">
+                                <Label className="text-xs uppercase tracking-wider text-muted-foreground">Preset Palettes</Label>
+                                <span className="text-[10px] text-muted-foreground">Built-in themes</span>
+                            </div>
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <button
+                                        type="button"
+                                        className="flex w-full items-center justify-between rounded-lg border border-[#b5bccb] bg-[#d3d8e2] px-3 py-2 text-left text-[#3f4865] transition-colors hover:bg-[#c7cdd9]"
+                                    >
+                                        <div className="flex min-w-0 items-center gap-3">
+                                            <div className="flex shrink-0 gap-1">
+                                                {previewSwatches.map((swatch, idx) => (
+                                                    <span
+                                                        key={`${swatch}-${idx}`}
+                                                        className="h-4 w-4 rounded-[3px] border border-black/10"
+                                                        style={{ backgroundColor: swatch }}
+                                                    />
+                                                ))}
+                                            </div>
+                                            <span className="truncate text-sm font-semibold">
+                                                {selectedPalette?.name ?? 'Custom Theme'}
+                                            </span>
+                                        </div>
+                                        <ChevronDown size={16} className="shrink-0 opacity-70" />
+                                    </button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent
+                                    align="start"
+                                    sideOffset={6}
+                                    className="w-[--radix-dropdown-menu-trigger-width] min-w-[280px] max-h-[18rem] overflow-y-auto rounded-lg border border-[#a8b0c3] bg-[#c8ceda] p-1.5 text-[#434b67] shadow-xl"
+                                >
+                                    <p className="px-2 pb-1 pt-0.5 text-xs font-semibold tracking-wide text-[#68718d]">
+                                        Built-in Themes
+                                    </p>
+                                    {PALETTE_PRESETS.map((palette) => {
+                                        const selected = isPaletteSelected(palette);
+                                        return (
+                                            <DropdownMenuItem
+                                                key={palette.id}
+                                                onSelect={() => applyPalette(palette)}
+                                                className={
+                                                    `mb-1 flex items-center justify-between rounded-md px-2 py-2 text-sm outline-none transition-colors ` +
+                                                    (selected
+                                                      ? 'bg-[#1298d2] text-white focus:bg-[#1298d2] focus:text-white'
+                                                      : 'text-[#434b67] hover:bg-[#b9c0cf] focus:bg-[#b9c0cf] focus:text-[#2f3650]')
+                                                }
+                                            >
+                                                <div className="flex min-w-0 items-center gap-3">
+                                                    <div className="flex shrink-0 gap-1">
+                                                        {palette.swatches.map((swatch, idx) => (
+                                                            <span
+                                                                key={`${palette.id}-${swatch}-${idx}`}
+                                                                className="h-4 w-4 rounded-[2px] border border-black/10"
+                                                                style={{ backgroundColor: swatch }}
+                                                            />
+                                                        ))}
+                                                    </div>
+                                                    <span className="truncate font-medium">{palette.name}</span>
+                                                </div>
+                                            </DropdownMenuItem>
+                                        );
+                                    })}
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        </div>
+
+                        <div className="space-y-3">
                             <Label className="text-xs uppercase tracking-wider text-muted-foreground">Background</Label>
                             <div className="flex items-center gap-3">
                                 <div className="h-10 w-10 rounded-full overflow-hidden border shadow-sm shrink-0 relative">
@@ -277,7 +901,49 @@ export const CardEditor: React.FC<CardEditorProps> = ({ initialTemplate, onSave 
                                 </div>
                             </div>
                             
-                            <div className="space-y-1 mt-2">
+                            <div className="space-y-2 mt-2">
+                                <Label htmlFor="backgroundUpload" className="text-xs">Upload Background Image</Label>
+                                <input
+                                    id="backgroundUpload"
+                                    ref={backgroundFileInputRef}
+                                    type="file"
+                                    accept={BACKGROUND_FILE_ACCEPT}
+                                    onChange={(e) => {
+                                      const selected = e.target.files?.[0] ?? null;
+                                      setBackgroundSelectedFileName(selected?.name ?? '');
+                                      void handleAssetUpload('background', selected);
+                                      e.target.value = '';
+                                    }}
+                                    disabled={backgroundUploadBusy}
+                                    className="sr-only"
+                                />
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  className="w-full justify-start"
+                                  onClick={() => openFilePicker('background')}
+                                  disabled={backgroundUploadBusy}
+                                >
+                                  {backgroundUploadBusy ? 'Uploading background...' : 'Upload background from device'}
+                                </Button>
+                                {backgroundSelectedFileName && (
+                                  <p className="text-xs text-muted-foreground">
+                                    Selected: {backgroundSelectedFileName}
+                                  </p>
+                                )}
+                                <p className="text-xs text-muted-foreground">JPG, PNG, or WebP up to 6MB.</p>
+                                {backgroundUploadBusy && (
+                                  <p className="text-xs text-muted-foreground">Uploading background...</p>
+                                )}
+                                {backgroundUploadError && (
+                                  <p className="text-xs text-rose-700">{backgroundUploadError}</p>
+                                )}
+                                {backgroundUploadNotice && (
+                                  <p className="text-xs text-amber-700">{backgroundUploadNotice}</p>
+                                )}
+                            </div>
+
+                            <div className="space-y-1">
                                 <Label htmlFor="bgImage" className="text-xs">Background Image URL</Label>
                                 <div className="flex gap-2">
                                     <Input 
@@ -287,7 +953,14 @@ export const CardEditor: React.FC<CardEditorProps> = ({ initialTemplate, onSave 
                                         placeholder="https://..."
                                         className="text-xs"
                                     />
-                                    <Button variant="outline" size="icon" onClick={() => handleChange('backgroundImage', '')} title="Clear Image">
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="icon"
+                                      onClick={() => void handleClearAsset('background')}
+                                      title="Clear Image"
+                                      disabled={backgroundUploadBusy || !template.backgroundImage}
+                                    >
                                         <ImageIcon size={14} />
                                     </Button>
                                 </div>
@@ -481,7 +1154,12 @@ export const CardEditor: React.FC<CardEditorProps> = ({ initialTemplate, onSave 
                     {saveError}
                 </div>
             )}
-            <Button size="lg" className="w-full gap-2 text-lg font-semibold h-14" onClick={handleSave} disabled={saveBusy}>
+            <Button
+              size="lg"
+              className="w-full gap-2 text-lg font-semibold h-14"
+              onClick={handleSave}
+              disabled={saveBusy || logoUploadBusy || backgroundUploadBusy}
+            >
                 {saveBusy ? 'Saving...' : 'Save'} <CheckIcon size={20} />
             </Button>
         </div>
