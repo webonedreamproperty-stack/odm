@@ -162,13 +162,6 @@ export const LoginPage: React.FC = () => {
             </Button>
           </>
         )}
-
-        <p className="text-center text-sm text-[#6d6658]">
-          New here?{" "}
-          <Link to="/signup" className="font-semibold text-[#171512] underline-offset-2 hover:underline">
-            Create your workspace
-          </Link>
-        </p>
       </form>
     </AuthSplitLayout>
   );

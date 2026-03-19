@@ -1,5 +1,6 @@
--- Fix: avoid using editable auth user_metadata in profiles RLS.
--- Run this in Supabase SQL Editor on the active project.
+-- Stampee upgrade script: avoid using editable auth user_metadata in
+-- profiles RLS on existing projects.
+-- New projects should use migration.sql instead.
 
 create or replace function public.current_staff_owner_id()
 returns uuid

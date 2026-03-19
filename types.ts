@@ -96,7 +96,7 @@ export type AccessStatus = 'active' | 'disabled';
 export type SubscriptionTier = 'free' | 'pro';
 
 export const TIER_LIMITS = {
-  free: { campaigns: 3, issuedCards: 50, staff: 1 },
+  free: { campaigns: Infinity, issuedCards: Infinity, staff: Infinity },
   pro: { campaigns: Infinity, issuedCards: Infinity, staff: Infinity },
 } as const;
 

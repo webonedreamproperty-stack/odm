@@ -1,5 +1,6 @@
--- Fix: set a stable search_path on public.get_public_card.
--- Run this in Supabase SQL Editor on the active project.
+-- Stampee upgrade script: set a stable search_path on
+-- public.get_public_card for existing projects.
+-- New projects should use migration.sql instead.
 
 create or replace function public.get_public_card(slug_input text, card_unique_id uuid)
 returns jsonb as $$

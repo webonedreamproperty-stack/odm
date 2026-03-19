@@ -1,8 +1,9 @@
 -- ============================================================
--- Cookees: Tighten Public Access
--- Run this once on existing Supabase projects.
+-- Stampee: Tighten Public Access
+-- Upgrade script for existing Supabase projects.
 -- Removes broad public read policies and narrows get_public_card()
 -- to only the fields required by the public card page.
+-- New projects should use migration.sql instead.
 -- ============================================================
 
 -- Public card access should go through the security definer RPC only.

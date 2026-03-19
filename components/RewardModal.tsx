@@ -167,7 +167,7 @@ export const RewardModal: React.FC<RewardModalProps> = ({ isOpen, onClose, loadi
 
           {loading ? (
              <p className="opacity-70" style={{ color: hexToRgba(mutedColor.hex, mutedColor.opacity) }}>
-               Using Gemini to generate a special reward just for you.
+               Preparing your reward...
              </p>
           ) : (
             <>

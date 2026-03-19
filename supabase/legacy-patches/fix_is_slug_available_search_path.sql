@@ -1,5 +1,6 @@
--- Fix: set a stable search_path on public.is_slug_available.
--- Run this in Supabase SQL Editor on the active project.
+-- Stampee upgrade script: set a stable search_path on
+-- public.is_slug_available for existing projects.
+-- New projects should use migration.sql instead.
 
 create or replace function public.is_slug_available(slug_input text)
 returns boolean as $$

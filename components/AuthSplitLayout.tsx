@@ -72,8 +72,8 @@ const MODE_CONFIG: Record<AuthMode, ThemeConfig> = {
   login: {
     leftBg: "bg-[#f3f0e8]",
     rightBg: "bg-[#c79b2f]",
-    navLinkLabel: "Create account",
-    navLinkTo: "/signup",
+    navLinkLabel: "",
+    navLinkTo: "",
     showcaseEyebrow: "Owner workspace",
     showcaseTitle: "Cards that live in the browser.",
     showcaseCopy: "Keep campaigns, issued cards, and return visits in one place without sending customers to an app store.",
@@ -357,16 +357,18 @@ export const AuthSplitLayout: React.FC<AuthSplitLayoutProps> = ({
       <div className="grid min-h-[100dvh] grid-cols-1 lg:grid-cols-2">
         <section className={`relative flex min-h-[100dvh] flex-col ${theme.leftBg} px-5 pb-10 pt-5 sm:px-8 sm:pt-7 lg:px-10 lg:pb-12 xl:px-16`}>
           <header className="flex items-center justify-between gap-4">
-            <Link to="/" className="inline-flex items-center">
+            <Link to="/login" className="inline-flex items-center">
               <img src="/stampee.svg" alt="Stampee" className="h-10 w-auto sm:h-11" />
             </Link>
 
-            <Link
-              to={theme.navLinkTo}
-              className="inline-flex items-center rounded-full border border-black/10 bg-white/75 px-4 py-2.5 text-sm font-semibold text-[#1d1d1f] transition-colors hover:bg-white"
-            >
-              {theme.navLinkLabel}
-            </Link>
+            {theme.navLinkLabel && (
+              <Link
+                to={theme.navLinkTo}
+                className="inline-flex items-center rounded-full border border-black/10 bg-white/75 px-4 py-2.5 text-sm font-semibold text-[#1d1d1f] transition-colors hover:bg-white"
+              >
+                {theme.navLinkLabel}
+              </Link>
+            )}
           </header>
 
           <div className="mx-auto flex w-full max-w-[37rem] flex-1 flex-col justify-center py-6 sm:py-8 lg:py-10">

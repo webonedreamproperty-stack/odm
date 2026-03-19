@@ -17,13 +17,13 @@ interface SubscriptionData {
 
 const defaultData: SubscriptionData = {
   tier: 'free',
-  isProTier: false,
+  isProTier: true,
   campaignCount: 0,
   issuedCardCount: 0,
   staffCount: 0,
-  campaignLimit: 3,
-  cardLimit: 50,
-  staffLimit: 1,
+  campaignLimit: Infinity,
+  cardLimit: Infinity,
+  staffLimit: Infinity,
   canCreateCampaign: true,
   canIssueCard: true,
   canCreateStaff: true,

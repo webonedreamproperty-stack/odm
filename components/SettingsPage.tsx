@@ -11,14 +11,10 @@ import { useSubscriptionContext } from "./SubscriptionContext";
 
 const DELETE_CONFIRMATION = "DELETE";
 
-interface SettingsPageProps {
-  onUpgrade?: () => void;
-}
-
-export const SettingsPage: React.FC<SettingsPageProps> = ({ onUpgrade }) => {
+export const SettingsPage: React.FC = () => {
   const navigate = useNavigate();
   const { staffAccounts, createStaff, updateStaffPin, setStaffAccess, deleteStaff, currentOwner, currentUser, deleteAccount, updateProfileInfo, updatePassword } = useAuth();
-  const { canCreateStaff, staffCount, staffLimit, isProTier } = useSubscriptionContext();
+  useSubscriptionContext();
 
   const [profileForm, setProfileForm] = useState({
     businessName: currentUser?.businessName ?? "",
@@ -102,10 +98,6 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onUpgrade }) => {
     event.preventDefault();
     setError("");
     setStaffActionError("");
-    if (!canCreateStaff) {
-      onUpgrade?.();
-      return;
-    }
     setStaffBusy(true);
     const result = await createStaff(form);
     setStaffBusy(false);
@@ -294,11 +286,6 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onUpgrade }) => {
             <p className="text-sm text-muted-foreground">
               Create staff logins for issuing cards and managing stamps.
             </p>
-            {!isProTier && (
-              <p className="mt-2 text-xs text-muted-foreground">
-                Free plan: {staffCount}/{staffLimit} staff account{staffLimit === 1 ? "" : "s"} used.
-              </p>
-            )}
           </div>
           {currentOwner?.slug && currentOwner?.id && (
             <div className="text-xs text-muted-foreground space-y-2 md:text-right">
@@ -361,15 +348,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onUpgrade }) => {
             </div>
           </div>
           <Button type="submit" className="rounded-full h-10 px-6 w-full sm:w-auto" disabled={staffBusy}>
-            {staffBusy ? "Adding..." : !canCreateStaff ? "Request Higher Limit" : "Add Staff"}
+            {staffBusy ? "Adding..." : "Add Staff"}
           </Button>
         </form>
-
-        {!isProTier && !canCreateStaff && (
-          <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-            Beta access currently allows only 1 staff account. Contact hello@stampee.co if you need more staff seats.
-          </div>
-        )}
 
         {error && (
           <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">

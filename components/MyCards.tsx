@@ -23,7 +23,6 @@ interface MyCardsProps {
   cards: Template[];
   onDeleteCard: (cardId: string) => Promise<void>;
   onToggleCampaignEnabled: (cardId: string, isEnabled: boolean) => Promise<void>;
-  onUpgrade?: () => void;
 }
 
 interface ResponsiveCardItemProps {
@@ -166,11 +165,10 @@ const ResponsiveCardItem: React.FC<ResponsiveCardItemProps> = ({
     )
 }
 
-export const MyCards: React.FC<MyCardsProps> = ({ 
-  cards, 
+export const MyCards: React.FC<MyCardsProps> = ({
+  cards,
   onDeleteCard,
   onToggleCampaignEnabled,
-  onUpgrade,
 }) => {
   const navigate = useNavigate();
   const { currentOwner } = useAuth();
@@ -179,7 +177,7 @@ export const MyCards: React.FC<MyCardsProps> = ({
   const [toggleBusyId, setToggleBusyId] = useState<string | null>(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [deleteError, setDeleteError] = useState("");
-  const { canCreateCampaign, campaignCount, campaignLimit, isProTier } = useSubscriptionContext();
+  useSubscriptionContext();
   const qrUrl = qrCard && currentOwner?.slug ? buildCampaignSignupUrl(currentOwner.slug, qrCard.id) : "";
   const qrDisplayUrl = qrUrl.length > 42 ? `${qrUrl.slice(0, 42)}...` : qrUrl;
 
@@ -199,10 +197,6 @@ export const MyCards: React.FC<MyCardsProps> = ({
   };
 
   const handleCreateNew = () => {
-    if (!canCreateCampaign) {
-      onUpgrade?.();
-      return;
-    }
     navigate('/gallery');
   };
   const handleEdit = (id: string) => navigate(`/editor/${id}`);
@@ -242,14 +236,6 @@ export const MyCards: React.FC<MyCardsProps> = ({
             </div>
         </div>
         <div className="flex items-center gap-3">
-            {!isProTier && (
-              <div className="hidden md:flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs text-muted-foreground">
-                <CreditCard size={14} />
-                <span className="font-semibold text-foreground">{campaignCount}</span>
-                <span>/</span>
-                <span>{campaignLimit}</span>
-              </div>
-            )}
             <Button onClick={handleCreateNew} className="gap-2 rounded-full shadow-sm w-full md:w-auto h-11 text-base">
                 <PlusCircle size={20} /> Create New
             </Button>

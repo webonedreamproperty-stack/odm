@@ -1,5 +1,6 @@
--- Fix: set a stable search_path on public.handle_new_user.
--- Run this in Supabase SQL Editor on the active project.
+-- Stampee upgrade script: set a stable search_path on
+-- public.handle_new_user for existing projects.
+-- New projects should use migration.sql instead.
 
 create or replace function public.handle_new_user()
 returns trigger as $$

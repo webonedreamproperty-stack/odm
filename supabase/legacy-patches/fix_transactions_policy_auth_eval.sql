@@ -1,5 +1,6 @@
--- Fix: avoid per-row auth.uid() re-evaluation in transactions RLS policies.
--- Run this in Supabase SQL Editor on the active project.
+-- Stampee upgrade script: avoid per-row auth.uid() re-evaluation in
+-- transactions RLS policies on existing projects.
+-- New projects should use migration.sql instead.
 
 drop policy if exists "Owners can manage transactions for own cards" on public.transactions;
 create policy "Owners can manage transactions for own cards"

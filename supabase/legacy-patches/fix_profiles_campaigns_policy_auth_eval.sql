@@ -1,5 +1,6 @@
--- Fix: avoid per-row auth.uid() re-evaluation in profiles/campaigns RLS policies.
--- Run this in Supabase SQL Editor on the active project.
+-- Stampee upgrade script: avoid per-row auth.uid() re-evaluation in
+-- profiles/campaigns RLS policies on existing projects.
+-- New projects should use migration.sql instead.
 
 drop policy if exists "Users can read own profile" on public.profiles;
 create policy "Users can read own profile"

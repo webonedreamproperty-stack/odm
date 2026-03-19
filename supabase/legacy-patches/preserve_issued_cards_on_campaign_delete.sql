@@ -1,9 +1,10 @@
 -- ============================================================
--- Cookees: Preserve Issued Cards When Deleting Campaigns
--- Run this once on existing Supabase projects.
+-- Stampee: Preserve Issued Cards When Deleting Campaigns
+-- Upgrade script for existing Supabase projects.
 -- Converts issued_cards.campaign_id to ON DELETE SET NULL,
 -- backfills template snapshots, and adds an RPC that preserves
 -- issued cards before deleting a campaign.
+-- New projects should use migration.sql instead.
 -- ============================================================
 
 update public.issued_cards ic

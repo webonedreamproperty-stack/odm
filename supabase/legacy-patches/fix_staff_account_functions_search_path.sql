@@ -1,5 +1,6 @@
--- Fix: set a stable search_path on staff-account RPC functions.
--- Run this in Supabase SQL Editor on the active project.
+-- Stampee upgrade script: set a stable search_path on staff-account
+-- RPC functions for existing projects.
+-- New projects should use migration.sql instead.
 
 alter function public.create_staff_account(text, text, text)
 set search_path = public;

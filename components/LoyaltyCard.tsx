@@ -3,7 +3,7 @@ import { BackgroundDoodles } from './BackgroundDoodles';
 import { StampSlot } from './StampSlot';
 import { RewardModal } from './RewardModal';
 import { QrCodeDisplay } from './ui/qr-code-display';
-import { generateReward } from '../services/geminiService';
+import { generateReward } from '../services/rewardService';
 import { Template, Transaction } from '../types';
 import { cn, resolveHexAndOpacity, hexToRgba } from '../lib/utils';
 import { QrCode, History, Gift, Plus, X, Minus, CreditCard, Globe } from 'lucide-react';

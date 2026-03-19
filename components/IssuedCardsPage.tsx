@@ -30,14 +30,13 @@ interface IssuedCardsPageProps {
   setCustomers: React.Dispatch<React.SetStateAction<Customer[]>>;
   refreshData?: () => Promise<void>;
   dataReady?: boolean;
-  onUpgrade?: () => void;
 }
 
-export const IssuedCardsPage: React.FC<IssuedCardsPageProps> = ({ customers, campaigns, setCustomers, refreshData, dataReady = false, onUpgrade }) => {
+export const IssuedCardsPage: React.FC<IssuedCardsPageProps> = ({ customers, campaigns, setCustomers, refreshData, dataReady = false }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState("");
   const { currentOwner, isEmailVerified, isStaff, currentUser } = useAuth();
-  const { canIssueCard, issuedCardCount, cardLimit, isProTier } = useSubscriptionContext();
+  useSubscriptionContext();
   const canIssue = isEmailVerified;
   const [mutationBusy, setMutationBusy] = useState(false);
   const [mutationError, setMutationError] = useState("");
@@ -163,10 +162,6 @@ export const IssuedCardsPage: React.FC<IssuedCardsPageProps> = ({ customers, cam
 
   const openIssueWizard = () => {
     if (!canIssue) return;
-    if (!canIssueCard) {
-      onUpgrade?.();
-      return;
-    }
     setPreSelectedCampaign(null);
     setPreSelectedCustomer(null);
     setIsIssueOpen(true);
@@ -433,14 +428,6 @@ export const IssuedCardsPage: React.FC<IssuedCardsPageProps> = ({ customers, cam
           <Button variant="outline" className="w-full gap-2 rounded-full sm:w-auto" onClick={() => setIsScanOpen(true)}>
             <QrCode size={16} /> Scan QR
           </Button>
-          {!isProTier && (
-            <div className="flex items-center justify-center gap-1.5 rounded-full border bg-white px-3 py-2 text-xs text-muted-foreground sm:justify-start">
-              <CreditCard size={14} />
-              <span className="font-semibold text-foreground">{issuedCardCount}</span>
-              <span>/</span>
-              <span>{cardLimit}</span>
-            </div>
-          )}
           <div className="flex w-full flex-col gap-2 sm:w-auto sm:items-end">
             <Button onClick={openIssueWizard} className="w-full gap-2 rounded-full px-6 shadow-sm sm:w-auto" disabled={!canIssue}>
               <Plus size={16} /> Issue New Card

@@ -1,6 +1,9 @@
 -- ============================================================
--- Cookees: Full Database Schema (Idempotent)
+-- Stampee: Full Database Schema (Idempotent)
+-- Canonical fresh-install script for new Supabase projects.
 -- Safe to re-run in Supabase SQL Editor.
+-- For existing or older projects, use the targeted upgrade/repair
+-- scripts in legacy-patches/ only when needed.
 -- ============================================================
 
 create extension if not exists pgcrypto with schema extensions;
@@ -575,23 +578,11 @@ returns uuid as $$
 declare
   new_uid uuid := gen_random_uuid();
   owner_uid uuid := auth.uid();
-  owner_tier text;
-  staff_count integer;
 begin
-  select tier into owner_tier
-  from public.profiles
-  where id = owner_uid and role = 'owner';
-
-  if owner_tier is null then
+  if not exists (
+    select 1 from public.profiles where id = owner_uid and role = 'owner'
+  ) then
     raise exception 'Only owners can create staff accounts';
-  end if;
-
-  select count(*)::integer into staff_count
-  from public.profiles
-  where owner_id = owner_uid and role = 'staff';
-
-  if owner_tier = 'free' and staff_count >= 1 then
-    raise exception 'Free plan allows only 1 staff account. Upgrade to Pro to add more.';
   end if;
 
   if exists (select 1 from auth.users where email = lower(trim(staff_email))) then

@@ -1,5 +1,6 @@
--- Adds Supabase storage support for campaign logo/background uploads.
--- Run this in Supabase SQL Editor on existing projects.
+-- Stampee upgrade script: add Supabase storage support for campaign
+-- logo/background uploads on existing projects.
+-- New projects should use migration.sql instead.
 
 insert into storage.buckets (id, name, public)
 values ('campaign-assets', 'campaign-assets', true)

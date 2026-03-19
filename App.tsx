@@ -18,7 +18,6 @@ import { buildIssuedCardsKioskUrl, buildStaffPortalUrl, buildStaffScanEntryUrl }
 import { isSupabaseConfigured, supabase } from './lib/supabase';
 import { useSubscription } from './lib/useSubscription';
 import { SubscriptionProvider } from './components/SubscriptionContext';
-import { UpgradePrompt } from './components/UpgradePrompt';
 import { APP_ORIGIN } from './lib/siteConfig';
 
 const SITE_ORIGIN = APP_ORIGIN;
@@ -79,19 +78,10 @@ const TemplatesGallery = lazy(() => import('./components/TemplatesGallery').then
 const TransactionsPage = lazy(() => import('./components/TransactionsPage').then((module) => ({ default: module.TransactionsPage })));
 const AnalyticsPage = lazy(() => import('./components/AnalyticsPage').then((module) => ({ default: module.AnalyticsPage })));
 const LoginPage = lazy(() => import('./components/LoginPage').then((module) => ({ default: module.LoginPage })));
-const SignupPage = lazy(() => import('./components/SignupPage').then((module) => ({ default: module.SignupPage })));
-const SignupConfirmationPage = lazy(() => import('./components/SignupConfirmationPage').then((module) => ({ default: module.SignupConfirmationPage })));
 const StaffLoginPage = lazy(() => import('./components/StaffLoginPage').then((module) => ({ default: module.StaffLoginPage })));
 const SettingsPage = lazy(() => import('./components/SettingsPage').then((module) => ({ default: module.SettingsPage })));
-const LandingPage = lazy(() => import('./components/LandingPage').then((module) => ({ default: module.LandingPage })));
 const ForgotPasswordPage = lazy(() => import('./components/ForgotPasswordPage').then((module) => ({ default: module.ForgotPasswordPage })));
 const DashboardPage = lazy(() => import('./components/DashboardPage').then((module) => ({ default: module.DashboardPage })));
-const ArticlesPage = lazy(() => import('./components/ArticlesPage').then((module) => ({ default: module.ArticlesPage })));
-const PrivacyPolicyPage = lazy(() => import('./components/PrivacyPolicyPage').then((module) => ({ default: module.PrivacyPolicyPage })));
-const CookiePolicyPage = lazy(() => import('./components/CookiePolicyPage').then((module) => ({ default: module.CookiePolicyPage })));
-const TermsPage = lazy(() => import('./components/TermsPage').then((module) => ({ default: module.TermsPage })));
-const GettingStartedArticlePage = lazy(() => import('./components/GettingStartedArticlePage').then((module) => ({ default: module.GettingStartedArticlePage })));
-const ShowcasePage = lazy(() => import('./components/ShowcasePage').then((module) => ({ default: module.ShowcasePage })));
 const PublicCampaignSignupPage = lazy(() => import('./components/PublicCampaignSignupPage').then((module) => ({ default: module.PublicCampaignSignupPage })));
 
 const RouteLoader: React.FC = () => (
@@ -130,103 +120,13 @@ const getSeoForPathname = (pathname: string): SeoConfig => {
   const normalizedPath = pathname === '/' ? '/' : pathname.replace(/\/+$/, '');
   const canonical = `${SITE_ORIGIN}${normalizedPath}`;
   const defaultSeo: SeoConfig = {
-    title: 'Stampee | Digital Loyalty Cards for Small Businesses',
+    title: 'Stampee | Digital Loyalty Cards',
     description: DEFAULT_SOCIAL_DESCRIPTION,
     socialDescription: DEFAULT_SOCIAL_DESCRIPTION,
     canonical,
-    robots: 'index,follow',
+    robots: 'noindex,nofollow',
     type: 'website',
   };
-
-  if (normalizedPath === '/') {
-    return defaultSeo;
-  }
-
-  if (normalizedPath === '/showcase') {
-    return {
-      ...defaultSeo,
-      title: 'Showcase | Stampee',
-      description: 'Explore digital loyalty card demos built for cafes, retail stores, salons, and other small businesses using Stampee.',
-      canonical,
-    };
-  }
-
-  if (normalizedPath === '/articles') {
-    return {
-      ...defaultSeo,
-      title: 'Articles | Stampee',
-      description: 'Read practical guides on launching digital loyalty cards, improving customer retention, and running better small business campaigns.',
-      canonical,
-    };
-  }
-
-  if (normalizedPath === '/articles/getting-started') {
-    return {
-      ...defaultSeo,
-      title: 'Getting Started With Digital Loyalty Cards | Stampee',
-      description: 'Learn how to launch your first Stampee campaign, issue cards, and start tracking repeat visits without paper punch cards.',
-      canonical,
-      type: 'article',
-    };
-  }
-
-  if (normalizedPath === '/privacy-policy') {
-    return {
-      ...defaultSeo,
-      title: 'Privacy Policy | Stampee',
-      description: 'Review the Stampee privacy policy and how customer, campaign, and account information is handled.',
-      canonical,
-    };
-  }
-
-  if (normalizedPath === '/cookie' || normalizedPath === '/cokkie' || normalizedPath === '/cookie-policy') {
-    return {
-      ...defaultSeo,
-      title: 'Cookie Policy | Stampee',
-      description: 'Learn how Stampee uses essential and analytics cookies and how cookie preferences can be managed.',
-      canonical,
-    };
-  }
-
-  if (normalizedPath === '/terms') {
-    return {
-      ...defaultSeo,
-      title: 'Terms of Service | Stampee',
-      description: 'Review the Stampee beta terms of service, acceptable use requirements, and support contact information.',
-      canonical,
-    };
-  }
-
-  const isNoIndexRoute =
-    normalizedPath === '/login' ||
-    normalizedPath === '/signup' ||
-    normalizedPath === '/signup-confirmation' ||
-    normalizedPath === '/forgot-password' ||
-    normalizedPath === '/dashboard' ||
-    normalizedPath === '/campaigns' ||
-    normalizedPath === '/gallery' ||
-    normalizedPath === '/analytics' ||
-    normalizedPath === '/transactions' ||
-    normalizedPath === '/settings' ||
-    normalizedPath === '/issued-cards' ||
-    normalizedPath === '/customers' ||
-    normalizedPath.startsWith('/active/') ||
-    normalizedPath.startsWith('/preview/') ||
-    normalizedPath.startsWith('/editor/') ||
-    /^\/[^/]+\/staff$/.test(normalizedPath) ||
-    /^\/[^/]+\/scan\/[^/]+$/.test(normalizedPath) ||
-    /^\/[^/]+\/join\/[^/]+$/.test(normalizedPath) ||
-    /^\/[^/]+\/[^/]+$/.test(normalizedPath);
-
-  if (isNoIndexRoute) {
-    return {
-      ...defaultSeo,
-      title: 'Stampee',
-      description: defaultSeo.description,
-      canonical,
-      robots: 'noindex,nofollow',
-    };
-  }
 
   return defaultSeo;
 };
@@ -657,8 +557,6 @@ const AppRoutes: React.FC = () => {
   const [createdCards, setCreatedCards] = useState<Template[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [dataReady, setDataReady] = useState(false);
-  const [upgradeOpen, setUpgradeOpen] = useState(false);
-  const [upgradeReason, setUpgradeReason] = useState<'campaign' | 'card' | 'staff' | undefined>();
 
   const sub = useSubscription(createdCards, customers);
 
@@ -689,20 +587,11 @@ const AppRoutes: React.FC = () => {
     }
   }, [currentOwner, loadData]);
 
-  const showUpgrade = useCallback((reason: 'campaign' | 'card' | 'staff') => {
-    setUpgradeReason(reason);
-    setUpgradeOpen(true);
-  }, []);
-
   const handleSaveCard = async (template: Template) => {
     if (!currentOwner) {
       throw new Error('No active owner account found.');
     }
     const isNew = !createdCards.find(c => c.id === template.id);
-    if (isNew && !sub.canCreateCampaign) {
-      showUpgrade('campaign');
-      throw new Error('Campaign limit reached for the beta. Contact hello@stampee.co for higher limits.');
-    }
     const saved = isNew
       ? { ...template, id: `custom-${Date.now()}`, isEnabled: template.isEnabled ?? true }
       : { ...template, isEnabled: template.isEnabled ?? true };
@@ -745,30 +634,14 @@ const AppRoutes: React.FC = () => {
           {SERVICE_UNAVAILABLE_MESSAGE}
         </div>
       )}
-      <UpgradePrompt
-        open={upgradeOpen}
-        onOpenChange={setUpgradeOpen}
-        reason={upgradeReason}
-        currentUsage={{ campaigns: sub.campaignCount, cards: sub.issuedCardCount, staff: sub.staffCount }}
-      />
       <Routes>
         {/* Public Routes */}
-        <Route path="/" element={withSuspense(<LandingPage />)} />
-        <Route path="/showcase" element={withSuspense(<ShowcasePage />)} />
-        <Route path="/articles" element={withSuspense(<ArticlesPage />)} />
-        <Route path="/privacy-policy" element={withSuspense(<PrivacyPolicyPage />)} />
-        <Route path="/cookie" element={withSuspense(<CookiePolicyPage />)} />
-        <Route path="/cokkie" element={<Navigate to="/cookie" replace />} />
-        <Route path="/cookie-policy" element={<Navigate to="/cookie" replace />} />
-        <Route path="/terms" element={withSuspense(<TermsPage />)} />
-        <Route path="/articles/getting-started" element={withSuspense(<GettingStartedArticlePage />)} />
+        <Route path="/" element={<Navigate to="/login" replace />} />
         <Route path="/:slug/staff" element={withSuspense(<StaffLoginPage />)} />
         <Route path="/:slug/scan/:uniqueId" element={<StaffScanEntryWrapper />} />
         <Route path="/:slug/join/:campaignId" element={withSuspense(<PublicCampaignSignupPage />)} />
         <Route path="/:slug/:uniqueId" element={<PublicCardWrapper />} />
         <Route path="/login" element={withSuspense(<LoginPage />)} />
-        <Route path="/signup" element={withSuspense(<SignupPage />)} />
-        <Route path="/signup-confirmation" element={withSuspense(<SignupConfirmationPage />)} />
         <Route path="/forgot-password" element={withSuspense(<ForgotPasswordPage />)} />
 
         {/* Authenticated Routes */}
@@ -790,14 +663,13 @@ const AppRoutes: React.FC = () => {
                     cards={createdCards}
                     onDeleteCard={handleDeleteCard}
                     onToggleCampaignEnabled={handleToggleCampaignEnabled}
-                    onUpgrade={() => showUpgrade('campaign')}
                   />
                 )
               } />
               <Route path="/gallery" element={withSuspense(<TemplatesGallery />)} />
               <Route path="/analytics" element={withSuspense(<AnalyticsPage customers={customers} campaigns={createdCards} />)} />
               <Route path="/transactions" element={withSuspense(<TransactionsPage customers={customers} />)} />
-              <Route path="/settings" element={withSuspense(<SettingsPage onUpgrade={() => showUpgrade('staff')} />)} />
+              <Route path="/settings" element={withSuspense(<SettingsPage />)} />
             </Route>
 
             <Route element={<RequireRole allowed={["owner", "staff"]} />}>
@@ -809,7 +681,6 @@ const AppRoutes: React.FC = () => {
                     setCustomers={setCustomers}
                     refreshData={refreshData}
                     dataReady={dataReady}
-                    onUpgrade={() => showUpgrade('card')}
                   />
                 )
               } />
@@ -827,7 +698,7 @@ const AppRoutes: React.FC = () => {
           </Route>
         </Route>
 
-        <Route path="*" element={<Navigate to="/" />} />
+        <Route path="*" element={<Navigate to="/login" />} />
       </Routes>
     </SubscriptionProvider>
   );

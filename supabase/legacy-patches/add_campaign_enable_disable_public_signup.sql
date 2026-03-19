@@ -1,5 +1,6 @@
--- Adds campaign enable/disable and public campaign signup flow.
--- Run this in Supabase SQL Editor on existing projects.
+-- Stampee upgrade script: add campaign enable/disable support and
+-- the public campaign signup flow on existing projects.
+-- New projects should use migration.sql instead.
 
 alter table public.campaigns
   add column if not exists is_enabled boolean not null default true;

@@ -1,5 +1,6 @@
--- Fix: profiles RLS policy recursion and insecure user_metadata dependency.
--- Run this in Supabase SQL Editor on the active project.
+-- Stampee upgrade script: fix profiles RLS policy recursion and
+-- insecure user_metadata dependency on existing projects.
+-- New projects should use migration.sql instead.
 
 create or replace function public.current_staff_owner_id()
 returns uuid
