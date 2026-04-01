@@ -1007,3 +1007,621 @@ begin
 end;
 $$ language plpgsql security definer
 set search_path = public;
+
+
+-- ============================================================
+-- OD MEMBERSHIP (consumer accounts, manual renewals, shop verify)
+-- ============================================================
+
+create table if not exists public.member_profiles (
+  id uuid primary key references auth.users(id) on delete cascade,
+  email text not null,
+  display_name text not null default '',
+  member_code text not null unique,
+  country text not null default 'MY',
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.od_memberships (
+  member_id uuid primary key references public.member_profiles(id) on delete cascade,
+  status text not null default 'suspended' check (status in ('active', 'suspended')),
+  plan text check (plan is null or plan in ('month', 'year')),
+  valid_from timestamptz,
+  valid_until timestamptz,
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.od_membership_renewals (
+  id uuid primary key default gen_random_uuid(),
+  member_id uuid not null references public.member_profiles(id) on delete cascade,
+  plan text not null check (plan in ('month', 'year')),
+  valid_from timestamptz not null,
+  valid_until timestamptz not null,
+  renewed_by uuid not null references auth.users(id) on delete set null,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.od_admins (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists idx_od_membership_renewals_member on public.od_membership_renewals(member_id);
+create index if not exists idx_od_membership_renewals_created on public.od_membership_renewals(created_at desc);
+
+create or replace function public.generate_od_member_code()
+returns text
+language plpgsql
+volatile
+set search_path = public
+as $$
+declare
+  candidate text;
+  attempts int := 0;
+begin
+  loop
+    attempts := attempts + 1;
+    if attempts > 40 then
+      raise exception 'Could not generate unique OD member code';
+    end if;
+    candidate := 'OD-' || upper(substr(replace(gen_random_uuid()::text, '-', ''), 1, 6));
+    exit when not exists (select 1 from public.member_profiles where member_code = candidate);
+  end loop;
+  return candidate;
+end;
+$$;
+
+create or replace function public.is_od_admin(uid uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (select 1 from public.od_admins o where o.user_id = uid);
+$$;
+
+alter table public.profiles add column if not exists od_business_category text;
+alter table public.profiles add column if not exists od_discount_kind text;
+alter table public.profiles add column if not exists od_discount_value numeric;
+
+do $$
+begin
+  alter table public.profiles
+    add constraint profiles_od_discount_kind_check
+    check (od_discount_kind is null or od_discount_kind in ('percent', 'fixed'));
+exception
+  when duplicate_object then null;
+end;
+$$;
+
+create or replace function public.handle_new_user()
+returns trigger as $$
+declare
+  v_role text;
+  v_owner_id uuid;
+  v_od_cat text;
+  v_od_kind text;
+  v_od_val numeric;
+  v_od_summary text;
+begin
+  v_role := coalesce(new.raw_user_meta_data->>'role', 'owner');
+
+  if v_role = 'member' then
+    insert into public.member_profiles (id, email, display_name, member_code)
+    values (
+      new.id,
+      coalesce(new.email, ''),
+      coalesce(nullif(trim(new.raw_user_meta_data->>'display_name'), ''), 'Member'),
+      public.generate_od_member_code()
+    )
+    on conflict (id) do nothing;
+    return new;
+  end if;
+
+  if v_role = 'staff'
+    and (new.raw_user_meta_data->>'owner_id') ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+  then
+    v_owner_id := (new.raw_user_meta_data->>'owner_id')::uuid;
+  else
+    v_owner_id := null;
+  end if;
+
+  v_od_cat := nullif(trim(new.raw_user_meta_data->>'od_business_category'), '');
+  v_od_kind := case
+    when new.raw_user_meta_data->>'od_discount_kind' in ('percent', 'fixed') then new.raw_user_meta_data->>'od_discount_kind'
+    else null
+  end;
+  begin
+    if new.raw_user_meta_data->>'od_discount_value' is not null
+       and new.raw_user_meta_data->>'od_discount_value' ~ '^[0-9]+(\.[0-9]+)?$'
+    then
+      v_od_val := (new.raw_user_meta_data->>'od_discount_value')::numeric;
+    else
+      v_od_val := null;
+    end if;
+  exception when others then
+    v_od_val := null;
+  end;
+
+  v_od_summary := '';
+  if v_od_kind = 'percent' and v_od_val is not null then
+    v_od_summary := trim(to_char(v_od_val, 'FM999999990.99')) || '% off for OD members';
+  elsif v_od_kind = 'fixed' and v_od_val is not null then
+    v_od_summary := 'RM' || trim(to_char(v_od_val, 'FM999999990.99')) || ' off for OD members';
+  end if;
+
+  insert into public.profiles (
+    id, business_name, email, slug, role, owner_id, status, access, tier,
+    od_business_category, od_discount_kind, od_discount_value, od_discount_summary
+  )
+  values (
+    new.id,
+    coalesce(new.raw_user_meta_data->>'business_name', ''),
+    new.email,
+    case when v_role = 'owner' then new.raw_user_meta_data->>'slug' else null end,
+    v_role,
+    v_owner_id,
+    'unverified',
+    'active',
+    'free',
+    case when v_role = 'owner' then v_od_cat else null end,
+    case when v_role = 'owner' then v_od_kind else null end,
+    case when v_role = 'owner' then v_od_val else null end,
+    case
+      when v_role = 'owner' then coalesce(nullif(v_od_summary, ''), '')
+      else ''
+    end
+  )
+  on conflict (id) do nothing;
+  return new;
+end;
+$$ language plpgsql security definer
+set search_path = public;
+
+alter table public.member_profiles enable row level security;
+alter table public.od_memberships enable row level security;
+alter table public.od_membership_renewals enable row level security;
+alter table public.od_admins enable row level security;
+
+drop policy if exists "Members read own profile" on public.member_profiles;
+create policy "Members read own profile"
+  on public.member_profiles for select
+  using (id = (select auth.uid()));
+
+drop policy if exists "OD admins read all member profiles" on public.member_profiles;
+create policy "OD admins read all member profiles"
+  on public.member_profiles for select
+  using (public.is_od_admin((select auth.uid())));
+
+drop policy if exists "Members update own profile" on public.member_profiles;
+create policy "Members update own profile"
+  on public.member_profiles for update
+  using (id = (select auth.uid()))
+  with check (id = (select auth.uid()));
+
+drop policy if exists "Members read own membership" on public.od_memberships;
+create policy "Members read own membership"
+  on public.od_memberships for select
+  using (member_id = (select auth.uid()));
+
+drop policy if exists "OD admins read all memberships" on public.od_memberships;
+create policy "OD admins read all memberships"
+  on public.od_memberships for select
+  using (public.is_od_admin((select auth.uid())));
+
+drop policy if exists "Members read own renewals" on public.od_membership_renewals;
+create policy "Members read own renewals"
+  on public.od_membership_renewals for select
+  using (member_id = (select auth.uid()));
+
+drop policy if exists "OD admins read all renewals" on public.od_membership_renewals;
+create policy "OD admins read all renewals"
+  on public.od_membership_renewals for select
+  using (public.is_od_admin((select auth.uid())));
+
+drop policy if exists "Users read own od admin row" on public.od_admins;
+create policy "Users read own od admin row"
+  on public.od_admins for select
+  using (user_id = (select auth.uid()));
+
+create or replace function public.get_od_member_shop_verification(shop_slug text)
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+declare
+  uid uuid := auth.uid();
+  shop_row record;
+  mem_code text;
+  om record;
+  v_qualified boolean := false;
+begin
+  if uid is null then
+    return jsonb_build_object('error', 'not_authenticated');
+  end if;
+
+  if not exists (select 1 from public.member_profiles where id = uid) then
+    return jsonb_build_object('error', 'not_member');
+  end if;
+
+  select business_name, slug into shop_row
+  from public.profiles
+  where slug = trim(shop_slug) and role = 'owner'
+  limit 1;
+
+  if not found then
+    return jsonb_build_object('error', 'shop_not_found');
+  end if;
+
+  select member_code into mem_code
+  from public.member_profiles
+  where id = uid;
+
+  select * into om
+  from public.od_memberships
+  where member_id = uid;
+
+  if not found then
+    return jsonb_build_object(
+      'qualified', false,
+      'member_code', mem_code,
+      'valid_until', null,
+      'valid_from', null,
+      'membership_status', 'none',
+      'shop_name', shop_row.business_name,
+      'shop_slug', shop_row.slug
+    );
+  end if;
+
+  v_qualified := (
+    om.status = 'active'
+    and om.valid_until is not null
+    and om.valid_until >= now()
+    and (om.valid_from is null or om.valid_from <= now())
+  );
+
+  return jsonb_build_object(
+    'qualified', v_qualified,
+    'member_code', mem_code,
+    'valid_until', om.valid_until,
+    'valid_from', om.valid_from,
+    'membership_status', om.status,
+    'shop_name', shop_row.business_name,
+    'shop_slug', shop_row.slug
+  );
+end;
+$$;
+
+create or replace function public.admin_renew_od_membership(p_member_id uuid, p_plan text)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_from timestamptz;
+  v_until timestamptz;
+  cur_until timestamptz;
+begin
+  if auth.uid() is null or not public.is_od_admin(auth.uid()) then
+    raise exception 'not authorized';
+  end if;
+
+  if p_plan is null or p_plan not in ('month', 'year') then
+    raise exception 'invalid plan';
+  end if;
+
+  if not exists (select 1 from public.member_profiles where id = p_member_id) then
+    raise exception 'member not found';
+  end if;
+
+  select valid_until into cur_until
+  from public.od_memberships
+  where member_id = p_member_id;
+
+  if cur_until is not null and cur_until > now() then
+    v_from := cur_until;
+  else
+    v_from := now();
+  end if;
+
+  if p_plan = 'month' then
+    v_until := v_from + interval '1 month';
+  else
+    v_until := v_from + interval '1 year';
+  end if;
+
+  insert into public.od_membership_renewals (member_id, plan, valid_from, valid_until, renewed_by)
+  values (p_member_id, p_plan, v_from, v_until, auth.uid());
+
+  insert into public.od_memberships (member_id, status, plan, valid_from, valid_until, updated_at)
+  values (p_member_id, 'active', p_plan, v_from, v_until, now())
+  on conflict (member_id) do update
+  set status = 'active',
+      plan = excluded.plan,
+      valid_from = excluded.valid_from,
+      valid_until = excluded.valid_until,
+      updated_at = now();
+
+  return jsonb_build_object('success', true, 'valid_from', v_from, 'valid_until', v_until);
+end;
+$$;
+
+create or replace function public.admin_list_od_members()
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if auth.uid() is null or not public.is_od_admin(auth.uid()) then
+    raise exception 'not authorized';
+  end if;
+
+  return coalesce((
+    select jsonb_agg(row_to_json(t) order by t.created_at desc)
+    from (
+      select
+        mp.id,
+        mp.email,
+        mp.display_name,
+        mp.member_code,
+        mp.country,
+        mp.created_at,
+        om.status as membership_status,
+        om.plan as membership_plan,
+        om.valid_from,
+        om.valid_until
+      from public.member_profiles mp
+      left join public.od_memberships om on om.member_id = mp.id
+    ) t
+  ), '[]'::jsonb);
+end;
+$$;
+
+create or replace function public.admin_list_od_renewals(p_limit int default 200)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  lim int := least(coalesce(p_limit, 200), 500);
+begin
+  if auth.uid() is null or not public.is_od_admin(auth.uid()) then
+    raise exception 'not authorized';
+  end if;
+
+  return coalesce((
+    select jsonb_agg(row_to_json(t) order by t.created_at desc)
+    from (
+      select
+        r.id,
+        r.member_id,
+        mp.member_code,
+        mp.email,
+        r.plan,
+        r.valid_from,
+        r.valid_until,
+        r.created_at,
+        r.renewed_by
+      from public.od_membership_renewals r
+      join public.member_profiles mp on mp.id = r.member_id
+      order by r.created_at desc
+      limit lim
+    ) t
+  ), '[]'::jsonb);
+end;
+$$;
+
+grant execute on function public.get_od_member_shop_verification(text) to authenticated;
+grant execute on function public.admin_renew_od_membership(uuid, text) to authenticated;
+grant execute on function public.admin_list_od_members() to authenticated;
+grant execute on function public.admin_list_od_renewals(int) to authenticated;
+
+drop policy if exists "OD admins read all profiles" on public.profiles;
+create policy "OD admins read all profiles"
+  on public.profiles for select
+  using (public.is_od_admin((select auth.uid())));
+
+create or replace function public.member_self_renew_od_membership(p_plan text)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  uid uuid := auth.uid();
+  v_from timestamptz;
+  v_until timestamptz;
+  cur_until timestamptz;
+begin
+  if uid is null then
+    raise exception 'not authenticated';
+  end if;
+
+  if not exists (select 1 from public.member_profiles where id = uid) then
+    raise exception 'not a member';
+  end if;
+
+  if p_plan is null or p_plan not in ('month', 'year') then
+    raise exception 'invalid plan';
+  end if;
+
+  select valid_until into cur_until
+  from public.od_memberships
+  where member_id = uid;
+
+  if cur_until is not null and cur_until > now() then
+    v_from := cur_until;
+  else
+    v_from := now();
+  end if;
+
+  if p_plan = 'month' then
+    v_until := v_from + interval '1 month';
+  else
+    v_until := v_from + interval '1 year';
+  end if;
+
+  insert into public.od_membership_renewals (member_id, plan, valid_from, valid_until, renewed_by)
+  values (uid, p_plan, v_from, v_until, uid);
+
+  insert into public.od_memberships (member_id, status, plan, valid_from, valid_until, updated_at)
+  values (uid, 'active', p_plan, v_from, v_until, now())
+  on conflict (member_id) do update
+  set status = 'active',
+      plan = excluded.plan,
+      valid_from = excluded.valid_from,
+      valid_until = excluded.valid_until,
+      updated_at = now();
+
+  return jsonb_build_object('success', true, 'valid_from', v_from, 'valid_until', v_until);
+end;
+$$;
+
+create or replace function public.admin_list_vendor_accounts()
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if auth.uid() is null or not public.is_od_admin(auth.uid()) then
+    raise exception 'not authorized';
+  end if;
+
+  return coalesce((
+    select jsonb_agg(row_to_json(t) order by t.created_at desc)
+    from (
+      select
+        p.id,
+        p.business_name,
+        p.email,
+        p.slug,
+        p.role,
+        p.status as account_status,
+        p.access as access_status,
+        p.tier,
+        p.tier_expires_at,
+        p.created_at,
+        (
+          select count(*)::int
+          from public.profiles s
+          where s.owner_id = p.id and s.role = 'staff'
+        ) as staff_count
+      from public.profiles p
+      where p.role = 'owner'
+    ) t
+  ), '[]'::jsonb);
+end;
+$$;
+
+grant execute on function public.member_self_renew_od_membership(text) to authenticated;
+grant execute on function public.admin_list_vendor_accounts() to authenticated;
+
+-- OD member directory (shops + services visible to active members)
+alter table public.profiles add column if not exists od_directory_visible boolean not null default true;
+alter table public.profiles add column if not exists od_discount_summary text not null default '';
+alter table public.profiles add column if not exists od_listing_area text;
+alter table public.profiles add column if not exists phone text;
+alter table public.profiles add column if not exists od_shop_photo_url text;
+alter table public.profiles add column if not exists od_logo_url text;
+alter table public.profiles add column if not exists od_maps_url text;
+alter table public.profiles add column if not exists od_operating_hours jsonb;
+alter table public.profiles add column if not exists vendor_onboarding_completed boolean not null default false;
+
+create table if not exists public.od_shop_services (
+  id uuid primary key default gen_random_uuid(),
+  owner_id uuid not null references public.profiles(id) on delete cascade,
+  name text not null,
+  description text not null default '',
+  is_active boolean not null default true,
+  sort_order int not null default 0,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists idx_od_shop_services_owner on public.od_shop_services(owner_id);
+
+alter table public.od_shop_services enable row level security;
+
+drop policy if exists "Owners manage own od shop services" on public.od_shop_services;
+create policy "Owners manage own od shop services"
+  on public.od_shop_services for all
+  using (owner_id = (select auth.uid()))
+  with check (owner_id = (select auth.uid()));
+
+drop policy if exists "OD admins read all od shop services" on public.od_shop_services;
+create policy "OD admins read all od shop services"
+  on public.od_shop_services for select
+  using (public.is_od_admin((select auth.uid())));
+
+create or replace function public.get_od_member_directory()
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+declare
+  uid uuid := auth.uid();
+begin
+  if uid is null then
+    return jsonb_build_object('error', 'not_authenticated');
+  end if;
+
+  if not exists (
+    select 1
+    from public.member_profiles mp
+    inner join public.od_memberships om on om.member_id = mp.id
+    where mp.id = uid
+      and om.status = 'active'
+      and om.valid_until is not null
+      and om.valid_until >= now()
+      and (om.valid_from is null or om.valid_from <= now())
+  ) then
+    return jsonb_build_object('error', 'membership_not_active');
+  end if;
+
+  return coalesce((
+    select jsonb_agg(row_to_json(t) order by t.business_name)
+    from (
+      select
+        p.id as owner_id,
+        p.business_name,
+        p.slug,
+        nullif(trim(p.od_business_category), '') as business_category,
+        nullif(trim(p.od_discount_summary), '') as discount_summary,
+        nullif(trim(p.od_listing_area), '') as area,
+        nullif(trim(p.od_maps_url), '') as maps_url,
+        (
+          select coalesce(
+            jsonb_agg(
+              jsonb_build_object(
+                'id', s.id,
+                'name', s.name,
+                'description', s.description
+              )
+              order by s.sort_order, s.name
+            ),
+            '[]'::jsonb
+          )
+          from public.od_shop_services s
+          where s.owner_id = p.id
+            and s.is_active = true
+        ) as services
+      from public.profiles p
+      where p.role = 'owner'
+        and p.slug is not null
+        and trim(p.slug) <> ''
+        and p.od_directory_visible = true
+        and p.access = 'active'
+    ) t
+  ), '[]'::jsonb);
+end;
+$$;
+
+grant execute on function public.get_od_member_directory() to authenticated;

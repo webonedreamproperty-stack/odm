@@ -95,3 +95,8 @@ begin
   raise notice '  Slug    : %', v_slug;
 end;
 $$;
+
+-- OD admin (optional): after demo user exists, allow /od/admin for that account:
+-- insert into public.od_admins (user_id)
+-- select id from auth.users where email = 'admin@stampee.local' limit 1
+-- on conflict (user_id) do nothing;

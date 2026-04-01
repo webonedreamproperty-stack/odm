@@ -1,17 +1,34 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { Printer, Trash2 } from "lucide-react";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "./ui/dialog";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
+import { Switch } from "./ui/switch";
 import { useAuth } from "./AuthProvider";
-import { buildStaffPortalUrl } from "../lib/links";
-import { useNavigate } from "react-router-dom";
+import { buildOdVerifyUrl, buildStaffPortalUrl } from "../lib/links";
+import { printOdVerifySheet } from "../lib/printOdVerifySheet";
+import { supabase } from "../lib/supabase";
+import QRCode from "react-qr-code";
+import { Link, useNavigate } from "react-router-dom";
 import { useSubscriptionContext } from "./SubscriptionContext";
 
 const DELETE_CONFIRMATION = "DELETE";
 
-export const SettingsPage: React.FC = () => {
+/** Persist Google Maps share links with a scheme so member “Directions” opens reliably. */
+function normalizeOdMapsUrl(raw: string): string | null {
+  const t = raw.trim();
+  if (!t) return null;
+  if (/^https?:\/\//i.test(t)) return t;
+  const rest = t.replace(/^\/\//, "");
+  if (rest.includes("maps.google") || rest.includes("goo.gl") || rest.includes("g.page") || rest.includes("maps.app")) {
+    return `https://${rest}`;
+  }
+  return rest.includes(".") ? `https://${rest}` : t;
+}
+
+export const SettingsPage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
   const navigate = useNavigate();
   const { staffAccounts, createStaff, updateStaffPin, setStaffAccess, deleteStaff, currentOwner, currentUser, deleteAccount, updateProfileInfo, updatePassword } = useAuth();
   useSubscriptionContext();
@@ -55,6 +72,110 @@ export const SettingsPage: React.FC = () => {
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [deleteError, setDeleteError] = useState("");
   const [deleteAccountBusy, setDeleteAccountBusy] = useState(false);
+
+  const [odDirVisible, setOdDirVisible] = useState(true);
+  const [odDiscountSummary, setOdDiscountSummary] = useState("");
+  const [odListingArea, setOdListingArea] = useState("");
+  const [odMapsUrl, setOdMapsUrl] = useState("");
+  const [odServices, setOdServices] = useState<{ id: string; name: string; description: string }[]>([]);
+  const [newSvcName, setNewSvcName] = useState("");
+  const [newSvcDesc, setNewSvcDesc] = useState("");
+  const [odListingBusy, setOdListingBusy] = useState(false);
+  const [odListingSaveBusy, setOdListingSaveBusy] = useState(false);
+  const [odListingMsg, setOdListingMsg] = useState("");
+
+  const odVerifyQrRef = useRef<HTMLDivElement>(null);
+
+  const handlePrintOdVerifySheet = useCallback(() => {
+    if (!currentOwner?.slug) return;
+    const verifyUrl = buildOdVerifyUrl(currentOwner.slug);
+    const svg = odVerifyQrRef.current?.querySelector("svg");
+    printOdVerifySheet({ verifyUrl, qrSvgOuterHTML: svg?.outerHTML });
+  }, [currentOwner?.slug]);
+
+  const loadOdListing = useCallback(async () => {
+    if (!currentOwner?.id || currentUser?.role !== "owner") return;
+    setOdListingBusy(true);
+    const { data: row, error } = await supabase
+      .from("profiles")
+      .select("od_directory_visible, od_discount_summary, od_listing_area, od_maps_url")
+      .eq("id", currentOwner.id)
+      .maybeSingle();
+    if (!error && row) {
+      const r = row as {
+        od_directory_visible?: boolean;
+        od_discount_summary?: string;
+        od_listing_area?: string | null;
+        od_maps_url?: string | null;
+      };
+      setOdDirVisible(r.od_directory_visible !== false);
+      setOdDiscountSummary(r.od_discount_summary ?? "");
+      setOdListingArea(r.od_listing_area ?? "");
+      setOdMapsUrl(r.od_maps_url ?? "");
+    }
+    const { data: svc } = await supabase
+      .from("od_shop_services")
+      .select("id, name, description")
+      .eq("owner_id", currentOwner.id)
+      .order("sort_order", { ascending: true });
+    setOdServices((svc ?? []) as { id: string; name: string; description: string }[]);
+    setOdListingBusy(false);
+  }, [currentOwner?.id, currentUser?.role]);
+
+  useEffect(() => {
+    void loadOdListing();
+  }, [loadOdListing]);
+
+  const handleSaveOdListing = async () => {
+    if (!currentOwner?.id) return;
+    setOdListingMsg("");
+    setOdListingSaveBusy(true);
+    const { error } = await supabase
+      .from("profiles")
+      .update({
+        od_directory_visible: odDirVisible,
+        od_discount_summary: odDiscountSummary.trim(),
+        od_listing_area: odListingArea.trim() || null,
+        od_maps_url: normalizeOdMapsUrl(odMapsUrl),
+      })
+      .eq("id", currentOwner.id);
+    setOdListingSaveBusy(false);
+    if (error) {
+      setOdListingMsg("Could not save OD listing. Try again.");
+      return;
+    }
+    setOdListingMsg("OD listing saved.");
+    window.setTimeout(() => setOdListingMsg(""), 3000);
+  };
+
+  const handleAddOdService = async () => {
+    if (!currentOwner?.id || !newSvcName.trim()) return;
+    setOdListingMsg("");
+    const { error } = await supabase.from("od_shop_services").insert({
+      owner_id: currentOwner.id,
+      name: newSvcName.trim(),
+      description: newSvcDesc.trim(),
+      sort_order: odServices.length,
+    });
+    if (error) {
+      setOdListingMsg("Could not add service.");
+      return;
+    }
+    setNewSvcName("");
+    setNewSvcDesc("");
+    void loadOdListing();
+  };
+
+  const handleRemoveOdService = async (serviceId: string) => {
+    if (!currentOwner?.id) return;
+    const { error } = await supabase
+      .from("od_shop_services")
+      .delete()
+      .eq("id", serviceId)
+      .eq("owner_id", currentOwner.id);
+    if (error) return;
+    void loadOdListing();
+  };
 
   const handleProfileSave = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -168,8 +289,14 @@ export const SettingsPage: React.FC = () => {
   return (
     <div className="p-4 md:p-8 space-y-6 md:space-y-8 animate-fade-in h-full overflow-y-auto flex flex-col bg-gray-50/50">
       <div className="space-y-1">
-        <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground">Settings</h1>
-        <p className="text-sm text-muted-foreground">Manage your profile, password, team, and account.</p>
+        <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground">
+          {embedded ? "Shop setup" : "Settings"}
+        </h1>
+        <p className="text-sm text-muted-foreground">
+          {embedded
+            ? "Profile, password, and OD tools for your business. Use full settings for campaigns and staff."
+            : "Manage your profile, password, team, and account."}
+        </p>
       </div>
 
       {/* Edit Profile */}
@@ -279,6 +406,187 @@ export const SettingsPage: React.FC = () => {
         </form>
       </section>
 
+      {currentOwner?.slug && currentUser?.role === "owner" && (
+        <section className="rounded-2xl md:rounded-3xl border bg-white p-4 md:p-6 shadow-sm space-y-6">
+          <div>
+            <h2 className="text-lg md:text-xl font-semibold">OD membership verification</h2>
+            <p className="text-sm text-muted-foreground">
+              Members scan this QR in your shop while signed in to OD. Green means active membership; red means not
+              qualified for OD discounts.
+            </p>
+          </div>
+          <div className="flex flex-col gap-6 md:flex-row md:items-start">
+            <div ref={odVerifyQrRef} className="rounded-2xl border border-border/80 bg-muted/20 p-4">
+              <QRCode value={buildOdVerifyUrl(currentOwner.slug)} size={176} />
+            </div>
+            <div className="min-w-0 flex-1 space-y-2">
+              <Label>Verification URL</Label>
+              <div className="flex flex-wrap items-center gap-2">
+                <Input
+                  readOnly
+                  value={buildOdVerifyUrl(currentOwner.slug)}
+                  className="min-w-0 flex-1 font-mono text-[11px] bg-muted/40"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="shrink-0"
+                  onClick={() => navigator.clipboard.writeText(buildOdVerifyUrl(currentOwner.slug!))}
+                >
+                  Copy
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="shrink-0"
+                  onClick={() => handlePrintOdVerifySheet()}
+                  aria-label="Print QR sheet with OD Member logo"
+                >
+                  <Printer className="mr-1.5 h-4 w-4" aria-hidden />
+                  Print QR
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Opens a print view with only the OD Member logo and QR — save as PDF or print for your counter.
+              </p>
+            </div>
+          </div>
+
+          <div className="border-t border-border/60 pt-6 space-y-4">
+            <div>
+              <h3 className="text-base font-semibold">OD member directory</h3>
+              <p className="text-sm text-muted-foreground">
+                Active OD members see your shop, discount, and services on their account page. Toggle off to hide your
+                shop from the list.
+              </p>
+            </div>
+            <div className="flex items-center justify-between gap-4 rounded-xl border border-border/80 bg-muted/20 px-4 py-3">
+              <div>
+                <div className="text-sm font-medium">Show in directory</div>
+                <div className="text-xs text-muted-foreground">Visible when account access is active</div>
+              </div>
+              <Switch checked={odDirVisible} onCheckedChange={setOdDirVisible} disabled={odListingBusy} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>OD discount / offer (shown to members)</Label>
+              <textarea
+                value={odDiscountSummary}
+                onChange={(e) => setOdDiscountSummary(e.target.value)}
+                placeholder='e.g. "10% off bill" or "Buy 2 get 1 on selected services"'
+                rows={3}
+                disabled={odListingBusy}
+                className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="od-maps-url">Google Maps link (optional)</Label>
+              <p className="text-xs text-muted-foreground">
+                In Google Maps: find your shop → Share → Copy link. Members use this for the Directions button on their
+                OD account so they can open navigation to your door.
+              </p>
+              <Input
+                id="od-maps-url"
+                type="url"
+                inputMode="url"
+                autoComplete="off"
+                value={odMapsUrl}
+                onChange={(e) => setOdMapsUrl(e.target.value)}
+                placeholder="https://maps.app.goo.gl/… or maps.google.com/…"
+                disabled={odListingBusy}
+                className="font-mono text-[12px]"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="od-listing-area">Area / neighbourhood (optional)</Label>
+              <p className="text-xs text-muted-foreground">
+                Short line in the member directory (e.g. Kuala Lumpur, Bangsar). This is separate from the map link
+                above.
+              </p>
+              <Input
+                id="od-listing-area"
+                value={odListingArea}
+                onChange={(e) => setOdListingArea(e.target.value)}
+                placeholder="e.g. Kuala Lumpur, Petaling Jaya"
+                disabled={odListingBusy}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Services (optional)</Label>
+              <p className="text-xs text-muted-foreground">List what OD members can redeem or use a discount on.</p>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+                <div className="min-w-0 flex-1 space-y-1.5">
+                  <Input
+                    value={newSvcName}
+                    onChange={(e) => setNewSvcName(e.target.value)}
+                    placeholder="Service name"
+                    disabled={odListingBusy}
+                  />
+                </div>
+                <div className="min-w-0 flex-[1.2] space-y-1.5">
+                  <Input
+                    value={newSvcDesc}
+                    onChange={(e) => setNewSvcDesc(e.target.value)}
+                    placeholder="Short note (optional)"
+                    disabled={odListingBusy}
+                  />
+                </div>
+                <Button type="button" variant="secondary" onClick={() => void handleAddOdService()} disabled={odListingBusy}>
+                  Add
+                </Button>
+              </div>
+              <ul className="space-y-2">
+                {odServices.map((s) => (
+                  <li
+                    key={s.id}
+                    className="flex items-start justify-between gap-2 rounded-lg border border-border/60 bg-muted/30 px-3 py-2 text-sm"
+                  >
+                    <div>
+                      <div className="font-medium">{s.name}</div>
+                      {s.description ? (
+                        <div className="text-xs text-muted-foreground">{s.description}</div>
+                      ) : null}
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="shrink-0 text-muted-foreground hover:text-destructive"
+                      onClick={() => void handleRemoveOdService(s.id)}
+                      disabled={odListingBusy}
+                      aria-label="Remove service"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <Button type="button" onClick={() => void handleSaveOdListing()} disabled={odListingSaveBusy || odListingBusy}>
+                {odListingSaveBusy ? "Saving…" : "Save directory listing"}
+              </Button>
+              {odListingMsg && <span className="text-sm text-muted-foreground">{odListingMsg}</span>}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {embedded && currentUser?.role === "owner" && (
+        <section className="rounded-2xl md:rounded-3xl border border-dashed border-border/80 bg-muted/20 p-4 md:p-6 shadow-sm">
+          <h2 className="text-lg font-semibold text-foreground">Full Stampee app</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Loyalty campaigns, issued cards, staff logins, and advanced options are in the main settings area (with
+            navigation).
+          </p>
+          <Button type="button" className="mt-4 rounded-full" variant="secondary" asChild>
+            <Link to="/settings">Open full settings</Link>
+          </Button>
+        </section>
+      )}
+
+      {!embedded && (
       <section className="rounded-2xl md:rounded-3xl border bg-white p-4 md:p-6 shadow-sm space-y-6">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
@@ -499,7 +807,9 @@ export const SettingsPage: React.FC = () => {
           )}
         </div>
       </section>
+      )}
 
+      {!embedded && (
       <section className="rounded-2xl md:rounded-3xl border border-rose-200 bg-rose-50 p-4 md:p-6 shadow-sm space-y-4">
         <div className="space-y-1">
           <h2 className="text-lg md:text-xl font-semibold text-rose-900">Danger Zone</h2>
@@ -524,6 +834,7 @@ export const SettingsPage: React.FC = () => {
           </Button>
         </div>
       </section>
+      )}
 
       <Dialog open={!!resetTarget} onOpenChange={(open) => !open && !resetBusy && setResetTarget(null)}>
         <DialogContent>

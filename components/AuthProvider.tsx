@@ -1,7 +1,8 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { TIER_LIMITS, User } from "../types";
+import { TIER_LIMITS, User, type MemberAccount, type AccountKind } from "../types";
 import { isSupabaseConfigured, supabase } from "../lib/supabase";
 import { fetchProfile, fetchProfileDetailed, fetchStaffAccounts, updateProfile as dbUpdateProfile } from "../lib/db/profiles";
+import { fetchMemberProfile } from "../lib/db/members";
 import { normalizeSlug } from "../lib/slug";
 import { buildAppUrl, DEMO_WORKSPACE_ENABLED } from "../lib/siteConfig";
 
@@ -25,7 +26,16 @@ interface AuthContextValue {
   staffAccounts: User[];
   login: (email: string, password: string) => Promise<AuthResult>;
   loginStaff: (email: string, pin: string, orgId: string) => Promise<AuthResult>;
-  signup: (payload: { businessName: string; email: string; password: string; slug: string }) => Promise<AuthResult>;
+  signup: (payload: {
+    businessName: string;
+    email: string;
+    password: string;
+    slug: string;
+    odBusinessCategory?: string;
+    odDiscountKind?: "percent" | "fixed";
+    odDiscountValue?: number;
+    emailRedirectTo?: string;
+  }) => Promise<AuthResult>;
   loginDemo: () => Promise<void>;
   createStaff: (payload: { name: string; email: string; pin: string }) => Promise<AuthResult>;
   updateStaffPin: (staffId: string, pin: string) => Promise<AuthResult>;
@@ -37,8 +47,14 @@ interface AuthContextValue {
   isSlugAvailable: (slug: string) => Promise<boolean>;
   updateProfileInfo: (payload: { businessName?: string; email?: string; slug?: string }) => Promise<AuthResult>;
   updatePassword: (newPassword: string) => Promise<AuthResult>;
-  resetPassword: (email: string) => Promise<AuthResult>;
+  resetPassword: (email: string, redirectPath?: string) => Promise<AuthResult>;
   refreshProfile: () => Promise<void>;
+  accountKind: AccountKind | null;
+  currentMember: MemberAccount | null;
+  memberLogin: (email: string, password: string) => Promise<AuthResult>;
+  memberSignup: (payload: { displayName: string; email: string; password: string }) => Promise<AuthResult>;
+  refreshMemberProfile: () => Promise<void>;
+  updateMemberDisplayName: (displayName: string) => Promise<AuthResult>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -53,6 +69,8 @@ const PASSWORD_UPDATE_ERROR = "Unable to update your password right now. Please 
 const PASSWORD_RESET_ERROR = "Unable to send a reset link right now. Please try again.";
 const STAFF_ACTION_ERROR = "Unable to complete this staff action right now. Please try again.";
 const ACCOUNT_ACTION_ERROR = "Unable to complete this account action right now. Please try again.";
+const MEMBER_USE_OD_LOGIN = "This is an OD member account. Sign in from the OD member page.";
+const VENDOR_USE_BUSINESS_LOGIN = "This is a business account. Sign in from the business login page.";
 
 const isDuplicateSignupError = (message: string | undefined) => {
   const normalized = (message || "").trim().toLowerCase();
@@ -65,6 +83,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [staffAccounts, setStaffAccounts] = useState<User[]>([]);
   const [isEmailVerified, setIsEmailVerified] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [currentMember, setCurrentMember] = useState<MemberAccount | null>(null);
+  const [accountKind, setAccountKind] = useState<AccountKind | null>(null);
 
   const fetchProfileWithRetry = useCallback(async (userId: string, attempts = 5, delayMs = 200): Promise<User | null> => {
     for (let attempt = 0; attempt < attempts; attempt += 1) {
@@ -95,6 +115,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const createMissingProfile = useCallback(async (authUser: AuthUserLike): Promise<RepairResult> => {
     const metadata = authUser.user_metadata ?? {};
     const metadataRole = typeof metadata.role === "string" ? metadata.role : "owner";
+    if (metadataRole === "member") {
+      return { ok: false, error: ACCOUNT_SETUP_ERROR };
+    }
     const role: "owner" | "staff" = metadataRole === "staff" ? "staff" : "owner";
     const ownerId = typeof metadata.owner_id === "string" ? metadata.owner_id : null;
     const rawBusinessName = typeof metadata.business_name === "string" ? metadata.business_name.trim() : "";
@@ -137,6 +160,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsEmailVerified(Boolean(authUser?.email_confirmed_at));
     let profile = await fetchProfileWithRetry(userId);
     if (!profile && authUser) {
+      const memberOnly = await fetchMemberProfile(userId);
+      if (memberOnly) {
+        setCurrentUser(null);
+        setCurrentOwner(null);
+        setStaffAccounts([]);
+        setCurrentMember(memberOnly);
+        setAccountKind("member");
+        return;
+      }
       const repaired = await createMissingProfile(authUser);
       if (repaired.ok) {
         profile = await fetchProfileWithRetry(userId, 3, 150);
@@ -146,10 +178,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setCurrentUser(null);
       setCurrentOwner(null);
       setStaffAccounts([]);
+      setCurrentMember(null);
+      setAccountKind(null);
       setIsEmailVerified(false);
       return;
     }
 
+    setCurrentMember(null);
+    setAccountKind("vendor");
     setCurrentUser(profile);
 
     if (profile.role === "owner") {
@@ -167,6 +203,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setCurrentUser(null);
       setCurrentOwner(null);
       setStaffAccounts([]);
+      setCurrentMember(null);
+      setAccountKind(null);
       setIsEmailVerified(false);
       setLoading(false);
       return;
@@ -208,6 +246,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setCurrentUser(null);
         setCurrentOwner(null);
         setStaffAccounts([]);
+        setCurrentMember(null);
+        setAccountKind(null);
         setIsEmailVerified(false);
         setLoading(false);
       } else if (event === "INITIAL_SESSION") {
@@ -245,9 +285,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       await waitForAuthUser(data.user.id);
 
-      // Verify the profile exists in the database
       let profile = await fetchProfileWithRetry(data.user.id);
       if (!profile) {
+        const memberRow = await fetchMemberProfile(data.user.id);
+        if (memberRow) {
+          await supabase.auth.signOut();
+          return { ok: false, error: MEMBER_USE_OD_LOGIN };
+        }
         const repaired = await createMissingProfile(data.user);
         if (repaired.ok) {
           profile = await fetchProfileWithRetry(data.user.id, 3, 150);
@@ -289,6 +333,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await waitForAuthUser(data.user.id);
       let profile = await fetchProfileWithRetry(data.user.id);
       if (!profile) {
+        const memberRow = await fetchMemberProfile(data.user.id);
+        if (memberRow) {
+          await supabase.auth.signOut();
+          return { ok: false, error: MEMBER_USE_OD_LOGIN };
+        }
         const repaired = await createMissingProfile(data.user);
         if (repaired.ok) {
           profile = await fetchProfileWithRetry(data.user.id, 3, 150);
@@ -319,22 +368,38 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [createMissingProfile, fetchProfileWithRetry, waitForAuthUser]);
 
   const signup = useCallback(async (payload: {
-    businessName: string; email: string; password: string; slug: string;
+    businessName: string;
+    email: string;
+    password: string;
+    slug: string;
+    odBusinessCategory?: string;
+    odDiscountKind?: "percent" | "fixed";
+    odDiscountValue?: number;
+    emailRedirectTo?: string;
   }): Promise<AuthResult> => {
     if (!isSupabaseConfigured) {
       return { ok: false, error: CONFIG_ERROR_MESSAGE };
     }
     try {
+      const dataPayload: Record<string, unknown> = {
+        business_name: payload.businessName.trim(),
+        slug: payload.slug,
+        role: "owner",
+      };
+      if (payload.odBusinessCategory?.trim()) {
+        dataPayload.od_business_category = payload.odBusinessCategory.trim();
+      }
+      if (payload.odDiscountKind && payload.odDiscountValue != null && !Number.isNaN(payload.odDiscountValue)) {
+        dataPayload.od_discount_kind = payload.odDiscountKind;
+        dataPayload.od_discount_value = String(payload.odDiscountValue);
+      }
+      const redirectPath = payload.emailRedirectTo?.startsWith("/") ? payload.emailRedirectTo : "/login";
       const { data, error } = await supabase.auth.signUp({
         email: payload.email.trim().toLowerCase(),
         password: payload.password,
         options: {
-          data: {
-            business_name: payload.businessName.trim(),
-            slug: payload.slug,
-            role: "owner",
-          },
-          emailRedirectTo: buildAppUrl("/login"),
+          data: dataPayload,
+          emailRedirectTo: buildAppUrl(redirectPath),
         },
       });
       if (error) {
@@ -357,6 +422,118 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return { ok: false, error: SIGNUP_ERROR_MESSAGE };
     }
   }, []);
+
+  const memberLogin = useCallback(async (email: string, password: string): Promise<AuthResult> => {
+    if (!isSupabaseConfigured) {
+      return { ok: false, error: CONFIG_ERROR_MESSAGE };
+    }
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email.trim().toLowerCase(),
+        password,
+      });
+      if (error) {
+        if (error.message.toLowerCase().includes("email not confirmed")) {
+          return { ok: false, error: "Please confirm your email before signing in." };
+        }
+        return { ok: false, error: "Unable to sign in. Please check your credentials and try again." };
+      }
+
+      await waitForAuthUser(data.user.id);
+
+      const profile = await fetchProfileWithRetry(data.user.id);
+      if (profile) {
+        await supabase.auth.signOut();
+        return { ok: false, error: VENDOR_USE_BUSINESS_LOGIN };
+      }
+
+      let member = await fetchMemberProfile(data.user.id);
+      for (let attempt = 0; attempt < 5 && !member; attempt += 1) {
+        await new Promise<void>((resolve) => {
+          window.setTimeout(() => resolve(), 200);
+        });
+        member = await fetchMemberProfile(data.user.id);
+      }
+
+      if (!member) {
+        await supabase.auth.signOut();
+        return { ok: false, error: "This email is not registered as an OD member." };
+      }
+
+      await loadFullSession(data.user.id, data.user);
+      return { ok: true };
+    } catch {
+      return { ok: false, error: SIGNIN_ERROR_MESSAGE };
+    }
+  }, [fetchProfileWithRetry, loadFullSession, waitForAuthUser]);
+
+  const memberSignup = useCallback(async (payload: {
+    displayName: string;
+    email: string;
+    password: string;
+  }): Promise<AuthResult> => {
+    if (!isSupabaseConfigured) {
+      return { ok: false, error: CONFIG_ERROR_MESSAGE };
+    }
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email: payload.email.trim().toLowerCase(),
+        password: payload.password,
+        options: {
+          data: {
+            role: "member",
+            display_name: payload.displayName.trim(),
+          },
+          emailRedirectTo: buildAppUrl("/od/member/login"),
+        },
+      });
+      if (error) {
+        if (isDuplicateSignupError(error.message)) {
+          return { ok: false, error: SIGNUP_EMAIL_EXISTS_MESSAGE };
+        }
+        return { ok: false, error: SIGNUP_ERROR_MESSAGE };
+      }
+      if (Array.isArray(data.user?.identities) && data.user.identities.length === 0) {
+        return { ok: false, error: SIGNUP_EMAIL_EXISTS_MESSAGE };
+      }
+      if (!data.session) {
+        return {
+          ok: true,
+          message: "Signup succeeded. Confirm your email, then sign in.",
+        };
+      }
+      return { ok: true };
+    } catch {
+      return { ok: false, error: SIGNUP_ERROR_MESSAGE };
+    }
+  }, []);
+
+  const refreshMemberProfile = useCallback(async () => {
+    if (!isSupabaseConfigured) return;
+    const { data } = await supabase.auth.getUser();
+    if (!data.user) return;
+    const next = await fetchMemberProfile(data.user.id);
+    if (next) setCurrentMember(next);
+  }, []);
+
+  const updateMemberDisplayName = useCallback(async (displayName: string): Promise<AuthResult> => {
+    if (!isSupabaseConfigured) {
+      return { ok: false, error: CONFIG_ERROR_MESSAGE };
+    }
+    const { data: authUser } = await supabase.auth.getUser();
+    if (!authUser.user) return { ok: false, error: AUTH_REQUEST_ERROR };
+    const trimmed = displayName.trim();
+    if (!trimmed) {
+      return { ok: false, error: "Display name is required." };
+    }
+    const { error } = await supabase
+      .from("member_profiles")
+      .update({ display_name: trimmed })
+      .eq("id", authUser.user.id);
+    if (error) return { ok: false, error: PROFILE_UPDATE_ERROR };
+    await refreshMemberProfile();
+    return { ok: true };
+  }, [refreshMemberProfile]);
 
   const loginDemo = useCallback(async () => {
     if (!DEMO_WORKSPACE_ENABLED) {
@@ -539,12 +716,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return { ok: true };
   }, []);
 
-  const resetPassword = useCallback(async (email: string): Promise<AuthResult> => {
+  const resetPassword = useCallback(async (email: string, redirectPath?: string): Promise<AuthResult> => {
     if (!isSupabaseConfigured) {
       return { ok: false, error: CONFIG_ERROR_MESSAGE };
     }
+    const path =
+      typeof redirectPath === "string" && redirectPath.startsWith("/") ? redirectPath : "/login";
     const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
-      redirectTo: buildAppUrl("/login"),
+      redirectTo: buildAppUrl(path),
     });
     if (error) return { ok: false, error: PASSWORD_RESET_ERROR };
     return { ok: true };
@@ -575,13 +754,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       updatePassword,
       resetPassword,
       refreshProfile,
+      accountKind,
+      currentMember,
+      memberLogin,
+      memberSignup,
+      refreshMemberProfile,
+      updateMemberDisplayName,
     }),
     [
       currentUser, currentOwner, isEmailVerified, loading, staffAccounts,
+      accountKind, currentMember,
       login, loginStaff, signup, loginDemo, createStaff,
       updateStaffPin, setStaffAccess, deleteStaff, deleteAccount, logout,
       resendVerificationEmail, isSlugAvailable, updateProfileInfo,
       updatePassword, resetPassword, refreshProfile,
+      memberLogin, memberSignup, refreshMemberProfile, updateMemberDisplayName,
     ]
   );
 

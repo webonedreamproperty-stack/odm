@@ -100,6 +100,19 @@ export const TIER_LIMITS = {
   pro: { campaigns: Infinity, issuedCards: Infinity, staff: Infinity },
 } as const;
 
+/** Stored in profiles.od_operating_hours (JSON). */
+export type OdOperatingHoursState = {
+  /** Mon–Fri open window */
+  weekdayOpen: string;
+  weekdayClose: string;
+  satClosed: boolean;
+  sunClosed: boolean;
+  satOpen?: string;
+  satClose?: string;
+  sunOpen?: string;
+  sunClose?: string;
+};
+
 export interface User {
   id: string;
   businessName: string;
@@ -112,4 +125,29 @@ export interface User {
   tier: SubscriptionTier;
   tierExpiresAt?: string;
   createdAt: string;
+  /** Vendor contact & OD listing (optional until onboarding) */
+  phone?: string;
+  odBusinessCategory?: string;
+  odShopPhotoUrl?: string;
+  odLogoUrl?: string;
+  odMapsUrl?: string;
+  odOperatingHours?: OdOperatingHoursState | null;
+  vendorOnboardingCompleted?: boolean;
+}
+
+export type AccountKind = 'vendor' | 'member';
+
+export interface MemberAccount {
+  id: string;
+  email: string;
+  displayName: string;
+  memberCode: string;
+  country: string;
+  createdAt: string;
+  membership: {
+    status: 'active' | 'suspended';
+    plan: 'month' | 'year' | null;
+    validFrom: string | null;
+    validUntil: string | null;
+  } | null;
 }

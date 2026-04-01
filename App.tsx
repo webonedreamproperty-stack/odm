@@ -3,7 +3,7 @@ import { Analytics } from '@vercel/analytics/react';
 import { Sidebar, NAV_ITEMS, SidebarContent } from './components/Sidebar';
 import { Template, Customer, IssuedCard } from './types';
 import { templates } from './data/templates';
-import { BrowserRouter, Routes, Route, Outlet, useParams, useNavigate, Navigate, useSearchParams, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Outlet, useParams, useNavigate, Navigate, useSearchParams, useLocation, Link } from 'react-router-dom';
 import { Lock } from 'lucide-react';
 import { toStoredTemplate, fromStoredTemplate } from './lib/templateSerialization';
 import { cn, hexToRgba, resolveHexAndOpacity } from './lib/utils';
@@ -11,6 +11,9 @@ import { AuthProvider, useAuth } from './components/AuthProvider';
 import { RequireAuth } from './components/RequireAuth';
 import { RequireRole } from './components/RequireRole';
 import { VerifyBanner } from './components/VerifyBanner';
+import { Button } from './components/ui/button';
+import { RequireMemberAuth } from './components/RequireMemberAuth';
+import { RequireOdAdmin } from './components/RequireOdAdmin';
 import { fetchCampaigns, upsertCampaign, deleteCampaign as dbDeleteCampaign, setCampaignEnabled } from './lib/db/campaigns';
 import { fetchCustomersWithCards } from './lib/db/customers';
 import { fetchPublicScanEntryContext } from './lib/db/issuedCards';
@@ -83,6 +86,14 @@ const SettingsPage = lazy(() => import('./components/SettingsPage').then((module
 const ForgotPasswordPage = lazy(() => import('./components/ForgotPasswordPage').then((module) => ({ default: module.ForgotPasswordPage })));
 const DashboardPage = lazy(() => import('./components/DashboardPage').then((module) => ({ default: module.DashboardPage })));
 const PublicCampaignSignupPage = lazy(() => import('./components/PublicCampaignSignupPage').then((module) => ({ default: module.PublicCampaignSignupPage })));
+const OdLoginHubPage = lazy(() => import('./components/od/OdLoginHubPage').then((module) => ({ default: module.OdLoginHubPage })));
+const OdMemberLoginPage = lazy(() => import('./components/od/OdMemberLoginPage').then((module) => ({ default: module.OdMemberLoginPage })));
+const OdVendorLoginPage = lazy(() => import('./components/od/OdVendorLoginPage').then((module) => ({ default: module.OdVendorLoginPage })));
+const OdMemberSignupPage = lazy(() => import('./components/od/OdMemberSignupPage').then((module) => ({ default: module.OdMemberSignupPage })));
+const OdVendorSignupPage = lazy(() => import('./components/od/OdVendorSignupPage').then((module) => ({ default: module.OdVendorSignupPage })));
+const OdVerifyPage = lazy(() => import('./components/od/OdVerifyPage').then((module) => ({ default: module.OdVerifyPage })));
+const OdMemberAccountPage = lazy(() => import('./components/od/OdMemberAccountPage').then((module) => ({ default: module.OdMemberAccountPage })));
+const OdAdminPage = lazy(() => import('./components/od/OdAdminPage').then((module) => ({ default: module.OdAdminPage })));
 
 const RouteLoader: React.FC = () => (
   <div className="flex min-h-[40vh] w-full items-center justify-center">
@@ -481,8 +492,36 @@ const EditorWrapper: React.FC<{ onSave: (t: Template) => Promise<void>; template
 const DashboardLayout: React.FC = () => {
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const location = useLocation();
+  const { logout, currentUser } = useAuth();
+  const isVendorSetupHome = location.pathname === "/dashboard";
 
   const activeTitle = NAV_ITEMS.find((item) => item.path === location.pathname)?.label ?? "Dashboard";
+
+  if (isVendorSetupHome) {
+    return (
+      <div className="flex min-h-screen flex-col bg-background font-sans text-foreground">
+        <header className="sticky top-0 z-40 flex items-center justify-between border-b border-border/80 bg-card/95 px-4 py-3 backdrop-blur-sm md:px-8">
+          <Link to="/dashboard" className="text-lg font-semibold tracking-tight text-foreground">
+            stampee
+          </Link>
+          <div className="flex min-w-0 items-center gap-3">
+            {currentUser?.businessName ? (
+              <span className="hidden max-w-[200px] truncate text-sm text-muted-foreground sm:inline">
+                {currentUser.businessName}
+              </span>
+            ) : null}
+            <Button type="button" variant="outline" size="sm" className="shrink-0 rounded-full" onClick={() => void logout()}>
+              Log out
+            </Button>
+          </div>
+        </header>
+        <VerifyBanner />
+        <div className="flex-1 overflow-auto">
+          <Outlet />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen bg-background text-foreground font-sans">
@@ -643,9 +682,22 @@ const AppRoutes: React.FC = () => {
         <Route path="/:slug/:uniqueId" element={<PublicCardWrapper />} />
         <Route path="/login" element={withSuspense(<LoginPage />)} />
         <Route path="/forgot-password" element={withSuspense(<ForgotPasswordPage />)} />
+        <Route path="/od/login" element={withSuspense(<OdLoginHubPage />)} />
+        <Route path="/od/member/login" element={withSuspense(<OdMemberLoginPage />)} />
+        <Route path="/od/vendor/login" element={withSuspense(<OdVendorLoginPage />)} />
+        <Route path="/od/signup" element={withSuspense(<OdVendorSignupPage />)} />
+        <Route path="/od/member/signup" element={withSuspense(<OdMemberSignupPage />)} />
+        <Route path="/od/verify/:shopSlug" element={withSuspense(<OdVerifyPage />)} />
 
         {/* Authenticated Routes */}
+        <Route element={<RequireMemberAuth />}>
+          <Route path="/od/account" element={withSuspense(<OdMemberAccountPage />)} />
+        </Route>
+
         <Route element={<RequireAuth />}>
+          <Route element={<RequireOdAdmin />}>
+            <Route path="/od/admin" element={withSuspense(<OdAdminPage />)} />
+          </Route>
           <Route element={<RequireRole allowed={["owner"]} />}>
             <Route path="/active/:cardId" element={<ActiveCardWrapper templates={createdCards} />} />
             <Route path="/preview/:templateId" element={<PreviewWrapper />} />

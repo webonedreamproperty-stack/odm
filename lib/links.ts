@@ -33,3 +33,12 @@ export const buildIssuedCardsKioskUrl = (uniqueId: string) => {
   if (!uniqueId) return "/issued-cards";
   return `/issued-cards?kiosk=${encodeURIComponent(uniqueId)}`;
 };
+
+/** Member scans this URL at a shop; shows green/red OD membership status. */
+export const buildOdVerifyPath = (shopSlug: string) => `/od/verify/${encodeURIComponent(shopSlug)}`;
+
+export const buildOdVerifyUrl = (shopSlug: string) => {
+  const path = buildOdVerifyPath(shopSlug);
+  if (typeof window === "undefined") return path;
+  return `${window.location.origin}${path}`;
+};

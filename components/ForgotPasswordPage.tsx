@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Link, Navigate } from "react-router-dom";
+import { Link, Navigate, useSearchParams } from "react-router-dom";
 import { ArrowRight, CheckCircle2 } from "lucide-react";
 import { AuthLayout } from "./AuthLayout";
 import { Button } from "./ui/button";
@@ -11,12 +11,17 @@ const inputCls =
 const labelCls = "block text-[11px] font-semibold uppercase tracking-[0.16em] text-[#6e6e73]";
 
 export const ForgotPasswordPage: React.FC = () => {
-  const { currentUser, resetPassword } = useAuth();
+  const { currentUser, currentMember, accountKind, resetPassword } = useAuth();
+  const [searchParams] = useSearchParams();
+  const nextPath = searchParams.get("next") ?? "/login";
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
   const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState(false);
 
+  if (currentMember && accountKind === "member") {
+    return <Navigate to="/od/account" replace />;
+  }
   if (currentUser) {
     return <Navigate to="/settings" replace />;
   }
@@ -29,7 +34,7 @@ export const ForgotPasswordPage: React.FC = () => {
       return;
     }
     setBusy(true);
-    const result = await resetPassword(email.trim());
+    const result = await resetPassword(email.trim(), nextPath.startsWith("/") ? nextPath : "/login");
     setBusy(false);
     if (!result.ok) {
       setError(result.error);
@@ -57,7 +62,7 @@ export const ForgotPasswordPage: React.FC = () => {
             </p>
           </div>
           <Link
-            to="/login"
+            to={nextPath.startsWith("/") ? nextPath : "/login"}
             className="inline-flex h-12 w-full items-center justify-center rounded-full bg-[#1d1d1f] text-base font-medium text-white shadow-sm hover:bg-black/80"
           >
             Back to Sign In
@@ -111,7 +116,10 @@ export const ForgotPasswordPage: React.FC = () => {
 
         <p className="text-center text-sm text-[#6e6e73]">
           Remember your password?{" "}
-          <Link to="/login" className="font-semibold text-[#1d1d1f] underline-offset-2 hover:underline">
+          <Link
+            to={nextPath.startsWith("/") ? nextPath : "/login"}
+            className="font-semibold text-[#1d1d1f] underline-offset-2 hover:underline"
+          >
             Sign in
           </Link>
         </p>

@@ -1,4 +1,5 @@
 import { supabase } from '../supabase';
+import { normalizeOdOperatingHours } from '../odOperatingHours';
 import type { User } from '../../types';
 
 export const profileToUser = (row: Record<string, unknown>): User => ({
@@ -13,6 +14,14 @@ export const profileToUser = (row: Record<string, unknown>): User => ({
   tier: (row.tier as 'free' | 'pro') ?? 'free',
   tierExpiresAt: row.tier_expires_at as string | undefined,
   createdAt: row.created_at as string,
+  phone: (row.phone as string | undefined) ?? undefined,
+  odBusinessCategory: (row.od_business_category as string | undefined) ?? undefined,
+  odShopPhotoUrl: (row.od_shop_photo_url as string | undefined) ?? undefined,
+  odLogoUrl: (row.od_logo_url as string | undefined) ?? undefined,
+  odMapsUrl: (row.od_maps_url as string | undefined) ?? undefined,
+  odOperatingHours:
+    row.od_operating_hours != null ? normalizeOdOperatingHours(row.od_operating_hours) : undefined,
+  vendorOnboardingCompleted: row.vendor_onboarding_completed === true,
 });
 
 export type ProfileFetchResult = {

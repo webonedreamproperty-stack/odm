@@ -14,7 +14,7 @@ const inputCls =
 const labelCls = "block text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-[#777062]";
 
 export const LoginPage: React.FC = () => {
-  const { currentUser, loading, login, loginDemo } = useAuth();
+  const { currentUser, currentMember, accountKind, loading, login, loginDemo } = useAuth();
   const location = useLocation();
   const fromPath = (location.state as { from?: { pathname?: string } })?.from?.pathname;
   const showDemoWorkspace = DEMO_WORKSPACE_ENABLED && new URLSearchParams(location.search).get("admin") === "pogi";
@@ -41,6 +41,9 @@ export const LoginPage: React.FC = () => {
     });
 
   // Once auth state is resolved and user is logged in, redirect
+  if (!loading && currentMember && accountKind === "member") {
+    return <Navigate to="/od/account" replace />;
+  }
   if (!loading && currentUser) {
     return <Navigate to={fromPath ?? (currentUser.role === "staff" ? "/issued-cards" : "/dashboard")} replace />;
   }
