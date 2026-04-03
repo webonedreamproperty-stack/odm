@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { ExternalLink, LogOut, MapPin, Store } from "lucide-react";
+import { ChevronRight, ExternalLink, LogOut, MapPin, Sparkles, Store } from "lucide-react";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "../ui/accordion";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "../ui/dialog";
@@ -8,12 +9,40 @@ import { useAuth } from "../AuthProvider";
 import { OD_RENEWAL_PACKAGES, formatRm, type OdRenewalPackage } from "../../lib/odPricing";
 import { memberSelfRenewOdMembership } from "../../lib/db/members";
 import { fetchOdMemberDirectory, type OdDirectoryShop } from "../../lib/db/odDirectory";
-import { buildOdVerifyPath } from "../../lib/links";
+import { cn } from "../../lib/utils";
 import { OD_BUSINESS_CATEGORIES } from "../../lib/odBusinessCategories";
 import { OD_INDUSTRY_FILTER_LABEL, shopMatchesIndustryFilter } from "../../lib/odMemberDirectoryFilters";
+import { OdMembershipCard } from "./OdMembershipCard";
 
 const inputCls =
   "h-12 rounded-xl border border-black/[0.08] bg-[#f4f1ea] px-4 text-[15px] text-[#171512] shadow-none focus-visible:ring-0";
+
+function getShopPosterGradient(category: string | null): string {
+  const c = (category ?? "").toLowerCase();
+  if (c.includes("food") || c.includes("drink")) {
+    return "linear-gradient(145deg, #431407 0%, #9a3412 38%, #ea580c 72%, #fb923c 100%)";
+  }
+  if (c.includes("retail")) {
+    return "linear-gradient(145deg, #0f172a 0%, #1e3a5f 45%, #475569 100%)";
+  }
+  if (c.includes("barber") || c.includes("hair")) {
+    return "linear-gradient(145deg, #1e1b4b 0%, #3730a3 50%, #6366f1 100%)";
+  }
+  if (c.includes("beauty") || c.includes("wellness")) {
+    return "linear-gradient(145deg, #4c1d95 0%, #7c3aed 55%, #c084fc 100%)";
+  }
+  if (c.includes("service")) {
+    return "linear-gradient(145deg, #14532d 0%, #15803d 50%, #4ade80 100%)";
+  }
+  return "linear-gradient(145deg, #18181b 0%, #3f3f46 55%, #71717a 100%)";
+}
+
+function getShopInitials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "?";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
 
 export const OdMemberAccountPage: React.FC = () => {
   const { currentMember, logout, updateMemberDisplayName, refreshMemberProfile } = useAuth();
@@ -29,6 +58,7 @@ export const OdMemberAccountPage: React.FC = () => {
   const [dirShops, setDirShops] = useState<OdDirectoryShop[]>([]);
   const [dirError, setDirError] = useState<string | null>(null);
   const [industryFilter, setIndustryFilter] = useState<"all" | string>("all");
+  const [statusAccordionValue, setStatusAccordionValue] = useState<string | undefined>(undefined);
 
   React.useEffect(() => {
     setName(currentMember?.displayName ?? "");
@@ -75,6 +105,11 @@ export const OdMemberAccountPage: React.FC = () => {
   const filteredShops = useMemo(() => {
     return dirShops.filter((shop) => shopMatchesIndustryFilter(shop.business_category, industryFilter));
   }, [dirShops, industryFilter]);
+
+  const accountQrUrl = useMemo(() => {
+    if (typeof window === "undefined") return "";
+    return `${window.location.origin}/od/account`;
+  }, []);
 
   const handleConfirmRenew = async () => {
     if (!renewDialogPkg) return;
@@ -125,160 +160,229 @@ export const OdMemberAccountPage: React.FC = () => {
       </div>
 
       <div className="mx-auto max-w-2xl space-y-6">
-        <div className="rounded-[1.5rem] border border-black/[0.06] bg-white p-6 shadow-sm">
-          <h2 className="text-sm font-semibold uppercase tracking-[0.14em] text-[#8a8276]">Status</h2>
-          <div className="mt-3 flex items-center gap-3">
-            <span
-              className={`inline-flex h-3 w-3 rounded-full ${active ? "bg-emerald-500 shadow-[0_0_0_4px_rgba(16,185,129,0.25)]" : "bg-red-500 shadow-[0_0_0_4px_rgba(239,68,68,0.2)]"}`}
-            />
-            <span className="text-lg font-medium text-[#1b1813]">{active ? "Active" : "Inactive"}</span>
-          </div>
-          <p className="mt-2 text-sm text-[#6d6658]">
-            {active
-              ? "Browse participating shops below, then show verification at the counter when you visit."
-              : "Renew below to unlock the member directory and shop discounts."}
-          </p>
-          {m?.validUntil && (
-            <p className="mt-4 text-sm text-[#374151]">
-              <span className="font-medium">Current period ends:</span>{" "}
-              {new Date(m.validUntil).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}
-            </p>
-          )}
-          {m?.plan && (
-            <p className="mt-1 text-sm text-[#6d6658]">
-              Plan: <span className="font-medium"> {m.plan === "month" ? "1 month" : "1 year"}</span>
-            </p>
-          )}
+        <div className="overflow-hidden rounded-[1.5rem] border border-black/[0.06] bg-white shadow-sm">
+          <Accordion
+            type="single"
+            collapsible
+            value={statusAccordionValue}
+            onValueChange={setStatusAccordionValue}
+            className="w-full"
+          >
+            <AccordionItem value="status-details" className="border-0">
+              <AccordionTrigger className="px-6 py-5 hover:no-underline">
+                <div className="flex min-w-0 flex-1 flex-col gap-2 text-left">
+                  <span className="text-sm font-semibold uppercase tracking-[0.14em] text-[#8a8276]">Status</span>
+                  <div className="flex items-center gap-3">
+                    <span
+                      className={`inline-flex h-3 w-3 shrink-0 rounded-full ${active ? "bg-emerald-500 shadow-[0_0_0_4px_rgba(16,185,129,0.25)]" : "bg-red-500 shadow-[0_0_0_4px_rgba(239,68,68,0.2)]"}`}
+                    />
+                    <span className="text-lg font-medium text-[#1b1813]">{active ? "Active" : "Inactive"}</span>
+                  </div>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="px-6 pb-6 pt-0">
+                <div className="space-y-4">
+                  {active && accountQrUrl && (
+                    <OdMembershipCard
+                      className="mt-0"
+                      memberCode={currentMember.memberCode}
+                      validUntilLabel={
+                        m?.validUntil
+                          ? new Date(m.validUntil).toLocaleDateString(undefined, { dateStyle: "medium" })
+                          : "—"
+                      }
+                      qrUrl={accountQrUrl}
+                    />
+                  )}
+
+                  <p className="text-sm text-[#6d6658]">
+                    {active
+                      ? "Browse participating shops below, then show verification at the counter when you visit."
+                      : "Renew below to unlock the member directory and shop discounts."}
+                  </p>
+                  {m?.validUntil && (
+                    <p className="text-sm text-[#374151]">
+                      <span className="font-medium">Current period ends:</span>{" "}
+                      {new Date(m.validUntil).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}
+                    </p>
+                  )}
+                  {m?.plan && (
+                    <p className="text-sm text-[#6d6658]">
+                      Plan: <span className="font-medium"> {m.plan === "month" ? "1 month" : "1 year"}</span>
+                    </p>
+                  )}
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
         </div>
 
         {active && (
-          <div className="rounded-[1.5rem] border border-black/[0.06] bg-white p-6 shadow-sm">
-            <div className="flex items-center gap-2">
-              <Store className="h-5 w-5 text-[#8a8276]" aria-hidden />
-              <h2 className="text-sm font-semibold uppercase tracking-[0.14em] text-[#8a8276]">
-                Participating shops & services
-              </h2>
-            </div>
-            <p className="mt-2 text-sm text-[#6d6658]">
-              These businesses honour OD member pricing when your status is active. At the shop, open verification and
-              show staff the green screen.
-            </p>
-
-            {!dirLoading && !dirError && dirShops.length > 0 && (
-              <div className="mt-4">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#8a8276]">Filter by industry</p>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setIndustryFilter("all")}
-                    className={`rounded-full border px-3 py-1.5 text-sm font-medium transition ${
-                      industryFilter === "all"
-                        ? "border-[#1b1813] bg-[#1b1813] text-white"
-                        : "border-black/10 bg-[#faf9f6] text-[#374151] hover:border-black/20"
-                    }`}
-                  >
-                    All
-                  </button>
-                  {OD_BUSINESS_CATEGORIES.map((cat) => (
-                    <button
-                      key={cat}
-                      type="button"
-                      onClick={() => setIndustryFilter(cat)}
-                      className={`rounded-full border px-3 py-1.5 text-sm font-medium transition ${
-                        industryFilter === cat
-                          ? "border-[#1b1813] bg-[#1b1813] text-white"
-                          : "border-black/10 bg-[#faf9f6] text-[#374151] hover:border-black/20"
-                      }`}
-                    >
-                      {OD_INDUSTRY_FILTER_LABEL[cat] ?? cat}
-                    </button>
-                  ))}
+          <div className="rounded-[1.5rem] border border-black/[0.06] bg-white shadow-[0_2px_40px_rgba(0,0,0,0.04)]">
+            <div className="overflow-hidden rounded-t-[1.5rem] border-b border-black/[0.05] bg-gradient-to-b from-[#faf9f7] via-white to-white px-5 pb-5 pt-6 sm:px-6">
+              <div className="flex items-start gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[#1b1813]/[0.06] text-[#1b1813]">
+                  <Store className="h-5 w-5" aria-hidden />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h2 className="text-[13px] font-semibold uppercase tracking-[0.16em] text-[#8a8276]">
+                    Participating shops & services
+                  </h2>
+                  <p className="mt-2 text-[15px] leading-relaxed text-[#3d3830]">
+                    Member pricing at these businesses. At the counter, open verification and show staff the green
+                    screen.
+                  </p>
                 </div>
               </div>
-            )}
+            </div>
 
-            {dirLoading && (
-              <div className="mt-6 flex justify-center py-10">
-                <div className="h-9 w-9 animate-spin rounded-full border-2 border-[#1b1813] border-t-transparent" />
-              </div>
-            )}
-
-            {!dirLoading && dirError && (
-              <p className="mt-4 text-sm text-red-600">{dirError}</p>
-            )}
-
-            {!dirLoading && !dirError && dirShops.length === 0 && (
-              <p className="mt-4 rounded-xl border border-dashed border-black/10 bg-[#faf9f6] px-4 py-6 text-center text-sm text-[#6d6658]">
-                No shops listed yet. Vendors set their OD offer in Settings → OD member directory.
-              </p>
-            )}
-
-            {!dirLoading && !dirError && dirShops.length > 0 && filteredShops.length === 0 && (
-              <p className="mt-5 rounded-xl border border-dashed border-black/10 bg-[#faf9f6] px-4 py-6 text-center text-sm text-[#6d6658]">
-                No shops in this category. Try <button type="button" className="font-medium text-[#1b1813] underline underline-offset-2" onClick={() => setIndustryFilter("all")}>All</button> or another industry.
-              </p>
-            )}
-
-            {!dirLoading && filteredShops.length > 0 && (
-              <ul className="mt-5 space-y-4">
-                {filteredShops.map((shop) => (
-                  <li
-                    key={shop.owner_id}
-                    className="rounded-2xl border border-black/[0.08] bg-[#fafbfa] p-4 transition hover:border-black/12"
-                  >
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                      <div className="min-w-0">
-                        <h3 className="text-base font-semibold text-[#1b1813]">{shop.business_name}</h3>
-                        {shop.business_category && (
-                          <p className="mt-1 text-xs font-medium uppercase tracking-wide text-[#8a8276]">
-                            {OD_INDUSTRY_FILTER_LABEL[shop.business_category] ?? shop.business_category}
-                          </p>
-                        )}
-                        {shop.area && (
-                          <p className="mt-1 flex items-center gap-1.5 text-xs text-[#6d6658]">
-                            <MapPin className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                            {shop.area}
-                          </p>
-                        )}
-                        {shop.maps_url && /^https?:\/\//i.test(shop.maps_url) && (
-                          <a
-                            href={shop.maps_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="mt-2 inline-flex items-center gap-1 text-sm font-medium text-[#1b1813] underline-offset-2 hover:underline"
-                          >
-                            <ExternalLink className="h-3.5 w-3.5" aria-hidden />
-                            Directions (Google Maps)
-                          </a>
-                        )}
-                        {shop.discount_summary && (
-                          <p className="mt-2 text-sm font-medium text-emerald-800">{shop.discount_summary}</p>
-                        )}
-                        {shop.services && shop.services.length > 0 && (
-                          <ul className="mt-3 space-y-1.5 border-t border-black/[0.06] pt-3">
-                            {shop.services.map((svc) => (
-                              <li key={svc.id} className="text-sm text-[#374151]">
-                                <span className="font-medium">{svc.name}</span>
-                                {svc.description ? (
-                                  <span className="text-[#6d6658]"> — {svc.description}</span>
-                                ) : null}
-                              </li>
-                            ))}
-                          </ul>
-                        )}
-                      </div>
-                      {/* <Button
+            <div className="px-5 pb-6 pt-5 sm:px-6">
+              {!dirLoading && !dirError && dirShops.length > 0 && (
+                <div className="mb-6">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#8a8276]">Browse by industry</p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setIndustryFilter("all")}
+                      className={cn(
+                        "rounded-full border px-4 py-2 text-[13px] font-medium transition-all duration-200",
+                        industryFilter === "all"
+                          ? "border-transparent bg-[#1b1813] text-white shadow-md shadow-black/15"
+                          : "border-black/[0.08] bg-white/70 text-[#374151] backdrop-blur-md hover:border-black/15 hover:bg-white"
+                      )}
+                    >
+                      All
+                    </button>
+                    {OD_BUSINESS_CATEGORIES.map((cat) => (
+                      <button
+                        key={cat}
                         type="button"
-                        asChild
-                        className="shrink-0 rounded-full bg-[#1b1813] hover:bg-[#11100d]"
+                        onClick={() => setIndustryFilter(cat)}
+                        className={cn(
+                          "rounded-full border px-4 py-2 text-[13px] font-medium transition-all duration-200",
+                          industryFilter === cat
+                            ? "border-transparent bg-[#1b1813] text-white shadow-md shadow-black/15"
+                            : "border-black/[0.08] bg-white/70 text-[#374151] backdrop-blur-md hover:border-black/15 hover:bg-white"
+                        )}
                       >
-                        <Link to={buildOdVerifyPath(shop.slug)}>Verify at shop</Link>
-                      </Button> */}
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
+                        {OD_INDUSTRY_FILTER_LABEL[cat] ?? cat}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {dirLoading && (
+                <div className="flex justify-center py-16">
+                  <div className="h-10 w-10 animate-spin rounded-full border-2 border-[#1b1813]/20 border-t-[#1b1813]" />
+                </div>
+              )}
+
+              {!dirLoading && dirError && <p className="text-sm text-red-600">{dirError}</p>}
+
+              {!dirLoading && !dirError && dirShops.length === 0 && (
+                <p className="rounded-2xl border border-dashed border-black/[0.1] bg-[#faf9f6] px-5 py-10 text-center text-[15px] leading-relaxed text-[#6d6658]">
+                  No shops listed yet. Vendors set their OD offer in Settings → OD member directory.
+                </p>
+              )}
+
+              {!dirLoading && !dirError && dirShops.length > 0 && filteredShops.length === 0 && (
+                <p className="rounded-2xl border border-dashed border-black/[0.1] bg-[#faf9f6] px-5 py-10 text-center text-[15px] leading-relaxed text-[#6d6658]">
+                  No shops in this category. Try{" "}
+                  <button
+                    type="button"
+                    className="font-semibold text-[#1b1813] underline decoration-[#1b1813]/30 underline-offset-2"
+                    onClick={() => setIndustryFilter("all")}
+                  >
+                    All
+                  </button>{" "}
+                  or another industry.
+                </p>
+              )}
+
+              {!dirLoading && filteredShops.length > 0 && (
+                <ul
+                  className="-mx-5 flex touch-pan-x snap-x snap-mandatory gap-5 overflow-x-auto scroll-pl-5 scroll-pr-5 pb-1 pl-5 pr-5 [-ms-overflow-style:none] [scrollbar-width:none] sm:-mx-6 sm:scroll-pl-6 sm:scroll-pr-6 sm:pl-6 sm:pr-6 md:mx-0 md:grid md:max-w-none md:grid-cols-2 md:gap-6 md:overflow-visible md:px-0 md:pb-0 md:pl-0 md:pr-0 md:scroll-pl-0 md:scroll-pr-0 [&::-webkit-scrollbar]:hidden"
+                >
+                  {filteredShops.map((shop: OdDirectoryShop) => (
+                    <li
+                      key={shop.owner_id}
+                      className="w-[min(88vw,380px)] shrink-0 snap-center md:w-full md:min-w-0 md:snap-none"
+                    >
+                      <article className="group overflow-hidden rounded-[1.35rem] bg-white shadow-[0_4px_24px_rgba(0,0,0,0.06)] ring-1 ring-black/[0.05] transition duration-300 hover:shadow-[0_12px_48px_rgba(0,0,0,0.1)] hover:ring-black/[0.08]">
+                        <div
+                          className="relative aspect-[21/10] min-h-[128px] overflow-hidden sm:aspect-[2/1]"
+                          style={{ background: getShopPosterGradient(shop.business_category) }}
+                        >
+                          <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_70%_20%,rgba(255,255,255,0.15),transparent)]" />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/25 to-transparent" />
+                          <div className="absolute right-4 top-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-white/18 text-lg font-semibold tracking-tight text-white shadow-lg backdrop-blur-md ring-1 ring-white/25">
+                            {getShopInitials(shop.business_name)}
+                          </div>
+                          <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-5">
+                            {shop.business_category ? (
+                              <span className="mb-2 inline-flex rounded-lg bg-white/22 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-white backdrop-blur-md">
+                                {OD_INDUSTRY_FILTER_LABEL[shop.business_category] ?? shop.business_category}
+                              </span>
+                            ) : null}
+                            <h3 className="text-lg font-semibold leading-tight tracking-tight text-white drop-shadow-sm sm:text-xl">
+                              {shop.business_name}
+                            </h3>
+                          </div>
+                        </div>
+
+                        <div className="space-y-4 p-5 sm:p-6">
+                          {shop.area && (
+                            <div className="flex items-start gap-2.5 text-[14px] text-[#5c554a]">
+                              <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[#8a8276]" aria-hidden />
+                              <span className="leading-snug">{shop.area}</span>
+                            </div>
+                          )}
+
+                          {shop.discount_summary && (
+                            <div className="flex gap-3 rounded-2xl bg-emerald-50/90 px-4 py-3 ring-1 ring-emerald-200/60">
+                              <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-emerald-700" aria-hidden />
+                              <p className="text-[14px] font-medium leading-snug text-emerald-900">{shop.discount_summary}</p>
+                            </div>
+                          )}
+
+                          {shop.maps_url && /^https?:\/\//i.test(shop.maps_url) && (
+                            <a
+                              href={shop.maps_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center justify-between gap-3 rounded-2xl border border-black/[0.06] bg-[#faf9f7] px-4 py-3.5 text-[14px] font-medium text-[#1b1813] transition hover:border-black/12 hover:bg-[#f5f3ef] active:scale-[0.99]"
+                            >
+                              <span className="flex items-center gap-2">
+                                <ExternalLink className="h-4 w-4 opacity-70" aria-hidden />
+                                Directions
+                              </span>
+                              <ChevronRight className="h-4 w-4 text-[#8a8276]" aria-hidden />
+                            </a>
+                          )}
+
+                          {shop.services && shop.services.length > 0 && (
+                            <div className="border-t border-black/[0.06] pt-4">
+                              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#8a8276]">Services</p>
+                              <ul className="mt-3 divide-y divide-black/[0.05]">
+                                {shop.services.map((svc) => (
+                                  <li key={svc.id} className="py-2.5 first:pt-0 last:pb-0">
+                                    <span className="text-[15px] font-medium text-[#1b1813]">{svc.name}</span>
+                                    {svc.description ? (
+                                      <p className="mt-0.5 text-[14px] leading-relaxed text-[#6d6658]">{svc.description}</p>
+                                    ) : null}
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                        </div>
+                      </article>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           </div>
         )}
 
