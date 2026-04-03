@@ -8,6 +8,8 @@ import { Label } from "./ui/label";
 import { Switch } from "./ui/switch";
 import { useAuth } from "./AuthProvider";
 import { buildOdVerifyUrl, buildStaffPortalUrl } from "../lib/links";
+import { OD_BUSINESS_CATEGORIES, type OdBusinessCategory } from "../lib/odBusinessCategories";
+import { OD_INDUSTRY_FILTER_LABEL } from "../lib/odMemberDirectoryFilters";
 import { printOdVerifySheet } from "../lib/printOdVerifySheet";
 import { supabase } from "../lib/supabase";
 import QRCode from "react-qr-code";
@@ -33,20 +35,32 @@ export const SettingsPage: React.FC<{ embedded?: boolean }> = ({ embedded = fals
   const { staffAccounts, createStaff, updateStaffPin, setStaffAccess, deleteStaff, currentOwner, currentUser, deleteAccount, updateProfileInfo, updatePassword } = useAuth();
   useSubscriptionContext();
 
-  const [profileForm, setProfileForm] = useState({
+  const [profileForm, setProfileForm] = useState<{
+    businessName: string;
+    email: string;
+    slug: string;
+    odBusinessCategory: OdBusinessCategory;
+  }>({
     businessName: currentUser?.businessName ?? "",
     email: currentUser?.email ?? "",
     slug: currentOwner?.slug ?? "",
+    odBusinessCategory: OD_BUSINESS_CATEGORIES[0],
   });
   const [profileSuccess, setProfileSuccess] = useState("");
   const [profileError, setProfileError] = useState("");
   const [profileBusy, setProfileBusy] = useState(false);
 
   useEffect(() => {
+    const rawCat = currentUser?.odBusinessCategory;
+    const validCat: OdBusinessCategory =
+      rawCat && (OD_BUSINESS_CATEGORIES as readonly string[]).includes(rawCat)
+        ? (rawCat as OdBusinessCategory)
+        : OD_BUSINESS_CATEGORIES[0];
     setProfileForm({
       businessName: currentUser?.businessName ?? "",
       email: currentUser?.email ?? "",
       slug: currentOwner?.slug ?? "",
+      odBusinessCategory: validCat,
     });
   }, [currentUser, currentOwner]);
 
@@ -185,6 +199,7 @@ export const SettingsPage: React.FC<{ embedded?: boolean }> = ({ embedded = fals
     const result = await updateProfileInfo({
       businessName: profileForm.businessName,
       email: profileForm.email,
+      ...(currentUser?.role === "owner" ? { odBusinessCategory: profileForm.odBusinessCategory } : {}),
     });
     setProfileBusy(false);
     if (!result.ok) {
@@ -297,114 +312,16 @@ export const SettingsPage: React.FC<{ embedded?: boolean }> = ({ embedded = fals
             ? "Profile, password, and OD tools for your business. Use full settings for campaigns and staff."
             : "Manage your profile, password, team, and account."}
         </p>
+        {embedded && currentUser?.role === "owner" && (
+          <div className="flex flex-wrap items-center gap-2 pt-2">
+            <span className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Business type</span>
+            <Badge variant="secondary" className="rounded-full font-medium">
+              {OD_INDUSTRY_FILTER_LABEL[profileForm.odBusinessCategory] ?? profileForm.odBusinessCategory}
+            </Badge>
+          </div>
+        )}
       </div>
 
-      {/* Edit Profile */}
-      <section className="rounded-2xl md:rounded-3xl border bg-white p-4 md:p-6 shadow-sm space-y-5">
-        <div>
-          <h2 className="text-lg md:text-xl font-semibold">Edit Profile</h2>
-          <p className="text-sm text-muted-foreground">Update your business name and email address.</p>
-        </div>
-        <form className="space-y-4" onSubmit={handleProfileSave}>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label>Business / Display Name</Label>
-              <Input
-                value={profileForm.businessName}
-                onChange={(e) => setProfileForm({ ...profileForm, businessName: e.target.value })}
-                placeholder="Your Business"
-                required
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Email Address</Label>
-              <Input
-                value={profileForm.email}
-                onChange={(e) => setProfileForm({ ...profileForm, email: e.target.value })}
-                type="email"
-                placeholder="you@brand.com"
-                required
-              />
-            </div>
-            {currentUser?.role === "owner" && (
-              <div className="space-y-1.5">
-                <Label>Public URL Slug</Label>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground shrink-0">stampee.co/</span>
-                  <Input
-                    value={profileForm.slug}
-                    readOnly
-                    className="bg-muted/40 text-muted-foreground cursor-not-allowed"
-                  />
-                </div>
-                <p className="text-[11px] text-muted-foreground">Your public URL cannot be changed after signup.</p>
-              </div>
-            )}
-          </div>
-          {profileError && (
-            <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-              {profileError}
-            </div>
-          )}
-          {profileSuccess && (
-            <div className="rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
-              {profileSuccess}
-            </div>
-          )}
-          <div>
-            <Button type="submit" className="rounded-full px-6" disabled={profileBusy}>
-              {profileBusy ? "Saving..." : "Save Profile"}
-            </Button>
-          </div>
-        </form>
-      </section>
-
-      {/* Change Password */}
-      <section className="rounded-2xl md:rounded-3xl border bg-white p-4 md:p-6 shadow-sm space-y-5">
-        <div>
-          <h2 className="text-lg md:text-xl font-semibold">Change Password</h2>
-          <p className="text-sm text-muted-foreground">Update your account password. Must be at least 6 characters.</p>
-        </div>
-        <form className="space-y-4" onSubmit={handlePasswordSave}>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label>New Password</Label>
-              <Input
-                type="password"
-                value={passwordForm.next}
-                onChange={(e) => setPasswordForm({ ...passwordForm, next: e.target.value })}
-                placeholder="••••••••"
-                required
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Confirm New Password</Label>
-              <Input
-                type="password"
-                value={passwordForm.confirm}
-                onChange={(e) => setPasswordForm({ ...passwordForm, confirm: e.target.value })}
-                placeholder="••••••••"
-                required
-              />
-            </div>
-          </div>
-          {passwordError && (
-            <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-              {passwordError}
-            </div>
-          )}
-          {passwordSuccess && (
-            <div className="rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
-              {passwordSuccess}
-            </div>
-          )}
-          <div>
-            <Button type="submit" className="rounded-full px-6" disabled={passwordBusy}>
-              {passwordBusy ? "Changing..." : "Change Password"}
-            </Button>
-          </div>
-        </form>
-      </section>
 
       {currentOwner?.slug && currentUser?.role === "owner" && (
         <section className="rounded-2xl md:rounded-3xl border bg-white p-4 md:p-6 shadow-sm space-y-6">
@@ -572,6 +489,136 @@ export const SettingsPage: React.FC<{ embedded?: boolean }> = ({ embedded = fals
           </div>
         </section>
       )}
+
+
+      {/* Edit Profile */}
+      <section className="rounded-2xl md:rounded-3xl border bg-white p-4 md:p-6 shadow-sm space-y-5">
+        <div>
+          <h2 className="text-lg md:text-xl font-semibold">Edit Profile</h2>
+          <p className="text-sm text-muted-foreground">Update your business name and email address.</p>
+        </div>
+        <form className="space-y-4" onSubmit={handleProfileSave}>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label>Business / Display Name</Label>
+              <Input
+                value={profileForm.businessName}
+                onChange={(e) => setProfileForm({ ...profileForm, businessName: e.target.value })}
+                placeholder="Your Business"
+                required
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Email Address</Label>
+              <Input
+                value={profileForm.email}
+                onChange={(e) => setProfileForm({ ...profileForm, email: e.target.value })}
+                type="email"
+                placeholder="you@brand.com"
+                required
+              />
+            </div>
+            {currentUser?.role === "owner" && (
+              <>
+                <div className="space-y-1.5 sm:col-span-2">
+                  <Label htmlFor="settings-business-type">Business type</Label>
+                  <select
+                    id="settings-business-type"
+                    value={profileForm.odBusinessCategory}
+                    onChange={(e) =>
+                      setProfileForm({ ...profileForm, odBusinessCategory: e.target.value as OdBusinessCategory })
+                    }
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    {OD_BUSINESS_CATEGORIES.map((c) => (
+                      <option key={c} value={c}>
+                        {OD_INDUSTRY_FILTER_LABEL[c] ? `${c} (${OD_INDUSTRY_FILTER_LABEL[c]})` : c}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-[11px] text-muted-foreground">
+                    Shown in the OD member directory and industry filters (F&amp;B, retail, barber, etc.).
+                  </p>
+                </div>
+                <div className="space-y-1.5 sm:col-span-2">
+                  <Label>Public URL Slug</Label>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground shrink-0">stampee.co/</span>
+                    <Input
+                      value={profileForm.slug}
+                      readOnly
+                      className="bg-muted/40 text-muted-foreground cursor-not-allowed"
+                    />
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">Your public URL cannot be changed after signup.</p>
+                </div>
+              </>
+            )}
+          </div>
+          {profileError && (
+            <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+              {profileError}
+            </div>
+          )}
+          {profileSuccess && (
+            <div className="rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+              {profileSuccess}
+            </div>
+          )}
+          <div>
+            <Button type="submit" className="rounded-full px-6" disabled={profileBusy}>
+              {profileBusy ? "Saving..." : "Save Profile"}
+            </Button>
+          </div>
+        </form>
+      </section>
+
+      {/* Change Password */}
+      <section className="rounded-2xl md:rounded-3xl border bg-white p-4 md:p-6 shadow-sm space-y-5">
+        <div>
+          <h2 className="text-lg md:text-xl font-semibold">Change Password</h2>
+          <p className="text-sm text-muted-foreground">Update your account password. Must be at least 6 characters.</p>
+        </div>
+        <form className="space-y-4" onSubmit={handlePasswordSave}>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label>New Password</Label>
+              <Input
+                type="password"
+                value={passwordForm.next}
+                onChange={(e) => setPasswordForm({ ...passwordForm, next: e.target.value })}
+                placeholder="••••••••"
+                required
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Confirm New Password</Label>
+              <Input
+                type="password"
+                value={passwordForm.confirm}
+                onChange={(e) => setPasswordForm({ ...passwordForm, confirm: e.target.value })}
+                placeholder="••••••••"
+                required
+              />
+            </div>
+          </div>
+          {passwordError && (
+            <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+              {passwordError}
+            </div>
+          )}
+          {passwordSuccess && (
+            <div className="rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+              {passwordSuccess}
+            </div>
+          )}
+          <div>
+            <Button type="submit" className="rounded-full px-6" disabled={passwordBusy}>
+              {passwordBusy ? "Changing..." : "Change Password"}
+            </Button>
+          </div>
+        </form>
+      </section>
 
       {embedded && currentUser?.role === "owner" && (
         <section className="rounded-2xl md:rounded-3xl border border-dashed border-border/80 bg-muted/20 p-4 md:p-6 shadow-sm">

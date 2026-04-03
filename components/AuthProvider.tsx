@@ -45,7 +45,12 @@ interface AuthContextValue {
   logout: () => Promise<void>;
   resendVerificationEmail: () => Promise<AuthResult>;
   isSlugAvailable: (slug: string) => Promise<boolean>;
-  updateProfileInfo: (payload: { businessName?: string; email?: string; slug?: string }) => Promise<AuthResult>;
+  updateProfileInfo: (payload: {
+    businessName?: string;
+    email?: string;
+    slug?: string;
+    odBusinessCategory?: string;
+  }) => Promise<AuthResult>;
   updatePassword: (newPassword: string) => Promise<AuthResult>;
   resetPassword: (email: string, redirectPath?: string) => Promise<AuthResult>;
   refreshProfile: () => Promise<void>;
@@ -687,16 +692,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const updateProfileInfo = useCallback(async (payload: {
-    businessName?: string; email?: string; slug?: string;
+    businessName?: string;
+    email?: string;
+    slug?: string;
+    odBusinessCategory?: string;
   }): Promise<AuthResult> => {
     if (!isSupabaseConfigured) {
       return { ok: false, error: CONFIG_ERROR_MESSAGE };
     }
     if (!currentUser) return { ok: false, error: AUTH_REQUEST_ERROR };
 
-    const updates: Record<string, string> = {};
+    const updates: Record<string, string | null> = {};
     if (payload.businessName?.trim()) updates.business_name = payload.businessName.trim();
     if (payload.email?.trim()) updates.email = payload.email.trim().toLowerCase();
+    if (payload.odBusinessCategory !== undefined) {
+      const t = payload.odBusinessCategory.trim();
+      updates.od_business_category = t.length > 0 ? t : null;
+    }
 
     const { error } = await supabase.from("profiles").update(updates).eq("id", currentUser.id);
     if (error) return { ok: false, error: PROFILE_UPDATE_ERROR };

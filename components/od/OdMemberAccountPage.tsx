@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { ExternalLink, LogOut, MapPin, Store } from "lucide-react";
 import { Button } from "../ui/button";
@@ -9,6 +9,8 @@ import { OD_RENEWAL_PACKAGES, formatRm, type OdRenewalPackage } from "../../lib/
 import { memberSelfRenewOdMembership } from "../../lib/db/members";
 import { fetchOdMemberDirectory, type OdDirectoryShop } from "../../lib/db/odDirectory";
 import { buildOdVerifyPath } from "../../lib/links";
+import { OD_BUSINESS_CATEGORIES } from "../../lib/odBusinessCategories";
+import { OD_INDUSTRY_FILTER_LABEL, shopMatchesIndustryFilter } from "../../lib/odMemberDirectoryFilters";
 
 const inputCls =
   "h-12 rounded-xl border border-black/[0.08] bg-[#f4f1ea] px-4 text-[15px] text-[#171512] shadow-none focus-visible:ring-0";
@@ -26,6 +28,7 @@ export const OdMemberAccountPage: React.FC = () => {
   const [dirLoading, setDirLoading] = useState(false);
   const [dirShops, setDirShops] = useState<OdDirectoryShop[]>([]);
   const [dirError, setDirError] = useState<string | null>(null);
+  const [industryFilter, setIndustryFilter] = useState<"all" | string>("all");
 
   React.useEffect(() => {
     setName(currentMember?.displayName ?? "");
@@ -68,6 +71,10 @@ export const OdMemberAccountPage: React.FC = () => {
       cancelled = true;
     };
   }, [active, m?.validUntil, m?.status]);
+
+  const filteredShops = useMemo(() => {
+    return dirShops.filter((shop) => shopMatchesIndustryFilter(shop.business_category, industryFilter));
+  }, [dirShops, industryFilter]);
 
   const handleConfirmRenew = async () => {
     if (!renewDialogPkg) return;
@@ -157,6 +164,39 @@ export const OdMemberAccountPage: React.FC = () => {
               show staff the green screen.
             </p>
 
+            {!dirLoading && !dirError && dirShops.length > 0 && (
+              <div className="mt-4">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#8a8276]">Filter by industry</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIndustryFilter("all")}
+                    className={`rounded-full border px-3 py-1.5 text-sm font-medium transition ${
+                      industryFilter === "all"
+                        ? "border-[#1b1813] bg-[#1b1813] text-white"
+                        : "border-black/10 bg-[#faf9f6] text-[#374151] hover:border-black/20"
+                    }`}
+                  >
+                    All
+                  </button>
+                  {OD_BUSINESS_CATEGORIES.map((cat) => (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() => setIndustryFilter(cat)}
+                      className={`rounded-full border px-3 py-1.5 text-sm font-medium transition ${
+                        industryFilter === cat
+                          ? "border-[#1b1813] bg-[#1b1813] text-white"
+                          : "border-black/10 bg-[#faf9f6] text-[#374151] hover:border-black/20"
+                      }`}
+                    >
+                      {OD_INDUSTRY_FILTER_LABEL[cat] ?? cat}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {dirLoading && (
               <div className="mt-6 flex justify-center py-10">
                 <div className="h-9 w-9 animate-spin rounded-full border-2 border-[#1b1813] border-t-transparent" />
@@ -173,9 +213,15 @@ export const OdMemberAccountPage: React.FC = () => {
               </p>
             )}
 
-            {!dirLoading && dirShops.length > 0 && (
+            {!dirLoading && !dirError && dirShops.length > 0 && filteredShops.length === 0 && (
+              <p className="mt-5 rounded-xl border border-dashed border-black/10 bg-[#faf9f6] px-4 py-6 text-center text-sm text-[#6d6658]">
+                No shops in this category. Try <button type="button" className="font-medium text-[#1b1813] underline underline-offset-2" onClick={() => setIndustryFilter("all")}>All</button> or another industry.
+              </p>
+            )}
+
+            {!dirLoading && filteredShops.length > 0 && (
               <ul className="mt-5 space-y-4">
-                {dirShops.map((shop) => (
+                {filteredShops.map((shop) => (
                   <li
                     key={shop.owner_id}
                     className="rounded-2xl border border-black/[0.08] bg-[#fafbfa] p-4 transition hover:border-black/12"
@@ -183,6 +229,11 @@ export const OdMemberAccountPage: React.FC = () => {
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                       <div className="min-w-0">
                         <h3 className="text-base font-semibold text-[#1b1813]">{shop.business_name}</h3>
+                        {shop.business_category && (
+                          <p className="mt-1 text-xs font-medium uppercase tracking-wide text-[#8a8276]">
+                            {OD_INDUSTRY_FILTER_LABEL[shop.business_category] ?? shop.business_category}
+                          </p>
+                        )}
                         {shop.area && (
                           <p className="mt-1 flex items-center gap-1.5 text-xs text-[#6d6658]">
                             <MapPin className="h-3.5 w-3.5 shrink-0" aria-hidden />
