@@ -14,6 +14,15 @@ import { cn } from "../../lib/utils";
 import { OD_BUSINESS_CATEGORIES } from "../../lib/odBusinessCategories";
 import { OD_INDUSTRY_FILTER_LABEL, shopMatchesIndustryFilter } from "../../lib/odMemberDirectoryFilters";
 import { OdMembershipCard } from "./OdMembershipCard";
+import {
+  Map,
+  MapControls,
+  MapMarker,
+  MarkerContent,
+  MarkerLabel,
+  MarkerPopup,
+  MarkerTooltip,
+} from "../ui/map";
 import { reverseGeocodeToAreaLine } from "../../lib/reverseGeocodeArea";
 import {
   OD_MEMBER_GEO_MOVE_THRESHOLD_M,
@@ -74,6 +83,7 @@ export const OdMemberAccountPage: React.FC = () => {
   const [dirError, setDirError] = useState<string | null>(null);
   const [industryFilter, setIndustryFilter] = useState<"all" | string>("all");
   const [statusAccordionValue, setStatusAccordionValue] = useState<string | undefined>(undefined);
+  const [locationAccordionValue, setLocationAccordionValue] = useState<string | undefined>(undefined);
 
   const [geoDialogOpen, setGeoDialogOpen] = useState(false);
   const [geoCoords, setGeoCoords] = useState<{
@@ -349,65 +359,139 @@ export const OdMemberAccountPage: React.FC = () => {
       </div>
 
       <div className="mx-auto max-w-2xl space-y-6">
-        <div className="rounded-[1.5rem] border border-black/[0.06] bg-white p-5 shadow-sm sm:p-6">
-          <div className="flex items-start gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[#1b1813]/[0.06] text-[#1b1813]">
-              <MapPin className="h-5 w-5" aria-hidden />
-            </div>
-            <div className="min-w-0 flex-1">
-              <h2 className="text-[13px] font-semibold uppercase tracking-[0.16em] text-[#8a8276]">Your location</h2>
-              <p className="mt-2 text-[14px] leading-relaxed text-[#6d6658]">
-                Saved in this browser only (localStorage) — not on our servers. When you open this page we compare your
-                current position with the last saved point and refresh if you have moved (about{" "}
-                {OD_MEMBER_GEO_MOVE_THRESHOLD_M}&nbsp;m or more).
-              </p>
-              {geoSilentBusy && (
-                <p className="mt-2 text-[12px] text-[#8a8276]">Comparing with your last saved location…</p>
-              )}
-              {geoLocationNote && (
-                <p className="mt-3 rounded-xl border border-emerald-200/80 bg-emerald-50/90 px-3 py-2 text-[13px] leading-snug text-emerald-900">
-                  {geoLocationNote}
-                </p>
-              )}
-              {geoCoords && (
-                <div className="mt-4 space-y-2 rounded-2xl bg-[#faf9f7] px-4 py-3 ring-1 ring-black/[0.05]">
-                  <p className="font-mono text-[13px] leading-relaxed text-[#1b1813]">
-                    {geoCoords.lat.toFixed(6)}, {geoCoords.lng.toFixed(6)}
+        <div className="overflow-hidden rounded-[1.5rem] border border-black/[0.06] bg-white shadow-sm">
+          <Accordion
+            type="single"
+            collapsible
+            value={locationAccordionValue}
+            onValueChange={setLocationAccordionValue}
+            className="w-full"
+          >
+            <AccordionItem value="location" className="border-0">
+              <AccordionTrigger className="px-5 py-5 hover:no-underline sm:px-6">
+                <div className="flex min-w-0 flex-1 items-start gap-3 text-left">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[#1b1813]/[0.06] text-[#1b1813]">
+                    <MapPin className="h-5 w-5" aria-hidden />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <span className="text-[13px] font-semibold uppercase tracking-[0.16em] text-[#8a8276]">
+                      Your location
+                    </span>
+                    <p className="mt-1 text-[14px] leading-snug text-[#6d6658]">
+                      {geoCoords
+                        ? `${geoCoords.lat.toFixed(4)}, ${geoCoords.lng.toFixed(4)} · expand for map`
+                        : "Saved on this device only · expand for details"}
+                    </p>
+                    {geoSilentBusy && (
+                      <p className="mt-1 text-[12px] text-[#8a8276]">Comparing with your last saved location…</p>
+                    )}
+                  </div>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="px-5 pb-5 pt-0 sm:px-6">
+                <div className="space-y-4 border-t border-black/[0.05] pt-4">
+                  <p className="text-[14px] leading-relaxed text-[#6d6658]">
+                    Saved in this browser only (localStorage) — not on our servers. When you open this page we compare
+                    your current position with the last saved point and refresh if you have moved (about{" "}
+                    {OD_MEMBER_GEO_MOVE_THRESHOLD_M}&nbsp;m or more).
                   </p>
-                  {geoCoords.accuracyM != null && (
-                    <p className="text-[12px] text-[#6d6658]">Accuracy about ±{geoCoords.accuracyM} m</p>
-                  )}
-                  {geoAddress && <p className="text-[13px] leading-snug text-[#5c554a]">{geoAddress}</p>}
-                  {geoCapturedAt && (
-                    <p className="text-[11px] text-[#8a8276]">
-                      Last saved here:{" "}
-                      {new Date(geoCapturedAt).toLocaleString(undefined, {
-                        dateStyle: "medium",
-                        timeStyle: "short",
-                      })}
+                  {geoLocationNote && (
+                    <p className="rounded-xl border border-emerald-200/80 bg-emerald-50/90 px-3 py-2 text-[13px] leading-snug text-emerald-900">
+                      {geoLocationNote}
                     </p>
                   )}
+                  {geoCoords && locationAccordionValue === "location" && (
+                    <div className="overflow-hidden rounded-2xl ring-1 ring-black/[0.08]">
+                      <div className="relative h-[min(280px,42vh)] w-full min-h-[200px]">
+                        <Map
+                          key={`${geoCoords.lat.toFixed(5)}-${geoCoords.lng.toFixed(5)}`}
+                          theme="light"
+                          center={[geoCoords.lng, geoCoords.lat]}
+                          zoom={15}
+                          className="absolute inset-0 h-full w-full"
+                          attributionControl={{ compact: false }}
+                        >
+                          <MapControls
+                            position="bottom-right"
+                            showZoom
+                            showCompass
+                            showLocate
+                            showFullscreen
+                          />
+                          <MapMarker longitude={geoCoords.lng} latitude={geoCoords.lat}>
+                            <MarkerContent>
+                              <MarkerLabel
+                                position="top"
+                                className="max-w-[200px] truncate rounded-md bg-[#1b1813]/90 px-2 py-0.5 text-[10px] font-medium text-white shadow-sm"
+                              >
+                                {geoAddress ?? "Your position"}
+                              </MarkerLabel>
+                              <div className="size-4 rounded-full border-2 border-white bg-[#1b1813] shadow-lg" />
+                            </MarkerContent>
+                            <MarkerTooltip>{geoAddress ?? "Your saved position"}</MarkerTooltip>
+                            <MarkerPopup>
+                              <div className="max-w-[240px] space-y-1 rounded-xl bg-white px-3 py-2.5 text-[13px] shadow-lg ring-1 ring-black/10">
+                                <p className="font-medium text-[#1b1813]">{geoAddress ?? "Your location"}</p>
+                                <p className="font-mono text-[11px] text-[#6d6658]">
+                                  {geoCoords.lat.toFixed(5)}, {geoCoords.lng.toFixed(5)}
+                                </p>
+                              </div>
+                            </MarkerPopup>
+                          </MapMarker>
+                        </Map>
+                      </div>
+                    </div>
+                  )}
+                  {geoCoords && (
+                    <div className="space-y-2 rounded-2xl bg-[#faf9f7] px-4 py-3 ring-1 ring-black/[0.05]">
+                      <p className="font-mono text-[13px] leading-relaxed text-[#1b1813]">
+                        {geoCoords.lat.toFixed(6)}, {geoCoords.lng.toFixed(6)}
+                      </p>
+                      {geoCoords.accuracyM != null && (
+                        <p className="text-[12px] text-[#6d6658]">Accuracy about ±{geoCoords.accuracyM} m</p>
+                      )}
+                      {geoAddress && <p className="text-[13px] leading-snug text-[#5c554a]">{geoAddress}</p>}
+                      {geoCapturedAt && (
+                        <p className="text-[11px] text-[#8a8276]">
+                          Last saved here:{" "}
+                          {new Date(geoCapturedAt).toLocaleString(undefined, {
+                            dateStyle: "medium",
+                            timeStyle: "short",
+                          })}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                  {!geoCoords && (
+                    <div className="flex min-h-[120px] items-center justify-center rounded-2xl border border-dashed border-black/[0.1] bg-[#faf9f7] px-4 py-8 text-center text-[13px] text-[#8a8276]">
+                      Map will appear here after you allow location and we have coordinates to show.
+                    </div>
+                  )}
+                  {geoError && <p className="text-[13px] leading-snug text-red-600">{geoError}</p>}
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="rounded-full border-black/12"
+                      disabled={geoLoading || geoSilentBusy}
+                      onClick={() => void requestMemberLocation(currentMember.id)}
+                    >
+                      <RefreshCw
+                        className={`mr-2 h-4 w-4 ${geoLoading || geoSilentBusy ? "animate-spin" : ""}`}
+                        aria-hidden
+                      />
+                      {geoLoading || geoSilentBusy
+                        ? "Getting location…"
+                        : geoCoords
+                          ? "Refresh location"
+                          : "Use my location"}
+                    </Button>
+                  </div>
                 </div>
-              )}
-              {geoError && <p className="mt-3 text-[13px] leading-snug text-red-600">{geoError}</p>}
-              <div className="mt-4 flex flex-wrap gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="rounded-full border-black/12"
-                  disabled={geoLoading || geoSilentBusy}
-                  onClick={() => void requestMemberLocation(currentMember.id)}
-                >
-                  <RefreshCw
-                    className={`mr-2 h-4 w-4 ${geoLoading || geoSilentBusy ? "animate-spin" : ""}`}
-                    aria-hidden
-                  />
-                  {geoLoading || geoSilentBusy ? "Getting location…" : geoCoords ? "Refresh location" : "Use my location"}
-                </Button>
-              </div>
-            </div>
-          </div>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
         </div>
 
         <Dialog open={geoDialogOpen} onOpenChange={setGeoDialogOpen}>
