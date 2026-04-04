@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { handleOdRenewalReturn, readSupabaseServerEnv } from "../../lib/bayarcashOdPayment";
+import { handleOdRenewalReturn, readSupabaseServerEnv } from "./lib/bayarcashOdPayment.js";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== "GET") {

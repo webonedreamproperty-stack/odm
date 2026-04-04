@@ -1,6 +1,6 @@
 import { createHmac, randomBytes } from "node:crypto";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { OD_RENEWAL_PACKAGES, type OdRenewalPlanKey } from "./renewalPackages";
+import { OD_RENEWAL_PACKAGES, type OdRenewalPlanKey } from "./renewalPackages.js";
 
 const FPX = 1;
 const DUITNOW_DOBW = 5;

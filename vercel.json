@@ -4,5 +4,13 @@
       "source": "/((?!api/|assets/|.*\\..*).*)",
       "destination": "/index.html"
     }
-  ]
+  ],
+  "functions": {
+    "api/od/bayarcash/create-intent.ts": {
+      "includeFiles": "api/od/bayarcash/lib/**"
+    },
+    "api/od/bayarcash/return.ts": {
+      "includeFiles": "api/od/bayarcash/lib/**"
+    }
+  }
 }
