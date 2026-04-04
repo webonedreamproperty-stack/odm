@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { handleCreateOdRenewalIntent } from "../../../lib/server/bayarcashOdPayment";
+import { handleCreateOdRenewalIntent } from "../../lib/bayarcashOdPayment";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== "POST") {

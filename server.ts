@@ -8,7 +8,7 @@ import {
   handleCreateOdRenewalIntent,
   handleOdRenewalReturn,
   readSupabaseServerEnv,
-} from "./lib/server/bayarcashOdPayment";
+} from "./api/lib/bayarcashOdPayment";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = process.cwd();

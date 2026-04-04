@@ -1,4 +1,7 @@
-/** OD member renewal (Malaysia). Amounts match Bayarcash when `VITE_OD_BAYARCASH_RENEWAL` or `VITE_OD_PAYMENTS_ENABLED` is true. */
+/**
+ * OD member renewal (Malaysia). Amounts match Bayarcash when `VITE_OD_BAYARCASH_RENEWAL` or `VITE_OD_PAYMENTS_ENABLED` is true.
+ * Serverless checkout amounts must match `api/lib/renewalPackages.ts` (Vercel bundles only `api/`).
+ */
 
 export type OdRenewalPlanKey = "month" | "year";
 
