@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { ChevronRight, ExternalLink, LogOut, MapPin, RefreshCw, Sparkles, Store } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "../ui/accordion";
@@ -22,6 +22,7 @@ import {
   MarkerLabel,
   MarkerPopup,
   MarkerTooltip,
+  type MapRef,
 } from "../ui/map";
 import { reverseGeocodeToAreaLine } from "../../lib/reverseGeocodeArea";
 import {
@@ -67,6 +68,15 @@ function getShopInitials(name: string): string {
 const odPaymentsEnabled =
   import.meta.env.VITE_OD_BAYARCASH_RENEWAL === "true" || import.meta.env.VITE_OD_PAYMENTS_ENABLED === "true";
 
+/** OpenFreeMap raster styles; `default` uses built-in Carto GL in `Map`. */
+const OD_MEMBER_MAP_STYLES = {
+  default: undefined as string | undefined,
+  openstreetmap: "https://tiles.openfreemap.org/styles/bright",
+  openstreetmap3d: "https://tiles.openfreemap.org/styles/liberty",
+} as const;
+
+type OdMemberMapStyleKey = keyof typeof OD_MEMBER_MAP_STYLES;
+
 export const OdMemberAccountPage: React.FC = () => {
   const { currentMember, logout, updateMemberDisplayName, refreshMemberProfile } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -97,6 +107,23 @@ export const OdMemberAccountPage: React.FC = () => {
   const [geoCapturedAt, setGeoCapturedAt] = useState<string | null>(null);
   const [geoLocationNote, setGeoLocationNote] = useState("");
   const [geoSilentBusy, setGeoSilentBusy] = useState(false);
+  const [memberMapStyle, setMemberMapStyle] = useState<OdMemberMapStyleKey>("openstreetmap3d");
+  const memberMapRef = useRef<MapRef | null>(null);
+
+  const memberMapOpenFreeStyle = OD_MEMBER_MAP_STYLES[memberMapStyle];
+  const memberMapStylesProp =
+    memberMapOpenFreeStyle != null
+      ? { light: memberMapOpenFreeStyle, dark: memberMapOpenFreeStyle }
+      : undefined;
+
+  useEffect(() => {
+    if (!geoCoords || locationAccordionValue !== "location") return;
+    const is3d = memberMapStyle === "openstreetmap3d";
+    const id = window.setTimeout(() => {
+      memberMapRef.current?.easeTo({ pitch: is3d ? 60 : 0, duration: 500 });
+    }, 350);
+    return () => window.clearTimeout(id);
+  }, [memberMapStyle, geoCoords?.lat, geoCoords?.lng, locationAccordionValue]);
 
   const commitGeoReading = React.useCallback(async (memberId: string, pos: GeolocationPosition) => {
     const lat = pos.coords.latitude;
@@ -403,13 +430,30 @@ export const OdMemberAccountPage: React.FC = () => {
                   {geoCoords && locationAccordionValue === "location" && (
                     <div className="overflow-hidden rounded-2xl ring-1 ring-black/[0.08]">
                       <div className="relative h-[min(280px,42vh)] w-full min-h-[200px]">
+                        <div className="pointer-events-none absolute right-2 top-2 z-10">
+                          <label className="sr-only" htmlFor="od-member-map-style">
+                            Map style
+                          </label>
+                          <select
+                            id="od-member-map-style"
+                            value={memberMapStyle}
+                            onChange={(e) => setMemberMapStyle(e.target.value as OdMemberMapStyleKey)}
+                            className="pointer-events-auto max-w-[min(200px,calc(100%-1rem))] rounded-xl border border-black/12 bg-white/95 px-2.5 py-2 text-[12px] font-medium text-[#1b1813] shadow-sm backdrop-blur-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1b1813]/25"
+                          >
+                            <option value="default">Default (Carto)</option>
+                            <option value="openstreetmap">OpenStreetMap</option>
+                            <option value="openstreetmap3d">OpenStreetMap 3D</option>
+                          </select>
+                        </div>
                         <Map
+                          ref={memberMapRef}
                           key={`${geoCoords.lat.toFixed(5)}-${geoCoords.lng.toFixed(5)}`}
                           theme="light"
                           center={[geoCoords.lng, geoCoords.lat]}
                           zoom={15}
                           className="absolute inset-0 h-full w-full"
                           attributionControl={{ compact: false }}
+                          styles={memberMapStylesProp}
                         >
                           <MapControls
                             position="bottom-right"
