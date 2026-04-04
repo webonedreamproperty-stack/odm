@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
+import { odPlanLabel } from "../../lib/odPricing";
 import { Button } from "../ui/button";
 
 type MemberRow = {
@@ -94,7 +95,7 @@ export const OdAdminPage: React.FC = () => {
     void load();
   }, [load]);
 
-  const renew = async (memberId: string, plan: "month" | "year") => {
+  const renew = async (memberId: string, plan: "month" | "year" | "hour") => {
     setRenewBusy(memberId + plan);
     setRenewMsg("");
     const { error: rpcErr } = await supabase.rpc("admin_renew_od_membership", {
@@ -178,6 +179,15 @@ export const OdAdminPage: React.FC = () => {
                       </td>
                       <td className="py-3">
                         <div className="flex flex-wrap gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="rounded-full text-xs"
+                            disabled={renewBusy !== null}
+                            onClick={() => void renew(row.id, "hour")}
+                          >
+                            {renewBusy === row.id + "hour" ? "…" : "+1 hr"}
+                          </Button>
                           <Button
                             size="sm"
                             variant="outline"
@@ -276,7 +286,7 @@ export const OdAdminPage: React.FC = () => {
                       {new Date(row.created_at).toLocaleString()}
                     </td>
                     <td className="py-3 pr-3 font-mono text-xs">{row.member_code}</td>
-                    <td className="py-3 pr-3">{row.plan === "month" ? "1 month" : "1 year"}</td>
+                    <td className="py-3 pr-3">{odPlanLabel(row.plan)}</td>
                     <td className="py-3 pr-3 text-xs">
                       {new Date(row.valid_from).toLocaleDateString()} →{" "}
                       {new Date(row.valid_until).toLocaleDateString()}

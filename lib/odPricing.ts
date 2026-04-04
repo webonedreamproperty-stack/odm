@@ -3,7 +3,7 @@
  * Serverless checkout amounts must match `api/od/bayarcash/lib/renewalPackages.ts`.
  */
 
-export type OdRenewalPlanKey = "month" | "year";
+export type OdRenewalPlanKey = "month" | "year" | "hour";
 
 export type OdRenewalPackage = {
   plan: OdRenewalPlanKey;
@@ -14,6 +14,12 @@ export type OdRenewalPackage = {
 };
 
 export const OD_RENEWAL_PACKAGES: readonly OdRenewalPackage[] = [
+  {
+    plan: "hour",
+    title: "1 hour (test)",
+    priceRm: 5,
+    blurb: "Short test access for QA / sandbox",
+  },
   {
     plan: "month",
     title: "1 month",
@@ -35,4 +41,18 @@ export function formatRm(amount: number): string {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   }).format(amount);
+}
+
+/** Display label for a stored membership plan value. */
+export function odPlanLabel(plan: string | null | undefined): string {
+  switch (plan) {
+    case "hour":
+      return "1 hour (test)";
+    case "month":
+      return "1 month";
+    case "year":
+      return "1 year";
+    default:
+      return "—";
+  }
 }

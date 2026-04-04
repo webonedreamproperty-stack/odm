@@ -1,12 +1,12 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { ChevronRight, ExternalLink, LogOut, MapPin, Sparkles, Store } from "lucide-react";
+import { ChevronRight, ExternalLink, LogOut, MapPin, RefreshCw, Sparkles, Store } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "../ui/accordion";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "../ui/dialog";
 import { useAuth } from "../AuthProvider";
-import { OD_RENEWAL_PACKAGES, formatRm, type OdRenewalPackage } from "../../lib/odPricing";
+import { OD_RENEWAL_PACKAGES, formatRm, odPlanLabel, type OdRenewalPackage } from "../../lib/odPricing";
 import { memberSelfRenewOdMembership } from "../../lib/db/members";
 import { startOdRenewalViaBayarcash } from "../../lib/odRenewalCheckout";
 import { fetchOdMemberDirectory, type OdDirectoryShop } from "../../lib/db/odDirectory";
@@ -14,6 +14,16 @@ import { cn } from "../../lib/utils";
 import { OD_BUSINESS_CATEGORIES } from "../../lib/odBusinessCategories";
 import { OD_INDUSTRY_FILTER_LABEL, shopMatchesIndustryFilter } from "../../lib/odMemberDirectoryFilters";
 import { OdMembershipCard } from "./OdMembershipCard";
+import { reverseGeocodeToAreaLine } from "../../lib/reverseGeocodeArea";
+import {
+  OD_MEMBER_GEO_MOVE_THRESHOLD_M,
+  clearMemberGeoPromptDeclined,
+  haversineDistanceMeters,
+  isMemberGeoPromptDeclined,
+  loadMemberGeoFromLocalStorage,
+  saveMemberGeoToLocalStorage,
+  setMemberGeoPromptDeclined,
+} from "../../lib/odMemberLocalGeo";
 
 const inputCls =
   "h-12 rounded-xl border border-black/[0.08] bg-[#f4f1ea] px-4 text-[15px] text-[#171512] shadow-none focus-visible:ring-0";
@@ -65,6 +75,135 @@ export const OdMemberAccountPage: React.FC = () => {
   const [industryFilter, setIndustryFilter] = useState<"all" | string>("all");
   const [statusAccordionValue, setStatusAccordionValue] = useState<string | undefined>(undefined);
 
+  const [geoDialogOpen, setGeoDialogOpen] = useState(false);
+  const [geoCoords, setGeoCoords] = useState<{
+    lat: number;
+    lng: number;
+    accuracyM: number | null;
+  } | null>(null);
+  const [geoLoading, setGeoLoading] = useState(false);
+  const [geoError, setGeoError] = useState<string | null>(null);
+  const [geoAddress, setGeoAddress] = useState<string | null>(null);
+  const [geoCapturedAt, setGeoCapturedAt] = useState<string | null>(null);
+  const [geoLocationNote, setGeoLocationNote] = useState("");
+  const [geoSilentBusy, setGeoSilentBusy] = useState(false);
+
+  const commitGeoReading = React.useCallback(async (memberId: string, pos: GeolocationPosition) => {
+    const lat = pos.coords.latitude;
+    const lng = pos.coords.longitude;
+    const acc = pos.coords.accuracy != null ? Math.round(pos.coords.accuracy) : null;
+    const prev = loadMemberGeoFromLocalStorage(memberId);
+    const distM = prev ? haversineDistanceMeters(prev.lat, prev.lng, lat, lng) : 0;
+    const moved = prev !== null && distM > OD_MEMBER_GEO_MOVE_THRESHOLD_M;
+
+    let address: string | null = null;
+    try {
+      address = await reverseGeocodeToAreaLine(lat, lng);
+    } catch {
+      address = null;
+    }
+
+    const capturedAt = new Date().toISOString();
+    saveMemberGeoToLocalStorage(memberId, { lat, lng, accuracyM: acc, address, capturedAt });
+
+    setGeoCoords({ lat, lng, accuracyM: acc });
+    setGeoAddress(address);
+    setGeoCapturedAt(capturedAt);
+
+    if (moved) {
+      const distLabel =
+        distM < 1000 ? `${Math.round(distM)} m` : `${(distM / 1000).toFixed(1)} km`;
+      setGeoLocationNote(`Location updated — about ${distLabel} from your last saved spot on this device.`);
+      window.setTimeout(() => setGeoLocationNote(""), 8000);
+    }
+  }, []);
+
+  const requestMemberLocation = React.useCallback(
+    (memberId: string) => {
+      if (typeof navigator === "undefined" || !navigator.geolocation) {
+        setGeoError("Location is not supported on this device.");
+        return;
+      }
+      setGeoLoading(true);
+      setGeoError(null);
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          void (async () => {
+            try {
+              await commitGeoReading(memberId, pos);
+            } finally {
+              setGeoLoading(false);
+            }
+          })();
+        },
+        (e) => {
+          setGeoLoading(false);
+          if (e.code === e.PERMISSION_DENIED) {
+            setGeoError(
+              "Location access was denied. You can allow it in your browser settings, then tap Refresh location."
+            );
+          } else if (e.code === e.TIMEOUT) {
+            setGeoError("Location timed out. Try Refresh location or a clearer view of the sky.");
+          } else {
+            setGeoError(e.message || "Could not read your location.");
+          }
+        },
+        { enableHighAccuracy: true, timeout: 20_000, maximumAge: 0 }
+      );
+    },
+    [commitGeoReading]
+  );
+
+  useEffect(() => {
+    if (!currentMember) return;
+    if (typeof window === "undefined") return;
+    const id = currentMember.id;
+
+    const stored = loadMemberGeoFromLocalStorage(id);
+    if (stored) {
+      setGeoCoords({ lat: stored.lat, lng: stored.lng, accuracyM: stored.accuracyM });
+      setGeoAddress(stored.address);
+      setGeoCapturedAt(stored.capturedAt);
+    } else {
+      setGeoCoords(null);
+      setGeoAddress(null);
+      setGeoCapturedAt(null);
+    }
+
+    if (stored || isMemberGeoPromptDeclined(id)) return;
+    const t = window.setTimeout(() => setGeoDialogOpen(true), 450);
+    return () => window.clearTimeout(t);
+  }, [currentMember?.id]);
+
+  useEffect(() => {
+    if (!currentMember) return;
+    if (typeof window === "undefined" || !navigator.geolocation) return;
+    const id = currentMember.id;
+    if (!loadMemberGeoFromLocalStorage(id)) return;
+
+    let cancelled = false;
+    setGeoSilentBusy(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        if (cancelled) return;
+        void (async () => {
+          try {
+            await commitGeoReading(id, pos);
+          } finally {
+            if (!cancelled) setGeoSilentBusy(false);
+          }
+        })();
+      },
+      () => {
+        if (!cancelled) setGeoSilentBusy(false);
+      },
+      { enableHighAccuracy: true, timeout: 20_000, maximumAge: 0 }
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [currentMember?.id, commitGeoReading]);
+
   React.useEffect(() => {
     setName(currentMember?.displayName ?? "");
   }, [currentMember?.displayName]);
@@ -80,16 +219,22 @@ export const OdMemberAccountPage: React.FC = () => {
       window.setTimeout(() => setMsg(""), 6000);
     } else if (pay === "error") {
       const reason = searchParams.get("reason");
+      const detail = searchParams.get("detail");
+      const reasonPart = reason ? reason.replace(/_/g, " ") : "";
+      const detailPart = detail ? ` — ${detail}` : "";
       setRenewError(
         reason
-          ? `Payment did not complete (${reason.replace(/_/g, " ")}).`
-          : "Payment did not complete."
+          ? `Payment did not complete (${reasonPart}${detailPart}).`
+          : detail
+            ? `Payment did not complete. ${detail}`
+            : "Payment did not complete."
       );
     }
 
     const next = new URLSearchParams(searchParams);
     next.delete("od_pay");
     next.delete("reason");
+    next.delete("detail");
     setSearchParams(next, { replace: true });
   }, [searchParams, setSearchParams, refreshMemberProfile]);
 
@@ -178,7 +323,7 @@ export const OdMemberAccountPage: React.FC = () => {
     setBusy(true);
     const result = await updateMemberDisplayName(name);
     setBusy(false);
-    if (!result.ok) {
+    if (result.ok === false) {
       setErr(result.error);
       return;
     }
@@ -204,6 +349,103 @@ export const OdMemberAccountPage: React.FC = () => {
       </div>
 
       <div className="mx-auto max-w-2xl space-y-6">
+        <div className="rounded-[1.5rem] border border-black/[0.06] bg-white p-5 shadow-sm sm:p-6">
+          <div className="flex items-start gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[#1b1813]/[0.06] text-[#1b1813]">
+              <MapPin className="h-5 w-5" aria-hidden />
+            </div>
+            <div className="min-w-0 flex-1">
+              <h2 className="text-[13px] font-semibold uppercase tracking-[0.16em] text-[#8a8276]">Your location</h2>
+              <p className="mt-2 text-[14px] leading-relaxed text-[#6d6658]">
+                Saved in this browser only (localStorage) — not on our servers. When you open this page we compare your
+                current position with the last saved point and refresh if you have moved (about{" "}
+                {OD_MEMBER_GEO_MOVE_THRESHOLD_M}&nbsp;m or more).
+              </p>
+              {geoSilentBusy && (
+                <p className="mt-2 text-[12px] text-[#8a8276]">Comparing with your last saved location…</p>
+              )}
+              {geoLocationNote && (
+                <p className="mt-3 rounded-xl border border-emerald-200/80 bg-emerald-50/90 px-3 py-2 text-[13px] leading-snug text-emerald-900">
+                  {geoLocationNote}
+                </p>
+              )}
+              {geoCoords && (
+                <div className="mt-4 space-y-2 rounded-2xl bg-[#faf9f7] px-4 py-3 ring-1 ring-black/[0.05]">
+                  <p className="font-mono text-[13px] leading-relaxed text-[#1b1813]">
+                    {geoCoords.lat.toFixed(6)}, {geoCoords.lng.toFixed(6)}
+                  </p>
+                  {geoCoords.accuracyM != null && (
+                    <p className="text-[12px] text-[#6d6658]">Accuracy about ±{geoCoords.accuracyM} m</p>
+                  )}
+                  {geoAddress && <p className="text-[13px] leading-snug text-[#5c554a]">{geoAddress}</p>}
+                  {geoCapturedAt && (
+                    <p className="text-[11px] text-[#8a8276]">
+                      Last saved here:{" "}
+                      {new Date(geoCapturedAt).toLocaleString(undefined, {
+                        dateStyle: "medium",
+                        timeStyle: "short",
+                      })}
+                    </p>
+                  )}
+                </div>
+              )}
+              {geoError && <p className="mt-3 text-[13px] leading-snug text-red-600">{geoError}</p>}
+              <div className="mt-4 flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="rounded-full border-black/12"
+                  disabled={geoLoading || geoSilentBusy}
+                  onClick={() => void requestMemberLocation(currentMember.id)}
+                >
+                  <RefreshCw
+                    className={`mr-2 h-4 w-4 ${geoLoading || geoSilentBusy ? "animate-spin" : ""}`}
+                    aria-hidden
+                  />
+                  {geoLoading || geoSilentBusy ? "Getting location…" : geoCoords ? "Refresh location" : "Use my location"}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <Dialog open={geoDialogOpen} onOpenChange={setGeoDialogOpen}>
+          <DialogContent className="rounded-[1.25rem] sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="text-lg font-semibold text-[#1b1813]">Share your location?</DialogTitle>
+            </DialogHeader>
+            <p className="text-sm leading-relaxed text-[#6d6658]">
+              We read your position in the browser and keep the last reading in localStorage on this device only — not
+              in our database. Each visit we can compare with that saved point and update when you have moved.
+            </p>
+            <DialogFooter className="flex-col gap-2 sm:flex-row sm:justify-end">
+              <Button
+                type="button"
+                variant="outline"
+                className="rounded-full border-black/15"
+                onClick={() => {
+                  setMemberGeoPromptDeclined(currentMember.id);
+                  setGeoDialogOpen(false);
+                }}
+              >
+                Not now
+              </Button>
+              <Button
+                type="button"
+                className="rounded-full bg-[#1b1813] hover:bg-[#11100d]"
+                onClick={() => {
+                  clearMemberGeoPromptDeclined(currentMember.id);
+                  setGeoDialogOpen(false);
+                  requestMemberLocation(currentMember.id);
+                }}
+              >
+                Share location
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
         <div className="overflow-hidden rounded-[1.5rem] border border-black/[0.06] bg-white shadow-sm">
           <Accordion
             type="single"
@@ -252,7 +494,7 @@ export const OdMemberAccountPage: React.FC = () => {
                   )}
                   {m?.plan && (
                     <p className="text-sm text-[#6d6658]">
-                      Plan: <span className="font-medium"> {m.plan === "month" ? "1 month" : "1 year"}</span>
+                      Plan: <span className="font-medium"> {odPlanLabel(m.plan)}</span>
                     </p>
                   )}
                 </div>

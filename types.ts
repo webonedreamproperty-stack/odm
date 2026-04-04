@@ -146,7 +146,7 @@ export interface MemberAccount {
   createdAt: string;
   membership: {
     status: 'active' | 'suspended';
-    plan: 'month' | 'year' | null;
+    plan: 'month' | 'year' | 'hour' | null;
     validFrom: string | null;
     validUntil: string | null;
   } | null;

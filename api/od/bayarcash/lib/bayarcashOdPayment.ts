@@ -272,7 +272,7 @@ export async function handleCreateOdRenewalIntent(opts: {
     return { ok: false, status: 503, error: "Payment server is not configured." };
   }
 
-  if (opts.plan !== "month" && opts.plan !== "year") {
+  if (!OD_RENEWAL_PACKAGES.some((p) => p.plan === opts.plan)) {
     return { ok: false, status: 400, error: "Invalid plan." };
   }
   const plan = opts.plan as OdRenewalPlanKey;
@@ -385,7 +385,7 @@ function unwrapBayarcashEntity(json: Record<string, unknown> | null): Record<str
 
 export async function handleOdRenewalReturn(query: Record<string, unknown>): Promise<
   | { outcome: "success" }
-  | { outcome: "failed"; reason: string }
+  | { outcome: "failed"; reason: string; detail?: string }
 > {
   const bc = readBayarcashEnv();
   const sb = readSupabaseServerEnv();
@@ -451,12 +451,20 @@ export async function handleOdRenewalReturn(query: Record<string, unknown>): Pro
   });
 
   if (rpcErr) {
-    return { outcome: "failed", reason: "renew_failed" };
+    console.error("[bayarcash/return] service_complete_od_checkout error:", rpcErr.message, rpcErr);
+    return { outcome: "failed", reason: "renew_failed", detail: rpcErr.message };
   }
 
   const payload = rpcData as Record<string, unknown> | null;
   if (!payload || payload.success !== true) {
-    return { outcome: "failed", reason: "renew_failed" };
+    console.error("[bayarcash/return] service_complete_od_checkout payload:", payload);
+    const errHint =
+      typeof payload?.error === "string"
+        ? payload.error
+        : payload
+          ? JSON.stringify(payload).slice(0, 200)
+          : "empty_response";
+    return { outcome: "failed", reason: "renew_failed", detail: errHint };
   }
 
   return { outcome: "success" };

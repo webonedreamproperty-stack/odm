@@ -26,7 +26,7 @@ begin
     raise exception 'not a member';
   end if;
 
-  if p_plan is null or p_plan not in ('month', 'year') then
+  if p_plan is null or p_plan not in ('month', 'year', 'hour') then
     raise exception 'invalid plan';
   end if;
 
@@ -42,8 +42,10 @@ begin
 
   if p_plan = 'month' then
     v_until := v_from + interval '1 month';
-  else
+  elsif p_plan = 'year' then
     v_until := v_from + interval '1 year';
+  else
+    v_until := v_from + interval '1 hour';
   end if;
 
   insert into public.od_membership_renewals (member_id, plan, valid_from, valid_until, renewed_by)

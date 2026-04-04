@@ -13,7 +13,7 @@ type MemberRow = {
 type MembershipRow = {
   member_id: string;
   status: 'active' | 'suspended';
-  plan: 'month' | 'year' | null;
+  plan: 'month' | 'year' | 'hour' | null;
   valid_from: string | null;
   valid_until: string | null;
 };
@@ -113,7 +113,7 @@ export async function getOdMemberShopVerification(
   };
 }
 
-export type OdRenewPlan = 'month' | 'year';
+export type OdRenewPlan = 'month' | 'year' | 'hour';
 
 export async function memberSelfRenewOdMembership(
   plan: OdRenewPlan

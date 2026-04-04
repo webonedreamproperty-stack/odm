@@ -1,6 +1,15 @@
 -- OD membership renewal checkout sessions (Bayarcash). Apply via Supabase SQL editor if not merged into migration.sql yet.
 -- Server uses SUPABASE_SERVICE_ROLE_KEY to insert rows and call service_complete_od_checkout.
 
+-- Allow plan `hour` on membership + renewals (existing DBs may still have month/year-only checks).
+alter table public.od_memberships drop constraint if exists od_memberships_plan_check;
+alter table public.od_memberships add constraint od_memberships_plan_check
+  check (plan is null or plan in ('month', 'year', 'hour'));
+
+alter table public.od_membership_renewals drop constraint if exists od_membership_renewals_plan_check;
+alter table public.od_membership_renewals add constraint od_membership_renewals_plan_check
+  check (plan in ('month', 'year', 'hour'));
+
 create table if not exists public.od_checkout_sessions (
   order_number text primary key,
   member_id uuid not null references auth.users (id) on delete cascade,
@@ -8,8 +17,12 @@ create table if not exists public.od_checkout_sessions (
   amount_rm numeric(12, 2) not null,
   created_at timestamptz not null default now(),
   completed_at timestamptz,
-  constraint od_checkout_sessions_plan_chk check (plan in ('month', 'year'))
+  constraint od_checkout_sessions_plan_chk check (plan in ('month', 'year', 'hour'))
 );
+
+alter table public.od_checkout_sessions drop constraint if exists od_checkout_sessions_plan_chk;
+alter table public.od_checkout_sessions add constraint od_checkout_sessions_plan_chk
+  check (plan in ('month', 'year', 'hour'));
 
 create index if not exists idx_od_checkout_sessions_member
   on public.od_checkout_sessions (member_id, created_at desc);
@@ -61,8 +74,10 @@ begin
 
   if sess.plan = 'month' then
     v_until := v_from + interval '1 month';
-  else
+  elsif sess.plan = 'year' then
     v_until := v_from + interval '1 year';
+  else
+    v_until := v_from + interval '1 hour';
   end if;
 
   insert into public.od_membership_renewals (member_id, plan, valid_from, valid_until, renewed_by)

@@ -1025,7 +1025,7 @@ create table if not exists public.member_profiles (
 create table if not exists public.od_memberships (
   member_id uuid primary key references public.member_profiles(id) on delete cascade,
   status text not null default 'suspended' check (status in ('active', 'suspended')),
-  plan text check (plan is null or plan in ('month', 'year')),
+  plan text check (plan is null or plan in ('month', 'year', 'hour')),
   valid_from timestamptz,
   valid_until timestamptz,
   updated_at timestamptz not null default now()
@@ -1034,7 +1034,7 @@ create table if not exists public.od_memberships (
 create table if not exists public.od_membership_renewals (
   id uuid primary key default gen_random_uuid(),
   member_id uuid not null references public.member_profiles(id) on delete cascade,
-  plan text not null check (plan in ('month', 'year')),
+  plan text not null check (plan in ('month', 'year', 'hour')),
   valid_from timestamptz not null,
   valid_until timestamptz not null,
   renewed_by uuid not null references auth.users(id) on delete set null,
@@ -1310,7 +1310,7 @@ begin
     raise exception 'not authorized';
   end if;
 
-  if p_plan is null or p_plan not in ('month', 'year') then
+  if p_plan is null or p_plan not in ('month', 'year', 'hour') then
     raise exception 'invalid plan';
   end if;
 
@@ -1330,8 +1330,10 @@ begin
 
   if p_plan = 'month' then
     v_until := v_from + interval '1 month';
-  else
+  elsif p_plan = 'year' then
     v_until := v_from + interval '1 year';
+  else
+    v_until := v_from + interval '1 hour';
   end if;
 
   insert into public.od_membership_renewals (member_id, plan, valid_from, valid_until, renewed_by)
@@ -1447,7 +1449,7 @@ begin
     raise exception 'not a member';
   end if;
 
-  if p_plan is null or p_plan not in ('month', 'year') then
+  if p_plan is null or p_plan not in ('month', 'year', 'hour') then
     raise exception 'invalid plan';
   end if;
 
@@ -1463,8 +1465,10 @@ begin
 
   if p_plan = 'month' then
     v_until := v_from + interval '1 month';
-  else
+  elsif p_plan = 'year' then
     v_until := v_from + interval '1 year';
+  else
+    v_until := v_from + interval '1 hour';
   end if;
 
   insert into public.od_membership_renewals (member_id, plan, valid_from, valid_until, renewed_by)

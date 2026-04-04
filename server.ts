@@ -49,7 +49,13 @@ async function createApp() {
       res.redirect(302, `${base}/od/account?od_pay=success`);
       return;
     }
-    res.redirect(302, `${base}/od/account?od_pay=error&reason=${encodeURIComponent(result.reason)}`);
+    const q = new URLSearchParams();
+    q.set("od_pay", "error");
+    q.set("reason", result.reason);
+    if (result.outcome === "failed" && result.detail) {
+      q.set("detail", result.detail.slice(0, 400));
+    }
+    res.redirect(302, `${base}/od/account?${q.toString()}`);
   });
 
   if (!isProduction) {
