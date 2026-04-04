@@ -1,4 +1,4 @@
-/** OD member renewal (Malaysia, manual payment — no gateway in app). */
+/** OD member renewal (Malaysia). Amounts match Bayarcash when `VITE_OD_BAYARCASH_RENEWAL` or `VITE_OD_PAYMENTS_ENABLED` is true. */
 
 export type OdRenewalPlanKey = "month" | "year";
 

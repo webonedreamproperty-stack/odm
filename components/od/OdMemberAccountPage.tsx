@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { ChevronRight, ExternalLink, LogOut, MapPin, Sparkles, Store } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "../ui/accordion";
 import { Button } from "../ui/button";
@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { useAuth } from "../AuthProvider";
 import { OD_RENEWAL_PACKAGES, formatRm, type OdRenewalPackage } from "../../lib/odPricing";
 import { memberSelfRenewOdMembership } from "../../lib/db/members";
+import { startOdRenewalViaBayarcash } from "../../lib/odRenewalCheckout";
 import { fetchOdMemberDirectory, type OdDirectoryShop } from "../../lib/db/odDirectory";
 import { cn } from "../../lib/utils";
 import { OD_BUSINESS_CATEGORIES } from "../../lib/odBusinessCategories";
@@ -44,8 +45,12 @@ function getShopInitials(name: string): string {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
+const odPaymentsEnabled =
+  import.meta.env.VITE_OD_BAYARCASH_RENEWAL === "true" || import.meta.env.VITE_OD_PAYMENTS_ENABLED === "true";
+
 export const OdMemberAccountPage: React.FC = () => {
   const { currentMember, logout, updateMemberDisplayName, refreshMemberProfile } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [name, setName] = useState(currentMember?.displayName ?? "");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
@@ -63,6 +68,30 @@ export const OdMemberAccountPage: React.FC = () => {
   React.useEffect(() => {
     setName(currentMember?.displayName ?? "");
   }, [currentMember?.displayName]);
+
+  useEffect(() => {
+    const pay = searchParams.get("od_pay");
+    if (!pay) return;
+
+    if (pay === "success") {
+      setRenewError("");
+      setMsg("Payment received. Your membership is now active.");
+      void refreshMemberProfile();
+      window.setTimeout(() => setMsg(""), 6000);
+    } else if (pay === "error") {
+      const reason = searchParams.get("reason");
+      setRenewError(
+        reason
+          ? `Payment did not complete (${reason.replace(/_/g, " ")}).`
+          : "Payment did not complete."
+      );
+    }
+
+    const next = new URLSearchParams(searchParams);
+    next.delete("od_pay");
+    next.delete("reason");
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams, refreshMemberProfile]);
 
   if (!currentMember) return null;
 
@@ -115,16 +144,31 @@ export const OdMemberAccountPage: React.FC = () => {
     if (!renewDialogPkg) return;
     setRenewError("");
     setRenewSubmitting(true);
-    const result = await memberSelfRenewOdMembership(renewDialogPkg.plan);
-    setRenewSubmitting(false);
-    if (result.ok === false) {
-      setRenewError(result.error);
-      return;
+    try {
+      if (odPaymentsEnabled) {
+        const payOut = await startOdRenewalViaBayarcash(renewDialogPkg.plan);
+        setRenewSubmitting(false);
+        if (payOut.ok !== true) {
+          setRenewError(payOut.error);
+          return;
+        }
+        return;
+      }
+
+      const result = await memberSelfRenewOdMembership(renewDialogPkg.plan);
+      setRenewSubmitting(false);
+      if (result.ok === false) {
+        setRenewError(result.error);
+        return;
+      }
+      setRenewDialogPkg(null);
+      void refreshMemberProfile();
+      setMsg("Your subscription is now active for the selected period.");
+      window.setTimeout(() => setMsg(""), 4000);
+    } catch {
+      setRenewSubmitting(false);
+      setRenewError("Something went wrong. Try again.");
     }
-    setRenewDialogPkg(null);
-    void refreshMemberProfile();
-    setMsg("Your subscription is now active for the selected period.");
-    window.setTimeout(() => setMsg(""), 4000);
   };
 
   const handleSaveName = async (event: React.FormEvent) => {
@@ -391,7 +435,10 @@ export const OdMemberAccountPage: React.FC = () => {
             <div className="rounded-[1.5rem] border border-black/[0.06] bg-white p-6 shadow-sm">
               <h2 className="text-sm font-semibold uppercase tracking-[0.14em] text-[#8a8276]">Renew subscription</h2>
               <p className="mt-2 text-sm text-[#6d6658]">
-                Malaysia · Prices in MYR. Confirming applies your membership immediately in this app.
+                Malaysia · Prices in MYR.{" "}
+                {odPaymentsEnabled
+                  ? "You will complete payment on Bayarcash, then return here when paid."
+                  : "Confirming applies your membership immediately in this app."}
               </p>
               <div className="mt-5 grid gap-4 sm:grid-cols-2">
                 {OD_RENEWAL_PACKAGES.map((pkg) => (
@@ -431,7 +478,7 @@ export const OdMemberAccountPage: React.FC = () => {
                 <DialogContent className="rounded-[1.25rem] sm:max-w-md">
                   <DialogHeader>
                     <DialogTitle className="text-lg font-semibold text-[#1b1813]">
-                      Activate {renewDialogPkg.title}?
+                      {odPaymentsEnabled ? `Pay for ${renewDialogPkg.title}?` : `Activate ${renewDialogPkg.title}?`}
                     </DialogTitle>
                   </DialogHeader>
                   <div className="space-y-3 text-sm text-[#6d6658]">
@@ -440,8 +487,18 @@ export const OdMemberAccountPage: React.FC = () => {
                       <span className="font-semibold text-[#1b1813]">{formatRm(renewDialogPkg.priceRm)}</span>
                     </p>
                     <p>
-                      Your OD membership will turn <span className="font-medium text-emerald-700">active</span> for this
-                      period right away. You can add card or bank payment here later.
+                      {odPaymentsEnabled ? (
+                        <>
+                          You will be redirected to <span className="font-medium text-[#1b1813]">Bayarcash</span> to pay.
+                          When payment succeeds, your OD membership becomes{" "}
+                          <span className="font-medium text-emerald-700">active</span> for this period.
+                        </>
+                      ) : (
+                        <>
+                          Your OD membership will turn <span className="font-medium text-emerald-700">active</span> for
+                          this period right away.
+                        </>
+                      )}
                     </p>
                     {renewError && (
                       <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
@@ -465,7 +522,13 @@ export const OdMemberAccountPage: React.FC = () => {
                       disabled={renewSubmitting}
                       onClick={() => void handleConfirmRenew()}
                     >
-                      {renewSubmitting ? "Activating…" : "Confirm & activate"}
+                      {renewSubmitting
+                        ? odPaymentsEnabled
+                          ? "Redirecting…"
+                          : "Activating…"
+                        : odPaymentsEnabled
+                          ? "Continue to payment"
+                          : "Confirm & activate"}
                     </Button>
                   </DialogFooter>
                 </DialogContent>

@@ -40,7 +40,7 @@ All access starts at `/login`. There is no marketplace or multi-tenant public si
 3. Configure `.env.local`:
 
    Required:
-   - `VITE_APP_URL`: your app URL, for example `http://localhost:5173`
+   - `VITE_APP_URL`: your app URL, for example `http://localhost:3001` (same port as `npm run dev`)
    - `VITE_SUPABASE_URL`: your [Supabase](https://supabase.com) project URL
    - `VITE_SUPABASE_ANON_KEY`: your Supabase anon key
 
@@ -60,9 +60,11 @@ All access starts at `/login`. There is no marketplace or multi-tenant public si
    - [`supabase/seed.sql`](supabase/seed.sql) is for local or development environments only because it creates a known demo account.
 
 5. Start the dev server:
-   ```bash
-   npm run dev
-   ```
+
+   - **Frontend only (Vite):** `npm run dev` — serves the app on port **3001** but does **not** run anything under `api/`.
+   - **Frontend + serverless APIs (Bayarcash, etc.):** `npm run dev:vercel` — runs Vite via Vercel’s dev server so `/api/*` handlers in [`api/`](api/) work locally. Requires the [Vercel CLI](https://vercel.com/docs/cli) and a linked project (or `vercel link`) so env vars load from `.env.local`.
+
+   Set `VITE_APP_URL` to match how you open the app (for example `http://localhost:3001`).
 
 ## Demo Admin Seed
 
@@ -80,7 +82,8 @@ Do not use the demo seed account as-is in production.
 
 ## Available Scripts
 
-- `npm run dev`: start the Vite development server
+- `npm run dev`: start the Vite development server (no `/api` routes)
+- `npm run dev:vercel`: Vite + local Vercel serverless functions from `api/`
 - `npm run generate:sitemap`: regenerate `public/sitemap.xml`
 - `npm run build`: regenerate the sitemap, then build the production bundle
 - `npm run preview`: preview the production build locally

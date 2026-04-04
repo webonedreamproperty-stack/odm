@@ -10,11 +10,13 @@ import { useAuth } from "./AuthProvider";
 import { buildOdVerifyUrl, buildStaffPortalUrl } from "../lib/links";
 import { OD_BUSINESS_CATEGORIES, type OdBusinessCategory } from "../lib/odBusinessCategories";
 import { OD_INDUSTRY_FILTER_LABEL } from "../lib/odMemberDirectoryFilters";
+import { normalizeOdListingAreaValue } from "../lib/odListingAreaLocations";
 import { printOdVerifySheet } from "../lib/printOdVerifySheet";
 import { supabase } from "../lib/supabase";
 import QRCode from "react-qr-code";
 import { Link, useNavigate } from "react-router-dom";
 import { useSubscriptionContext } from "./SubscriptionContext";
+import { OdListingAreaCombobox } from "./OdListingAreaCombobox";
 
 const DELETE_CONFIRMATION = "DELETE";
 
@@ -124,7 +126,7 @@ export const SettingsPage: React.FC<{ embedded?: boolean }> = ({ embedded = fals
       };
       setOdDirVisible(r.od_directory_visible !== false);
       setOdDiscountSummary(r.od_discount_summary ?? "");
-      setOdListingArea(r.od_listing_area ?? "");
+      setOdListingArea(normalizeOdListingAreaValue(r.od_listing_area ?? ""));
       setOdMapsUrl(r.od_maps_url ?? "");
     }
     const { data: svc } = await supabase
@@ -149,7 +151,7 @@ export const SettingsPage: React.FC<{ embedded?: boolean }> = ({ embedded = fals
       .update({
         od_directory_visible: odDirVisible,
         od_discount_summary: odDiscountSummary.trim(),
-        od_listing_area: odListingArea.trim() || null,
+        od_listing_area: normalizeOdListingAreaValue(odListingArea) || null,
         od_maps_url: normalizeOdMapsUrl(odMapsUrl),
       })
       .eq("id", currentOwner.id);
@@ -418,14 +420,13 @@ export const SettingsPage: React.FC<{ embedded?: boolean }> = ({ embedded = fals
             <div className="space-y-1.5">
               <Label htmlFor="od-listing-area">Area / neighbourhood (optional)</Label>
               <p className="text-xs text-muted-foreground">
-                Short line in the member directory (e.g. Kuala Lumpur, Bangsar). This is separate from the map link
-                above.
+                Search by city and state, type your own line, or use the locate button (browser location + address
+                lookup). Shown on the member directory; separate from the map link above.
               </p>
-              <Input
+              <OdListingAreaCombobox
                 id="od-listing-area"
                 value={odListingArea}
-                onChange={(e) => setOdListingArea(e.target.value)}
-                placeholder="e.g. Kuala Lumpur, Petaling Jaya"
+                onChange={setOdListingArea}
                 disabled={odListingBusy}
               />
             </div>
