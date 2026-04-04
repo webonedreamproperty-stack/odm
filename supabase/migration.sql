@@ -1531,6 +1531,8 @@ grant execute on function public.admin_list_vendor_accounts() to authenticated;
 alter table public.profiles add column if not exists od_directory_visible boolean not null default true;
 alter table public.profiles add column if not exists od_discount_summary text not null default '';
 alter table public.profiles add column if not exists od_listing_area text;
+alter table public.profiles add column if not exists od_listing_lat double precision;
+alter table public.profiles add column if not exists od_listing_lng double precision;
 alter table public.profiles add column if not exists phone text;
 alter table public.profiles add column if not exists od_shop_photo_url text;
 alter table public.profiles add column if not exists od_logo_url text;
@@ -1601,6 +1603,8 @@ begin
         nullif(trim(p.od_discount_summary), '') as discount_summary,
         nullif(trim(p.od_listing_area), '') as area,
         nullif(trim(p.od_maps_url), '') as maps_url,
+        p.od_listing_lat as listing_lat,
+        p.od_listing_lng as listing_lng,
         (
           select coalesce(
             jsonb_agg(

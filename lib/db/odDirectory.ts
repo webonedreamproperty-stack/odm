@@ -14,6 +14,9 @@ export type OdDirectoryShop = {
   discount_summary: string | null;
   area: string | null;
   maps_url: string | null;
+  /** Vendor-picked listing coordinates when saved from Settings (optional). */
+  listing_lat: number | null;
+  listing_lng: number | null;
   services: OdDirectoryService[] | null;
 };
 
@@ -50,6 +53,14 @@ export async function fetchOdMemberDirectory(): Promise<
     discount_summary: row.discount_summary != null ? String(row.discount_summary) : null,
     area: row.area != null ? String(row.area) : null,
     maps_url: row.maps_url != null ? String(row.maps_url) : null,
+    listing_lat: (() => {
+      const n = row.listing_lat != null && row.listing_lat !== "" ? Number(row.listing_lat) : NaN;
+      return Number.isFinite(n) ? n : null;
+    })(),
+    listing_lng: (() => {
+      const n = row.listing_lng != null && row.listing_lng !== "" ? Number(row.listing_lng) : NaN;
+      return Number.isFinite(n) ? n : null;
+    })(),
     services: Array.isArray(row.services)
       ? (row.services as Record<string, unknown>[]).map((s) => ({
           id: String(s.id ?? ''),

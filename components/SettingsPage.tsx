@@ -99,6 +99,8 @@ export const SettingsPage: React.FC<{ embedded?: boolean }> = ({ embedded = fals
   const [odListingBusy, setOdListingBusy] = useState(false);
   const [odListingSaveBusy, setOdListingSaveBusy] = useState(false);
   const [odListingMsg, setOdListingMsg] = useState("");
+  const [odListingLat, setOdListingLat] = useState<number | null>(null);
+  const [odListingLng, setOdListingLng] = useState<number | null>(null);
 
   const odVerifyQrRef = useRef<HTMLDivElement>(null);
 
@@ -114,7 +116,9 @@ export const SettingsPage: React.FC<{ embedded?: boolean }> = ({ embedded = fals
     setOdListingBusy(true);
     const { data: row, error } = await supabase
       .from("profiles")
-      .select("od_directory_visible, od_discount_summary, od_listing_area, od_maps_url")
+      .select(
+        "od_directory_visible, od_discount_summary, od_listing_area, od_listing_lat, od_listing_lng, od_maps_url"
+      )
       .eq("id", currentOwner.id)
       .maybeSingle();
     if (!error && row) {
@@ -122,11 +126,17 @@ export const SettingsPage: React.FC<{ embedded?: boolean }> = ({ embedded = fals
         od_directory_visible?: boolean;
         od_discount_summary?: string;
         od_listing_area?: string | null;
+        od_listing_lat?: number | null;
+        od_listing_lng?: number | null;
         od_maps_url?: string | null;
       };
       setOdDirVisible(r.od_directory_visible !== false);
       setOdDiscountSummary(r.od_discount_summary ?? "");
       setOdListingArea(normalizeOdListingAreaValue(r.od_listing_area ?? ""));
+      const lat = r.od_listing_lat;
+      const lng = r.od_listing_lng;
+      setOdListingLat(typeof lat === "number" && Number.isFinite(lat) ? lat : null);
+      setOdListingLng(typeof lng === "number" && Number.isFinite(lng) ? lng : null);
       setOdMapsUrl(r.od_maps_url ?? "");
     }
     const { data: svc } = await supabase
@@ -152,6 +162,8 @@ export const SettingsPage: React.FC<{ embedded?: boolean }> = ({ embedded = fals
         od_directory_visible: odDirVisible,
         od_discount_summary: odDiscountSummary.trim(),
         od_listing_area: normalizeOdListingAreaValue(odListingArea) || null,
+        od_listing_lat: odListingLat,
+        od_listing_lng: odListingLng,
         od_maps_url: normalizeOdMapsUrl(odMapsUrl),
       })
       .eq("id", currentOwner.id);
@@ -420,13 +432,20 @@ export const SettingsPage: React.FC<{ embedded?: boolean }> = ({ embedded = fals
             <div className="space-y-1.5">
               <Label htmlFor="od-listing-area">Area / neighbourhood (optional)</Label>
               <p className="text-xs text-muted-foreground">
-                Search by city and state, type your own line, or use the locate button (browser location + address
-                lookup). Shown on the member directory; separate from the map link above.
+                Search by city and state, type your own line, use GPS, or open the map to drag a pin to your exact
+                spot — coordinates save with your listing for members. Shown on the member directory; separate from the
+                Google Maps link above.
               </p>
               <OdListingAreaCombobox
                 id="od-listing-area"
                 value={odListingArea}
                 onChange={setOdListingArea}
+                listingLat={odListingLat}
+                listingLng={odListingLng}
+                onCoordinatesChange={(lat, lng) => {
+                  setOdListingLat(lat);
+                  setOdListingLng(lng);
+                }}
                 disabled={odListingBusy}
               />
             </div>
