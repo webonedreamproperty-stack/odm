@@ -60,6 +60,7 @@ interface AuthContextValue {
   memberSignup: (payload: { displayName: string; email: string; password: string }) => Promise<AuthResult>;
   refreshMemberProfile: () => Promise<void>;
   updateMemberDisplayName: (displayName: string) => Promise<AuthResult>;
+  updateMemberPublicUsername: (username: string | null) => Promise<AuthResult>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -540,6 +541,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return { ok: true };
   }, [refreshMemberProfile]);
 
+  const updateMemberPublicUsername = useCallback(async (username: string | null): Promise<AuthResult> => {
+    if (!isSupabaseConfigured) {
+      return { ok: false, error: CONFIG_ERROR_MESSAGE };
+    }
+    const { data: authUser } = await supabase.auth.getUser();
+    if (!authUser.user) return { ok: false, error: AUTH_REQUEST_ERROR };
+    const { data, error } = await supabase.rpc("set_member_public_username", {
+      p_username: username?.trim() ? username.trim().toLowerCase() : null,
+    });
+    if (error) {
+      return { ok: false, error: PROFILE_UPDATE_ERROR };
+    }
+    const payload = data as { success?: boolean; error?: string } | null;
+    if (!payload?.success) {
+      const code = payload?.error;
+      if (code === "invalid_format") {
+        return {
+          ok: false,
+          error: "Use 2–62 characters: lowercase letters, numbers, hyphen or underscore. Must start with a letter or number.",
+        };
+      }
+      if (code === "taken") {
+        return { ok: false, error: "That username is already taken (or matches a business URL)." };
+      }
+      if (code === "not_member") {
+        return { ok: false, error: "Only OD members can set this." };
+      }
+      return { ok: false, error: PROFILE_UPDATE_ERROR };
+    }
+    await refreshMemberProfile();
+    return { ok: true };
+  }, [refreshMemberProfile]);
+
   const loginDemo = useCallback(async () => {
     if (!DEMO_WORKSPACE_ENABLED) {
       throw new Error("Demo workspace is currently unavailable.");
@@ -772,6 +806,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       memberSignup,
       refreshMemberProfile,
       updateMemberDisplayName,
+      updateMemberPublicUsername,
     }),
     [
       currentUser, currentOwner, isEmailVerified, loading, staffAccounts,
@@ -781,6 +816,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       resendVerificationEmail, isSlugAvailable, updateProfileInfo,
       updatePassword, resetPassword, refreshProfile,
       memberLogin, memberSignup, refreshMemberProfile, updateMemberDisplayName,
+      updateMemberPublicUsername,
     ]
   );
 

@@ -8,6 +8,7 @@ import { Label } from "./ui/label";
 import { Switch } from "./ui/switch";
 import { useAuth } from "./AuthProvider";
 import { buildOdVerifyUrl, buildStaffPortalUrl } from "../lib/links";
+import { buildAppUrl } from "../lib/siteConfig";
 import { OD_BUSINESS_CATEGORIES, type OdBusinessCategory } from "../lib/odBusinessCategories";
 import { OD_INDUSTRY_FILTER_LABEL } from "../lib/odMemberDirectoryFilters";
 import { normalizeOdListingAreaValue } from "../lib/odListingAreaLocations";
@@ -563,13 +564,31 @@ export const SettingsPage: React.FC<{ embedded?: boolean }> = ({ embedded = fals
                 <div className="space-y-1.5 sm:col-span-2">
                   <Label>Public URL Slug</Label>
                   <div className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground shrink-0">stampee.co/</span>
+                    <span className="text-sm text-muted-foreground shrink-0">
+                      {buildAppUrl("/").replace(/\/$/, "")}/
+                    </span>
                     <Input
                       value={profileForm.slug}
                       readOnly
                       className="bg-muted/40 text-muted-foreground cursor-not-allowed"
                     />
                   </div>
+                  {profileForm.slug ? (
+                    <div className="flex flex-wrap items-center gap-2 rounded-xl border border-black/[0.06] bg-muted/30 px-3 py-2">
+                      <code className="min-w-0 flex-1 break-all text-[11px] text-foreground">
+                        {buildAppUrl(`/${profileForm.slug}`)}
+                      </code>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="shrink-0 rounded-full"
+                        onClick={() => void navigator.clipboard.writeText(buildAppUrl(`/${profileForm.slug}`))}
+                      >
+                        Copy link
+                      </Button>
+                    </div>
+                  ) : null}
                   <p className="text-[11px] text-muted-foreground">Your public URL cannot be changed after signup.</p>
                 </div>
               </>

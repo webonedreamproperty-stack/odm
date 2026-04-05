@@ -13,6 +13,7 @@ import { fetchOdMemberDirectory, type OdDirectoryShop } from "../../lib/db/odDir
 import { cn } from "../../lib/utils";
 import { OD_BUSINESS_CATEGORIES } from "../../lib/odBusinessCategories";
 import { OD_INDUSTRY_FILTER_LABEL, shopMatchesIndustryFilter } from "../../lib/odMemberDirectoryFilters";
+import { buildAppUrl } from "../../lib/siteConfig";
 import { OdMembershipCard } from "./OdMembershipCard";
 import {
   Map,
@@ -78,7 +79,8 @@ const OD_MEMBER_MAP_STYLES = {
 type OdMemberMapStyleKey = keyof typeof OD_MEMBER_MAP_STYLES;
 
 export const OdMemberAccountPage: React.FC = () => {
-  const { currentMember, logout, updateMemberDisplayName, refreshMemberProfile } = useAuth();
+  const { currentMember, logout, updateMemberDisplayName, updateMemberPublicUsername, refreshMemberProfile } =
+    useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [name, setName] = useState(currentMember?.displayName ?? "");
   const [busy, setBusy] = useState(false);
@@ -87,6 +89,10 @@ export const OdMemberAccountPage: React.FC = () => {
   const [renewDialogPkg, setRenewDialogPkg] = useState<OdRenewalPackage | null>(null);
   const [renewSubmitting, setRenewSubmitting] = useState(false);
   const [renewError, setRenewError] = useState("");
+  const [publicUsernameInput, setPublicUsernameInput] = useState("");
+  const [publicUsernameMsg, setPublicUsernameMsg] = useState("");
+  const [publicUsernameErr, setPublicUsernameErr] = useState("");
+  const [publicUsernameBusy, setPublicUsernameBusy] = useState(false);
 
   const [dirLoading, setDirLoading] = useState(false);
   const [dirShops, setDirShops] = useState<OdDirectoryShop[]>([]);
@@ -245,6 +251,10 @@ export const OdMemberAccountPage: React.FC = () => {
     setName(currentMember?.displayName ?? "");
   }, [currentMember?.displayName]);
 
+  React.useEffect(() => {
+    setPublicUsernameInput(currentMember?.publicUsername ?? "");
+  }, [currentMember?.publicUsername]);
+
   useEffect(() => {
     const pay = searchParams.get("od_pay");
     if (!pay) return;
@@ -367,6 +377,23 @@ export const OdMemberAccountPage: React.FC = () => {
     setMsg("Saved.");
     void refreshMemberProfile();
     window.setTimeout(() => setMsg(""), 2500);
+  };
+
+  const handleSavePublicUsername = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setPublicUsernameErr("");
+    setPublicUsernameMsg("");
+    setPublicUsernameBusy(true);
+    const trimmed = publicUsernameInput.trim().toLowerCase();
+    const result = await updateMemberPublicUsername(trimmed === "" ? null : trimmed);
+    setPublicUsernameBusy(false);
+    if (result.ok === false) {
+      setPublicUsernameErr(result.error);
+      return;
+    }
+    setPublicUsernameMsg("Saved.");
+    void refreshMemberProfile();
+    window.setTimeout(() => setPublicUsernameMsg(""), 3000);
   };
 
   return (
@@ -919,6 +946,39 @@ export const OdMemberAccountPage: React.FC = () => {
             {msg && <p className="text-sm text-emerald-700">{msg}</p>}
             <Button type="submit" disabled={busy} className="rounded-full bg-[#1b1813] hover:bg-[#11100d]">
               {busy ? "Saving…" : "Save"}
+            </Button>
+          </form>
+
+          <form className="mt-8 space-y-3 border-t border-black/[0.06] pt-8" onSubmit={(e) => void handleSavePublicUsername(e)}>
+            <h3 className="text-xs font-semibold uppercase tracking-[0.12em] text-[#8a8276]">Public profile link</h3>
+            <p className="text-sm text-[#6d6658]">
+              Choose a short username for a shareable page (same style as business URLs). Lowercase letters, numbers,
+              hyphen and underscore; 2–62 characters; must not match an existing business slug.
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="shrink-0 text-sm text-[#6d6658]">{buildAppUrl("/").replace(/\/$/, "")}/</span>
+              <Input
+                value={publicUsernameInput}
+                onChange={(e) => setPublicUsernameInput(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ""))}
+                className={cn(inputCls, "max-w-[220px] flex-1")}
+                placeholder="mykluang"
+                autoComplete="off"
+              />
+            </div>
+            {currentMember.publicUsername ? (
+              <p className="text-[11px] font-mono text-[#8a8276]">
+                Live: {buildAppUrl(`/${currentMember.publicUsername}`)}
+              </p>
+            ) : null}
+            {publicUsernameErr && <p className="text-sm text-red-600">{publicUsernameErr}</p>}
+            {publicUsernameMsg && <p className="text-sm text-emerald-700">{publicUsernameMsg}</p>}
+            <Button
+              type="submit"
+              disabled={publicUsernameBusy}
+              variant="outline"
+              className="rounded-full border-black/12"
+            >
+              {publicUsernameBusy ? "Saving…" : "Save username"}
             </Button>
           </form>
         </div>

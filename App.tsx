@@ -94,6 +94,7 @@ const OdVendorSignupPage = lazy(() => import('./components/od/OdVendorSignupPage
 const OdVerifyPage = lazy(() => import('./components/od/OdVerifyPage').then((module) => ({ default: module.OdVerifyPage })));
 const OdMemberAccountPage = lazy(() => import('./components/od/OdMemberAccountPage').then((module) => ({ default: module.OdMemberAccountPage })));
 const OdAdminPage = lazy(() => import('./components/od/OdAdminPage').then((module) => ({ default: module.OdAdminPage })));
+const PublicHandlePage = lazy(() => import('./components/PublicHandlePage').then((module) => ({ default: module.PublicHandlePage })));
 
 const RouteLoader: React.FC = () => (
   <div className="flex min-h-[40vh] w-full items-center justify-center">
@@ -682,6 +683,7 @@ const AppRoutes: React.FC = () => {
         <Route path="/:slug/:uniqueId" element={<PublicCardWrapper />} />
         <Route path="/login" element={withSuspense(<LoginPage />)} />
         <Route path="/forgot-password" element={withSuspense(<ForgotPasswordPage />)} />
+        <Route path="/od" element={<Navigate to="/od/login" replace />} />
         <Route path="/od/login" element={withSuspense(<OdLoginHubPage />)} />
         <Route path="/od/member/login" element={withSuspense(<OdMemberLoginPage />)} />
         <Route path="/od/vendor/login" element={withSuspense(<OdVendorLoginPage />)} />
@@ -749,6 +751,8 @@ const AppRoutes: React.FC = () => {
             </Route>
           </Route>
         </Route>
+
+        <Route path="/:username" element={withSuspense(<PublicHandlePage />)} />
 
         <Route path="*" element={<Navigate to="/login" />} />
       </Routes>

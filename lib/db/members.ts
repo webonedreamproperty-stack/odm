@@ -6,6 +6,7 @@ type MemberRow = {
   email: string;
   display_name: string;
   member_code: string;
+  public_username: string | null;
   country: string;
   created_at: string;
 };
@@ -27,6 +28,9 @@ export function rowToMemberAccount(
     email: profile.email,
     displayName: profile.display_name,
     memberCode: profile.member_code,
+    publicUsername: profile.public_username != null && String(profile.public_username).trim() !== ""
+      ? String(profile.public_username).trim().toLowerCase()
+      : null,
     country: profile.country,
     createdAt: profile.created_at,
     membership: membership
@@ -43,7 +47,7 @@ export function rowToMemberAccount(
 export async function fetchMemberProfile(userId: string): Promise<MemberAccount | null> {
   const { data: profile, error: pErr } = await supabase
     .from('member_profiles')
-    .select('id, email, display_name, member_code, country, created_at')
+    .select('id, email, display_name, member_code, public_username, country, created_at')
     .eq('id', userId)
     .maybeSingle();
 

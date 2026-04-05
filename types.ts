@@ -142,6 +142,8 @@ export interface MemberAccount {
   email: string;
   displayName: string;
   memberCode: string;
+  /** Lowercase public URL segment for /:username (optional). */
+  publicUsername: string | null;
   country: string;
   createdAt: string;
   membership: {
