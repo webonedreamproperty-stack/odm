@@ -1545,6 +1545,59 @@ alter table public.profiles add column if not exists od_logo_url text;
 alter table public.profiles add column if not exists od_maps_url text;
 alter table public.profiles add column if not exists od_operating_hours jsonb;
 alter table public.profiles add column if not exists vendor_onboarding_completed boolean not null default false;
+alter table public.profiles add column if not exists od_google_place_id text;
+
+-- Cached Place Details (New) JSON for public vendor profile cards (TTL via expires_at)
+create table if not exists public.od_place_details_cache (
+  place_id text primary key,
+  payload jsonb not null,
+  expires_at timestamptz not null,
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists od_place_details_cache_expires_idx
+  on public.od_place_details_cache (expires_at);
+
+alter table public.od_place_details_cache enable row level security;
+
+create or replace function public.upsert_od_place_details_cache(
+  p_place_id text,
+  p_payload jsonb,
+  p_ttl_days int default 30
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  pid text;
+  ttl_days int;
+begin
+  if auth.uid() is null then
+    return jsonb_build_object('success', false, 'error', 'not_authenticated');
+  end if;
+  pid := trim(coalesce(p_place_id, ''));
+  if pid = '' then
+    return jsonb_build_object('success', false, 'error', 'invalid_place_id');
+  end if;
+  if p_payload is null or jsonb_typeof(p_payload) <> 'object' then
+    return jsonb_build_object('success', false, 'error', 'invalid_payload');
+  end if;
+  ttl_days := greatest(1, least(coalesce(p_ttl_days, 30), 90));
+
+  insert into public.od_place_details_cache as c (place_id, payload, expires_at, updated_at)
+  values (pid, p_payload, now() + make_interval(days => ttl_days), now())
+  on conflict (place_id) do update
+    set payload = excluded.payload,
+        expires_at = excluded.expires_at,
+        updated_at = now();
+
+  return jsonb_build_object('success', true);
+end;
+$$;
+
+grant execute on function public.upsert_od_place_details_cache(text, jsonb, int) to authenticated;
 
 create table if not exists public.od_shop_services (
   id uuid primary key default gen_random_uuid(),
@@ -1609,8 +1662,36 @@ begin
         nullif(trim(p.od_discount_summary), '') as discount_summary,
         nullif(trim(p.od_listing_area), '') as area,
         nullif(trim(p.od_maps_url), '') as maps_url,
+        nullif(trim(p.od_shop_photo_url), '') as shop_photo_url,
         p.od_listing_lat as listing_lat,
         p.od_listing_lng as listing_lng,
+        (
+          select nullif(trim(c.payload->>'rating'), '')::numeric
+          from public.od_place_details_cache c
+          where p.od_google_place_id is not null
+            and trim(p.od_google_place_id) <> ''
+            and c.place_id = trim(p.od_google_place_id)
+            and c.expires_at > now()
+          limit 1
+        ) as rating,
+        (
+          select nullif(trim(c.payload->>'userRatingCount'), '')::int
+          from public.od_place_details_cache c
+          where p.od_google_place_id is not null
+            and trim(p.od_google_place_id) <> ''
+            and c.place_id = trim(p.od_google_place_id)
+            and c.expires_at > now()
+          limit 1
+        ) as rating_count,
+        (
+          select nullif(trim((c.payload->'photos'->0)->>'name'), '')
+          from public.od_place_details_cache c
+          where p.od_google_place_id is not null
+            and trim(p.od_google_place_id) <> ''
+            and c.place_id = trim(p.od_google_place_id)
+            and c.expires_at > now()
+          limit 1
+        ) as google_place_photo_name,
         (
           select coalesce(
             jsonb_agg(
@@ -1640,6 +1721,92 @@ $$;
 
 grant execute on function public.get_od_member_directory() to authenticated;
 
+create or replace function public.get_od_member_directory_preview(p_limit int default 2)
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+declare
+  lim int := greatest(1, least(coalesce(p_limit, 2), 6));
+begin
+  if auth.uid() is null then
+    return jsonb_build_object('error', 'not_authenticated');
+  end if;
+
+  return coalesce((
+    select jsonb_agg(row_to_json(t) order by t.business_name)
+    from (
+      select
+        p.id as owner_id,
+        p.business_name,
+        p.slug,
+        nullif(trim(p.od_business_category), '') as business_category,
+        nullif(trim(p.od_discount_summary), '') as discount_summary,
+        nullif(trim(p.od_listing_area), '') as area,
+        nullif(trim(p.od_maps_url), '') as maps_url,
+        nullif(trim(p.od_shop_photo_url), '') as shop_photo_url,
+        p.od_listing_lat as listing_lat,
+        p.od_listing_lng as listing_lng,
+        (
+          select nullif(trim(c.payload->>'rating'), '')::numeric
+          from public.od_place_details_cache c
+          where p.od_google_place_id is not null
+            and trim(p.od_google_place_id) <> ''
+            and c.place_id = trim(p.od_google_place_id)
+            and c.expires_at > now()
+          limit 1
+        ) as rating,
+        (
+          select nullif(trim(c.payload->>'userRatingCount'), '')::int
+          from public.od_place_details_cache c
+          where p.od_google_place_id is not null
+            and trim(p.od_google_place_id) <> ''
+            and c.place_id = trim(p.od_google_place_id)
+            and c.expires_at > now()
+          limit 1
+        ) as rating_count,
+        (
+          select nullif(trim((c.payload->'photos'->0)->>'name'), '')
+          from public.od_place_details_cache c
+          where p.od_google_place_id is not null
+            and trim(p.od_google_place_id) <> ''
+            and c.place_id = trim(p.od_google_place_id)
+            and c.expires_at > now()
+          limit 1
+        ) as google_place_photo_name,
+        (
+          select coalesce(
+            jsonb_agg(
+              jsonb_build_object(
+                'id', s.id,
+                'name', s.name,
+                'description', s.description
+              )
+              order by s.sort_order, s.name
+            ),
+            '[]'::jsonb
+          )
+          from public.od_shop_services s
+          where s.owner_id = p.id
+            and s.is_active = true
+        ) as services
+      from public.profiles p
+      where p.role = 'owner'
+        and p.slug is not null
+        and trim(p.slug) <> ''
+        and p.od_directory_visible = true
+        and p.access = 'active'
+      order by p.business_name
+      limit lim
+    ) t
+  ), '[]'::jsonb);
+end;
+$$;
+
+grant execute on function public.get_od_member_directory_preview(int) to authenticated;
+
 create or replace function public.get_public_handle_page(p_handle text)
 returns jsonb
 language plpgsql
@@ -1656,6 +1823,7 @@ declare
   m_from timestamptz;
   m_until timestamptz;
   m_active boolean;
+  place_payload jsonb;
 begin
   if p_handle is null or length(trim(p_handle)) < 2 or length(trim(p_handle)) > 63 then
     return jsonb_build_object('error', 'invalid_handle');
@@ -1670,7 +1838,8 @@ begin
     p.od_logo_url,
     p.od_shop_photo_url,
     p.od_business_category,
-    p.od_directory_visible
+    p.od_directory_visible,
+    p.od_google_place_id
   into prof
   from public.profiles p
   where p.role = 'owner'
@@ -1680,6 +1849,14 @@ begin
   limit 1;
 
   if found then
+    place_payload := null;
+    if prof.od_google_place_id is not null and trim(prof.od_google_place_id) <> '' then
+      select c.payload into place_payload
+      from public.od_place_details_cache c
+      where c.place_id = trim(prof.od_google_place_id)
+        and c.expires_at > now();
+    end if;
+
     return jsonb_build_object(
       'kind', 'vendor',
       'slug', prof.slug,
@@ -1690,7 +1867,9 @@ begin
       'logo_url', nullif(trim(prof.od_logo_url), ''),
       'shop_photo_url', nullif(trim(prof.od_shop_photo_url), ''),
       'business_category', nullif(trim(prof.od_business_category), ''),
-      'directory_visible', prof.od_directory_visible
+      'directory_visible', prof.od_directory_visible,
+      'google_place_id', nullif(trim(prof.od_google_place_id), ''),
+      'place_details', place_payload
     );
   end if;
 
@@ -1774,3 +1953,112 @@ end;
 $$;
 
 grant execute on function public.set_member_public_username(text) to authenticated;
+
+create table if not exists public.od_place_search_cache (
+  query_key text primary key,
+  query text not null,
+  region text not null default 'my',
+  payload jsonb not null,
+  expires_at timestamptz not null,
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists od_place_search_cache_expires_idx
+  on public.od_place_search_cache (expires_at);
+
+alter table public.od_place_search_cache enable row level security;
+
+create or replace function public.get_od_place_search_cache(
+  p_query text,
+  p_region text default 'my'
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  norm_query text;
+  norm_region text;
+  k text;
+  cached jsonb;
+begin
+  if auth.uid() is null then
+    return jsonb_build_object('success', false, 'error', 'not_authenticated');
+  end if;
+  norm_query := lower(trim(coalesce(p_query, '')));
+  norm_region := lower(trim(coalesce(p_region, 'my')));
+  if norm_query = '' then
+    return jsonb_build_object('success', false, 'error', 'invalid_query');
+  end if;
+  k := norm_region || '|' || norm_query;
+
+  select c.payload
+    into cached
+  from public.od_place_search_cache c
+  where c.query_key = k
+    and c.expires_at > now();
+
+  return jsonb_build_object('success', true, 'payload', coalesce(cached, '[]'::jsonb));
+end;
+$$;
+
+create or replace function public.upsert_od_place_search_cache(
+  p_query text,
+  p_region text,
+  p_payload jsonb,
+  p_ttl_days int default 30
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  norm_query text;
+  norm_region text;
+  ttl_days int;
+  k text;
+begin
+  if auth.uid() is null then
+    return jsonb_build_object('success', false, 'error', 'not_authenticated');
+  end if;
+  norm_query := lower(trim(coalesce(p_query, '')));
+  norm_region := lower(trim(coalesce(p_region, 'my')));
+  if norm_query = '' then
+    return jsonb_build_object('success', false, 'error', 'invalid_query');
+  end if;
+  if p_payload is null or jsonb_typeof(p_payload) <> 'array' then
+    return jsonb_build_object('success', false, 'error', 'invalid_payload');
+  end if;
+
+  ttl_days := greatest(1, least(coalesce(p_ttl_days, 30), 90));
+  k := norm_region || '|' || norm_query;
+
+  insert into public.od_place_search_cache as c (
+    query_key,
+    query,
+    region,
+    payload,
+    expires_at,
+    updated_at
+  )
+  values (
+    k,
+    norm_query,
+    norm_region,
+    p_payload,
+    now() + make_interval(days => ttl_days),
+    now()
+  )
+  on conflict (query_key) do update
+    set payload = excluded.payload,
+        expires_at = excluded.expires_at,
+        updated_at = now();
+
+  return jsonb_build_object('success', true);
+end;
+$$;
+
+grant execute on function public.get_od_place_search_cache(text, text) to authenticated;
+grant execute on function public.upsert_od_place_search_cache(text, text, jsonb, int) to authenticated;

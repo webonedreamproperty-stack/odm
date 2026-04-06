@@ -101,3 +101,60 @@ export function haversineDistanceMeters(lat1: number, lng1: number, lat2: number
     Math.cos(toR(lat1)) * Math.cos(toR(lat2)) * Math.sin(dLng / 2) ** 2;
   return 2 * R * Math.asin(Math.min(1, Math.sqrt(s)));
 }
+
+function getCurrentPositionAsync(options: PositionOptions): Promise<GeolocationPosition> {
+  return new Promise((resolve, reject) => {
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      reject(new Error("Geolocation not supported"));
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(resolve, reject, options);
+  });
+}
+
+/**
+ * Safari/macOS often returns POSITION_UNAVAILABLE / kCLErrorLocationUnknown for a “high accuracy” GPS-style fix
+ * on desktop. A second attempt with network/Wi‑Fi positioning (`enableHighAccuracy: false`) usually succeeds.
+ */
+export async function getCurrentPositionWithAccuracyFallback(): Promise<GeolocationPosition> {
+  const high: PositionOptions = { enableHighAccuracy: true, timeout: 20_000, maximumAge: 0 };
+  const low: PositionOptions = { enableHighAccuracy: false, timeout: 28_000, maximumAge: 120_000 };
+
+  try {
+    return await getCurrentPositionAsync(high);
+  } catch (first) {
+    const e = first as GeolocationPositionError;
+    if (e.code === e.PERMISSION_DENIED) throw first;
+    if (e.code === e.POSITION_UNAVAILABLE || e.code === e.TIMEOUT) {
+      return await getCurrentPositionAsync(low);
+    }
+    throw first;
+  }
+}
+
+export function isGeolocationPositionError(e: unknown): e is GeolocationPositionError {
+  return (
+    typeof e === "object" &&
+    e !== null &&
+    "code" in e &&
+    typeof (e as GeolocationPositionError).code === "number" &&
+    [1, 2, 3].includes((e as GeolocationPositionError).code)
+  );
+}
+
+/** User-facing copy; avoids raw WebKit strings like “Position update is unavailable”. */
+export function formatGeolocationUserMessage(e: GeolocationPositionError): string {
+  if (e.code === e.PERMISSION_DENIED) {
+    return "Location access was denied. Allow location for this site in your browser or system settings, then tap “Use my location” again.";
+  }
+  if (e.code === e.TIMEOUT) {
+    return "Location timed out. Try again with a stable network, or wait a few seconds and retry.";
+  }
+  if (e.code === e.POSITION_UNAVAILABLE) {
+    return (
+      "We couldn’t determine your position (common on Mac/Safari over Wi‑Fi only or indoors). " +
+      "Leave Wi‑Fi turned on for assisted location, check System Settings → Privacy & Security → Location Services for Safari, then try again."
+    );
+  }
+  return "Could not read your location. Please try again in a moment.";
+}

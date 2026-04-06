@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { ChevronRight, ExternalLink, LogOut, MapPin, RefreshCw, Sparkles, Store } from "lucide-react";
+import { LogOut, MapPin, RefreshCw, Star, Store } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "../ui/accordion";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -9,11 +9,16 @@ import { useAuth } from "../AuthProvider";
 import { OD_RENEWAL_PACKAGES, formatRm, odPlanLabel, type OdRenewalPackage } from "../../lib/odPricing";
 import { memberSelfRenewOdMembership } from "../../lib/db/members";
 import { startOdRenewalViaBayarcash } from "../../lib/odRenewalCheckout";
-import { fetchOdMemberDirectory, type OdDirectoryShop } from "../../lib/db/odDirectory";
+import {
+  fetchOdMemberDirectory,
+  fetchOdMemberDirectoryPreview,
+  type OdDirectoryShop,
+} from "../../lib/db/odDirectory";
 import { cn } from "../../lib/utils";
 import { OD_BUSINESS_CATEGORIES } from "../../lib/odBusinessCategories";
 import { OD_INDUSTRY_FILTER_LABEL, shopMatchesIndustryFilter } from "../../lib/odMemberDirectoryFilters";
 import { buildAppUrl } from "../../lib/siteConfig";
+import { googlePlacePhotoMediaUrl } from "../../lib/googlePlaceDetails";
 import { OdMembershipCard } from "./OdMembershipCard";
 import {
   Map,
@@ -29,7 +34,10 @@ import { reverseGeocodeToAreaLine } from "../../lib/reverseGeocodeArea";
 import {
   OD_MEMBER_GEO_MOVE_THRESHOLD_M,
   clearMemberGeoPromptDeclined,
+  formatGeolocationUserMessage,
+  getCurrentPositionWithAccuracyFallback,
   haversineDistanceMeters,
+  isGeolocationPositionError,
   isMemberGeoPromptDeclined,
   loadMemberGeoFromLocalStorage,
   saveMemberGeoToLocalStorage,
@@ -57,6 +65,42 @@ function getShopPosterGradient(category: string | null): string {
     return "linear-gradient(145deg, #14532d 0%, #15803d 50%, #4ade80 100%)";
   }
   return "linear-gradient(145deg, #18181b 0%, #3f3f46 55%, #71717a 100%)";
+}
+
+const GOOGLE_MAPS_KEY =
+  typeof import.meta.env.VITE_GOOGLE_MAPS_API_KEY === "string" ? import.meta.env.VITE_GOOGLE_MAPS_API_KEY : "";
+
+function resolveOdDirectoryHeroUrl(shop: OdDirectoryShop, apiKey: string): string | null {
+  const direct = shop.shop_photo_url?.trim();
+  if (direct) return direct;
+  const photoName = shop.google_place_photo_name?.trim();
+  if (photoName && apiKey) return googlePlacePhotoMediaUrl(photoName, apiKey, 900);
+  return null;
+}
+
+/** Shop-uploaded photo, else first Google Place photo from cache (same as public profile). */
+function OdDirectoryVendorHeroSurface({ shop, apiKey }: { shop: OdDirectoryShop; apiKey: string }) {
+  const [imgFailed, setImgFailed] = React.useState(false);
+  const heroUrl = React.useMemo(() => resolveOdDirectoryHeroUrl(shop, apiKey), [shop, apiKey]);
+  const showImg = Boolean(heroUrl) && !imgFailed;
+
+  if (showImg && heroUrl) {
+    return (
+      <img
+        src={heroUrl}
+        alt=""
+        className="h-full w-full object-cover object-center transition duration-300 group-hover:scale-[1.02]"
+        loading="lazy"
+        onError={() => setImgFailed(true)}
+      />
+    );
+  }
+  return (
+    <div
+      className="h-full w-full"
+      style={{ background: getShopPosterGradient(shop.business_category) }}
+    />
+  );
 }
 
 function getShopInitials(name: string): string {
@@ -97,6 +141,7 @@ export const OdMemberAccountPage: React.FC = () => {
   const [dirLoading, setDirLoading] = useState(false);
   const [dirShops, setDirShops] = useState<OdDirectoryShop[]>([]);
   const [dirError, setDirError] = useState<string | null>(null);
+  const [dirPreviewOnly, setDirPreviewOnly] = useState(false);
   const [industryFilter, setIndustryFilter] = useState<"all" | string>("all");
   const [statusAccordionValue, setStatusAccordionValue] = useState<string | undefined>(undefined);
   const [locationAccordionValue, setLocationAccordionValue] = useState<string | undefined>(undefined);
@@ -162,37 +207,27 @@ export const OdMemberAccountPage: React.FC = () => {
   }, []);
 
   const requestMemberLocation = React.useCallback(
-    (memberId: string) => {
+    async (memberId: string) => {
       if (typeof navigator === "undefined" || !navigator.geolocation) {
         setGeoError("Location is not supported on this device.");
         return;
       }
       setGeoLoading(true);
       setGeoError(null);
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          void (async () => {
-            try {
-              await commitGeoReading(memberId, pos);
-            } finally {
-              setGeoLoading(false);
-            }
-          })();
-        },
-        (e) => {
-          setGeoLoading(false);
-          if (e.code === e.PERMISSION_DENIED) {
-            setGeoError(
-              "Location access was denied. You can allow it in your browser settings, then tap Refresh location."
-            );
-          } else if (e.code === e.TIMEOUT) {
-            setGeoError("Location timed out. Try Refresh location or a clearer view of the sky.");
-          } else {
-            setGeoError(e.message || "Could not read your location.");
-          }
-        },
-        { enableHighAccuracy: true, timeout: 20_000, maximumAge: 0 }
-      );
+      try {
+        const pos = await getCurrentPositionWithAccuracyFallback();
+        await commitGeoReading(memberId, pos);
+      } catch (e: unknown) {
+        if (isGeolocationPositionError(e)) {
+          setGeoError(formatGeolocationUserMessage(e));
+        } else if (e instanceof Error && e.message === "Geolocation not supported") {
+          setGeoError("Location is not supported on this device.");
+        } else {
+          setGeoError("Could not read your location.");
+        }
+      } finally {
+        setGeoLoading(false);
+      }
     },
     [commitGeoReading]
   );
@@ -226,22 +261,17 @@ export const OdMemberAccountPage: React.FC = () => {
 
     let cancelled = false;
     setGeoSilentBusy(true);
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
+    void (async () => {
+      try {
+        const pos = await getCurrentPositionWithAccuracyFallback();
         if (cancelled) return;
-        void (async () => {
-          try {
-            await commitGeoReading(id, pos);
-          } finally {
-            if (!cancelled) setGeoSilentBusy(false);
-          }
-        })();
-      },
-      () => {
+        await commitGeoReading(id, pos);
+      } catch {
+        /* silent refresh — no toast; user can use “Use my location” for a message */
+      } finally {
         if (!cancelled) setGeoSilentBusy(false);
-      },
-      { enableHighAccuracy: true, timeout: 20_000, maximumAge: 0 }
-    );
+      }
+    })();
     return () => {
       cancelled = true;
     };
@@ -295,26 +325,24 @@ export const OdMemberAccountPage: React.FC = () => {
     (!m.validFrom || new Date(m.validFrom) <= new Date());
 
   useEffect(() => {
-    if (!active) {
-      setDirShops([]);
-      setDirError(null);
-      setDirLoading(false);
-      return;
-    }
     let cancelled = false;
     setDirLoading(true);
     setDirError(null);
+    setDirPreviewOnly(!active);
     void (async () => {
-      const res = await fetchOdMemberDirectory();
+      const res = active ? await fetchOdMemberDirectory() : await fetchOdMemberDirectoryPreview(2);
       if (cancelled) return;
       setDirLoading(false);
       if (res.ok === true) {
         setDirShops(res.shops);
+        if (!active) setDirPreviewOnly(true);
       } else if (res.error === "membership_not_active") {
         setDirShops([]);
         setDirError(null);
       } else {
-        setDirError(res.message ?? "Could not load directory.");
+        setDirError(
+          active ? res.message ?? "Could not load directory." : res.message ?? "Could not load vendor preview."
+        );
         setDirShops([]);
       }
     })();
@@ -326,6 +354,7 @@ export const OdMemberAccountPage: React.FC = () => {
   const filteredShops = useMemo(() => {
     return dirShops.filter((shop) => shopMatchesIndustryFilter(shop.business_category, industryFilter));
   }, [dirShops, industryFilter]);
+  const directoryShopsToRender = active ? filteredShops : dirShops;
 
   const accountQrUrl = useMemo(() => {
     if (typeof window === "undefined") return "";
@@ -658,7 +687,7 @@ export const OdMemberAccountPage: React.FC = () => {
           </Accordion>
         </div>
 
-        {active && (
+        {(active || dirLoading || dirShops.length > 0) && (
           <div className="rounded-[1.5rem] border border-black/[0.06] bg-white shadow-[0_2px_40px_rgba(0,0,0,0.04)]">
             <div className="overflow-hidden rounded-t-[1.5rem] border-b border-black/[0.05] bg-gradient-to-b from-[#faf9f7] via-white to-white px-5 pb-5 pt-6 sm:px-6">
               <div className="flex items-start gap-3">
@@ -670,15 +699,25 @@ export const OdMemberAccountPage: React.FC = () => {
                     Participating shops & services
                   </h2>
                   <p className="mt-2 text-[15px] leading-relaxed text-[#3d3830]">
-                    Member pricing at these businesses. At the counter, open verification and show staff the green
-                    screen.
+                    {active
+                      ? "Member pricing at these businesses. At the counter, open verification and show staff the green screen."
+                      : "Preview a few participating vendors. Renew to unlock the full directory, discounts, and all OD member perks."}
                   </p>
                 </div>
               </div>
             </div>
 
             <div className="px-5 pb-6 pt-5 sm:px-6">
-              {!dirLoading && !dirError && dirShops.length > 0 && (
+              {!active && !dirLoading && !dirError && dirPreviewOnly && dirShops.length > 0 && (
+                <div className="mb-5 rounded-2xl border border-amber-200/80 bg-amber-50/80 px-4 py-3">
+                  <p className="text-sm leading-relaxed text-amber-900">
+                    You are seeing a preview of {dirShops.length} vendor{dirShops.length > 1 ? "s" : ""}. Renew now to
+                    access the full OD directory and save more with member-only deals.
+                  </p>
+                </div>
+              )}
+
+              {!dirLoading && !dirError && active && dirShops.length > 0 && (
                 <div className="mb-6">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#8a8276]">Browse by industry</p>
                   <div className="mt-3 flex flex-wrap gap-2">
@@ -727,7 +766,7 @@ export const OdMemberAccountPage: React.FC = () => {
                 </p>
               )}
 
-              {!dirLoading && !dirError && dirShops.length > 0 && filteredShops.length === 0 && (
+              {!dirLoading && !dirError && active && dirShops.length > 0 && filteredShops.length === 0 && (
                 <p className="rounded-2xl border border-dashed border-black/[0.1] bg-[#faf9f6] px-5 py-10 text-center text-[15px] leading-relaxed text-[#6d6658]">
                   No shops in this category. Try{" "}
                   <button
@@ -741,81 +780,56 @@ export const OdMemberAccountPage: React.FC = () => {
                 </p>
               )}
 
-              {!dirLoading && filteredShops.length > 0 && (
+              {!dirLoading && directoryShopsToRender.length > 0 && (
                 <ul
                   className="-mx-5 flex touch-pan-x snap-x snap-mandatory gap-5 overflow-x-auto scroll-pl-5 scroll-pr-5 pb-1 pl-5 pr-5 [-ms-overflow-style:none] [scrollbar-width:none] sm:-mx-6 sm:scroll-pl-6 sm:scroll-pr-6 sm:pl-6 sm:pr-6 md:mx-0 md:grid md:max-w-none md:grid-cols-2 md:gap-6 md:overflow-visible md:px-0 md:pb-0 md:pl-0 md:pr-0 md:scroll-pl-0 md:scroll-pr-0 [&::-webkit-scrollbar]:hidden"
                 >
-                  {filteredShops.map((shop: OdDirectoryShop) => (
+                  {directoryShopsToRender.map((shop: OdDirectoryShop) => (
                     <li
                       key={shop.owner_id}
                       className="w-[min(88vw,380px)] shrink-0 snap-center md:w-full md:min-w-0 md:snap-none"
                     >
-                      <article className="group overflow-hidden rounded-[1.35rem] bg-white shadow-[0_4px_24px_rgba(0,0,0,0.06)] ring-1 ring-black/[0.05] transition duration-300 hover:shadow-[0_12px_48px_rgba(0,0,0,0.1)] hover:ring-black/[0.08]">
-                        <div
-                          className="relative aspect-[21/10] min-h-[128px] overflow-hidden sm:aspect-[2/1]"
-                          style={{ background: getShopPosterGradient(shop.business_category) }}
-                        >
-                          <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_70%_20%,rgba(255,255,255,0.15),transparent)]" />
+                      <article className="group overflow-hidden rounded-[1.2rem] bg-[#202124] text-[#e8eaed] shadow-[0_6px_24px_rgba(0,0,0,0.22)] ring-1 ring-black/20">
+                        <div className="relative aspect-[4/5] min-h-[168px] w-full overflow-hidden sm:aspect-[16/10] sm:min-h-[200px]">
+                          <OdDirectoryVendorHeroSurface shop={shop} apiKey={GOOGLE_MAPS_KEY} />
                           <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/25 to-transparent" />
-                          <div className="absolute right-4 top-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-white/18 text-lg font-semibold tracking-tight text-white shadow-lg backdrop-blur-md ring-1 ring-white/25">
-                            {getShopInitials(shop.business_name)}
-                          </div>
-                          <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-5">
-                            {shop.business_category ? (
-                              <span className="mb-2 inline-flex rounded-lg bg-white/22 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-white backdrop-blur-md">
-                                {OD_INDUSTRY_FILTER_LABEL[shop.business_category] ?? shop.business_category}
-                              </span>
-                            ) : null}
-                            <h3 className="text-lg font-semibold leading-tight tracking-tight text-white drop-shadow-sm sm:text-xl">
+                          <div className="absolute bottom-0 left-0 right-0 p-4">
+                            <h3 className="truncate text-[18px] font-semibold tracking-tight text-white">
                               {shop.business_name}
                             </h3>
+                            <div className="mt-1 flex items-center gap-2 text-[12px] text-[#d5d7da]">
+                              <Star className="h-3.5 w-3.5 fill-[#fdd663] text-[#fdd663]" aria-hidden />
+                              <span>
+                                {shop.rating != null ? shop.rating.toFixed(1) : "—"}
+                                {shop.rating_count != null ? ` (${shop.rating_count})` : ""}
+                              </span>
+                              {shop.business_category ? (
+                                <>
+                                  <span>·</span>
+                                  <span className="truncate">
+                                    {OD_INDUSTRY_FILTER_LABEL[shop.business_category] ?? shop.business_category}
+                                  </span>
+                                </>
+                              ) : null}
+                            </div>
                           </div>
                         </div>
 
-                        <div className="space-y-4 p-5 sm:p-6">
-                          {shop.area && (
-                            <div className="flex items-start gap-2.5 text-[14px] text-[#5c554a]">
-                              <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[#8a8276]" aria-hidden />
-                              <span className="leading-snug">{shop.area}</span>
+                        <div className="p-4">
+                          <p className="text-[11px] font-semibold uppercase tracking-[0.13em] text-[#9aa0a6]">Services</p>
+                          {shop.services && shop.services.length > 0 ? (
+                            <div className="mt-2 flex flex-wrap gap-2">
+                              {shop.services.slice(0, 6).map((svc) => (
+                                <span
+                                  key={svc.id}
+                                  className="rounded-full bg-white/10 px-2.5 py-1 text-[12px] text-[#e8eaed] ring-1 ring-white/10"
+                                >
+                                  {svc.name}
+                                </span>
+                              ))}
                             </div>
-                          )}
-
-                          {shop.discount_summary && (
-                            <div className="flex gap-3 rounded-2xl bg-emerald-50/90 px-4 py-3 ring-1 ring-emerald-200/60">
-                              <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-emerald-700" aria-hidden />
-                              <p className="text-[14px] font-medium leading-snug text-emerald-900">{shop.discount_summary}</p>
-                            </div>
-                          )}
-
-                          {shop.maps_url && /^https?:\/\//i.test(shop.maps_url) && (
-                            <a
-                              href={shop.maps_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="flex items-center justify-between gap-3 rounded-2xl border border-black/[0.06] bg-[#faf9f7] px-4 py-3.5 text-[14px] font-medium text-[#1b1813] transition hover:border-black/12 hover:bg-[#f5f3ef] active:scale-[0.99]"
-                            >
-                              <span className="flex items-center gap-2">
-                                <ExternalLink className="h-4 w-4 opacity-70" aria-hidden />
-                                Directions
-                              </span>
-                              <ChevronRight className="h-4 w-4 text-[#8a8276]" aria-hidden />
-                            </a>
-                          )}
-
-                          {shop.services && shop.services.length > 0 && (
-                            <div className="border-t border-black/[0.06] pt-4">
-                              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#8a8276]">Services</p>
-                              <ul className="mt-3 divide-y divide-black/[0.05]">
-                                {shop.services.map((svc) => (
-                                  <li key={svc.id} className="py-2.5 first:pt-0 last:pb-0">
-                                    <span className="text-[15px] font-medium text-[#1b1813]">{svc.name}</span>
-                                    {svc.description ? (
-                                      <p className="mt-0.5 text-[14px] leading-relaxed text-[#6d6658]">{svc.description}</p>
-                                    ) : null}
-                                  </li>
-                                ))}
-                              </ul>
-                            </div>
+                          ) : (
+                            <p className="mt-2 text-[13px] text-[#9aa0a6]">No services listed yet.</p>
                           )}
                         </div>
                       </article>
@@ -837,6 +851,10 @@ export const OdMemberAccountPage: React.FC = () => {
                   ? "You will complete payment on Bayarcash, then return here when paid."
                   : "Confirming applies your membership immediately in this app."}
               </p>
+              <div className="mt-3 rounded-2xl border border-emerald-200/70 bg-emerald-50/80 px-4 py-3 text-sm leading-relaxed text-emerald-900">
+                Renew to unlock full OD privileges: all participating vendors, member-only discounts, and easier trip
+                planning with maps and service details. Member pricing can save your costs across frequent visits.
+              </div>
               <div className="mt-5 grid gap-4 sm:grid-cols-2">
                 {OD_RENEWAL_PACKAGES.map((pkg) => (
                   <div

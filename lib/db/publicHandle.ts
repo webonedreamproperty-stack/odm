@@ -11,6 +11,10 @@ export type PublicVendorHandle = {
   shop_photo_url: string | null;
   business_category: string | null;
   directory_visible: boolean;
+  /** Google Place ID when linked from Places search in Settings. */
+  google_place_id: string | null;
+  /** Cached Place Details (New) JSON from Supabase; null if not linked or cache expired. */
+  place_details: Record<string, unknown> | null;
 };
 
 export type PublicMemberHandle = {
@@ -46,6 +50,11 @@ export async function fetchPublicHandlePage(handle: string): Promise<PublicHandl
 
   const kind = row.kind;
   if (kind === "vendor") {
+    const rawDetails = row.place_details;
+    const placeDetails =
+      rawDetails != null && typeof rawDetails === "object" && !Array.isArray(rawDetails)
+        ? (rawDetails as Record<string, unknown>)
+        : null;
     return {
       ok: true,
       data: {
@@ -59,6 +68,8 @@ export async function fetchPublicHandlePage(handle: string): Promise<PublicHandl
         shop_photo_url: row.shop_photo_url != null ? String(row.shop_photo_url) : null,
         business_category: row.business_category != null ? String(row.business_category) : null,
         directory_visible: Boolean(row.directory_visible),
+        google_place_id: row.google_place_id != null ? String(row.google_place_id) : null,
+        place_details: placeDetails,
       },
     };
   }

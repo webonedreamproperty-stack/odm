@@ -13,11 +13,12 @@ import { OD_BUSINESS_CATEGORIES, type OdBusinessCategory } from "../lib/odBusine
 import { OD_INDUSTRY_FILTER_LABEL } from "../lib/odMemberDirectoryFilters";
 import { normalizeOdListingAreaValue } from "../lib/odListingAreaLocations";
 import { printOdVerifySheet } from "../lib/printOdVerifySheet";
+import { fetchGooglePlaceDetails } from "../lib/googlePlaceDetails";
 import { supabase } from "../lib/supabase";
 import QRCode from "react-qr-code";
 import { Link, useNavigate } from "react-router-dom";
 import { useSubscriptionContext } from "./SubscriptionContext";
-import { OdListingAreaCombobox } from "./OdListingAreaCombobox";
+import { OdGooglePlaceSearch } from "./OdGooglePlaceSearch";
 
 const DELETE_CONFIRMATION = "DELETE";
 
@@ -102,6 +103,7 @@ export const SettingsPage: React.FC<{ embedded?: boolean }> = ({ embedded = fals
   const [odListingMsg, setOdListingMsg] = useState("");
   const [odListingLat, setOdListingLat] = useState<number | null>(null);
   const [odListingLng, setOdListingLng] = useState<number | null>(null);
+  const [odGooglePlaceId, setOdGooglePlaceId] = useState<string>("");
 
   const odVerifyQrRef = useRef<HTMLDivElement>(null);
 
@@ -118,7 +120,7 @@ export const SettingsPage: React.FC<{ embedded?: boolean }> = ({ embedded = fals
     const { data: row, error } = await supabase
       .from("profiles")
       .select(
-        "od_directory_visible, od_discount_summary, od_listing_area, od_listing_lat, od_listing_lng, od_maps_url"
+        "od_directory_visible, od_discount_summary, od_listing_area, od_listing_lat, od_listing_lng, od_maps_url, od_google_place_id"
       )
       .eq("id", currentOwner.id)
       .maybeSingle();
@@ -130,6 +132,7 @@ export const SettingsPage: React.FC<{ embedded?: boolean }> = ({ embedded = fals
         od_listing_lat?: number | null;
         od_listing_lng?: number | null;
         od_maps_url?: string | null;
+        od_google_place_id?: string | null;
       };
       setOdDirVisible(r.od_directory_visible !== false);
       setOdDiscountSummary(r.od_discount_summary ?? "");
@@ -139,6 +142,7 @@ export const SettingsPage: React.FC<{ embedded?: boolean }> = ({ embedded = fals
       setOdListingLat(typeof lat === "number" && Number.isFinite(lat) ? lat : null);
       setOdListingLng(typeof lng === "number" && Number.isFinite(lng) ? lng : null);
       setOdMapsUrl(r.od_maps_url ?? "");
+      setOdGooglePlaceId((r.od_google_place_id ?? "").trim());
     }
     const { data: svc } = await supabase
       .from("od_shop_services")
@@ -166,12 +170,34 @@ export const SettingsPage: React.FC<{ embedded?: boolean }> = ({ embedded = fals
         od_listing_lat: odListingLat,
         od_listing_lng: odListingLng,
         od_maps_url: normalizeOdMapsUrl(odMapsUrl),
+        od_google_place_id: odGooglePlaceId.trim() || null,
       })
       .eq("id", currentOwner.id);
     setOdListingSaveBusy(false);
     if (error) {
       setOdListingMsg("Could not save OD listing. Try again.");
       return;
+    }
+    const mapsKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY?.trim();
+    const pid = odGooglePlaceId.trim();
+    if (pid && mapsKey) {
+      try {
+        const details = await fetchGooglePlaceDetails(pid, mapsKey);
+        const { error: cacheErr } = await supabase.rpc("upsert_od_place_details_cache", {
+          p_place_id: pid,
+          p_payload: details,
+          p_ttl_days: 30,
+        });
+        if (cacheErr) {
+          setOdListingMsg("Listing saved. Place details cache update failed — public card may update on next save.");
+          window.setTimeout(() => setOdListingMsg(""), 5000);
+          return;
+        }
+      } catch {
+        setOdListingMsg("Listing saved. Could not refresh Google place details for the public card.");
+        window.setTimeout(() => setOdListingMsg(""), 5000);
+        return;
+      }
     }
     setOdListingMsg("OD listing saved.");
     window.setTimeout(() => setOdListingMsg(""), 3000);
@@ -412,6 +438,29 @@ export const SettingsPage: React.FC<{ embedded?: boolean }> = ({ embedded = fals
                 className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               />
             </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="od-listing-area">Area / neighbourhood (optional)</Label>
+              <p className="text-xs text-muted-foreground">
+                Search with Google Places. We cache results in Supabase for 1 month to reduce API calls. Pick a result
+                to auto-fill area, coordinates, and Google Maps link.
+              </p>
+              <OdGooglePlaceSearch
+                id="od-listing-area"
+                value={odListingArea}
+                onChange={setOdListingArea}
+                listingLat={odListingLat}
+                listingLng={odListingLng}
+                onCoordinatesChange={(lat, lng) => {
+                  setOdListingLat(lat);
+                  setOdListingLng(lng);
+                }}
+                onMapsUrlChange={setOdMapsUrl}
+                onGooglePlaceIdChange={(id) => setOdGooglePlaceId(id ?? "")}
+                disabled={odListingBusy}
+              />
+            </div>
+            
             <div className="space-y-1.5">
               <Label htmlFor="od-maps-url">Google Maps link (optional)</Label>
               <p className="text-xs text-muted-foreground">
@@ -430,26 +479,7 @@ export const SettingsPage: React.FC<{ embedded?: boolean }> = ({ embedded = fals
                 className="font-mono text-[12px]"
               />
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="od-listing-area">Area / neighbourhood (optional)</Label>
-              <p className="text-xs text-muted-foreground">
-                Search by city and state, type your own line, use GPS, or open the map to drag a pin to your exact
-                spot — coordinates save with your listing for members. Shown on the member directory; separate from the
-                Google Maps link above.
-              </p>
-              <OdListingAreaCombobox
-                id="od-listing-area"
-                value={odListingArea}
-                onChange={setOdListingArea}
-                listingLat={odListingLat}
-                listingLng={odListingLng}
-                onCoordinatesChange={(lat, lng) => {
-                  setOdListingLat(lat);
-                  setOdListingLng(lng);
-                }}
-                disabled={odListingBusy}
-              />
-            </div>
+       
             <div className="space-y-2">
               <Label>Services (optional)</Label>
               <p className="text-xs text-muted-foreground">List what OD members can redeem or use a discount on.</p>
