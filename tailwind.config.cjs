@@ -12,8 +12,8 @@ module.exports = {
   theme: {
     extend: {
       fontFamily: {
-        sans: ["-apple-system", "BlinkMacSystemFont", "\"SF Pro Text\"", "\"Segoe UI\"", "sans-serif"],
-        display: ["-apple-system", "BlinkMacSystemFont", "\"SF Pro Display\"", "\"Segoe UI\"", "sans-serif"],
+        sans: ["Montserrat", "-apple-system", "BlinkMacSystemFont", "\"Segoe UI\"", "sans-serif"],
+        display: ["Montserrat", "-apple-system", "BlinkMacSystemFont", "\"Segoe UI\"", "sans-serif"],
       },
       colors: {
         border: "hsl(var(--border))",

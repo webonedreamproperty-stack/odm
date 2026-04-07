@@ -123,6 +123,7 @@ export const OdVendorSignupPage: React.FC = () => {
                         printOdVerifySheet({
                           verifyUrl,
                           qrSvgOuterHTML: odVerifyQrRef.current?.querySelector("svg")?.outerHTML,
+                          shopName: defaultBusinessNameFromEmail(email),
                         })
                       }
                     >

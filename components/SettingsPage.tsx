@@ -188,8 +188,15 @@ export const SettingsPage: React.FC<{ embedded?: boolean }> = ({ embedded = fals
     if (!currentOwner?.slug) return;
     const verifyUrl = buildOdVerifyUrl(currentOwner.slug);
     const svg = odVerifyQrRef.current?.querySelector("svg");
-    printOdVerifySheet({ verifyUrl, qrSvgOuterHTML: svg?.outerHTML });
-  }, [currentOwner?.slug]);
+    const shopName = (profileForm.businessName || currentUser?.businessName || "").trim();
+    const discountLine = odDiscountSummary.trim();
+    printOdVerifySheet({
+      verifyUrl,
+      qrSvgOuterHTML: svg?.outerHTML,
+      ...(shopName ? { shopName } : {}),
+      ...(discountLine ? { discountLine } : {}),
+    });
+  }, [currentOwner?.slug, profileForm.businessName, currentUser?.businessName, odDiscountSummary]);
 
   const loadOdListing = useCallback(async () => {
     if (!currentOwner?.id || currentUser?.role !== "owner") return;
@@ -573,7 +580,8 @@ export const SettingsPage: React.FC<{ embedded?: boolean }> = ({ embedded = fals
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground">
-                Opens a print view with only the OD Member logo and QR — save as PDF or print for your counter.
+                Opens a print-ready flyer (logo, QR, shop name, and your OD offer if set) — save as PDF or print for your
+                counter.
               </p>
             </div>
           </div>

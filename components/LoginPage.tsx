@@ -147,6 +147,14 @@ export const LoginPage: React.FC = () => {
             <>Use the email and password for your OD membership (not your business dashboard login).</>
           )}
         </p>
+        {loginMode === "member" && (
+          <p className="text-sm text-[#6d6658]">
+            New OD member?{" "}
+            <Link to="/od/member/signup" className="font-semibold text-[#1b1813] underline-offset-2 hover:underline">
+              Register as OD member
+            </Link>
+          </p>
+        )}
 
         <div className="space-y-1.5">
           <label className={labelCls}>Email</label>

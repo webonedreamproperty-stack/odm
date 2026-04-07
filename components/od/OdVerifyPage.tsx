@@ -16,6 +16,7 @@ export const OdVerifyPage: React.FC = () => {
   } | null>(null);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [now, setNow] = useState(() => new Date());
 
   const nextPath = `/od/verify/${encodeURIComponent(shopSlug ?? "")}`;
 
@@ -35,7 +36,7 @@ export const OdVerifyPage: React.FC = () => {
       const res = await getOdMemberShopVerification(shopSlug);
       if (!active) return;
       setPending(false);
-      if (!res.ok) {
+      if (res.ok === false) {
         setFetchError(res.error === "not_authenticated" ? "Session expired. Sign in again." : String(res.error));
         setResult(null);
         return;
@@ -52,6 +53,11 @@ export const OdVerifyPage: React.FC = () => {
       active = false;
     };
   }, [shopSlug, currentMember, accountKind, loading]);
+
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(new Date()), 1000);
+    return () => window.clearInterval(id);
+  }, []);
 
   if (!shopSlug) {
     return (
@@ -149,6 +155,10 @@ export const OdVerifyPage: React.FC = () => {
             : `No active OD Member. Staff should not apply OD Member discounts until this shows green.`}
         </p>
         <div className="mt-8 rounded-2xl bg-black/[0.04] px-4 py-3 text-left text-sm">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#6b7280]">Verified at</div>
+          <div className="mt-1 text-[#111827]">
+            {now.toLocaleString(undefined, { dateStyle: "full", timeStyle: "medium" })}
+          </div>
           <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#6b7280]">Shop</div>
           <div className="mt-1 font-medium text-[#111827]">{result.shopName}</div>
           <div className="mt-4 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#6b7280]">Member ID (disputes)</div>

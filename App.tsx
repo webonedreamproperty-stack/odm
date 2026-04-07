@@ -87,6 +87,7 @@ const SettingsPage = lazy(() => import('./components/SettingsPage').then((module
 const ForgotPasswordPage = lazy(() => import('./components/ForgotPasswordPage').then((module) => ({ default: module.ForgotPasswordPage })));
 const DashboardPage = lazy(() => import('./components/DashboardPage').then((module) => ({ default: module.DashboardPage })));
 const PublicCampaignSignupPage = lazy(() => import('./components/PublicCampaignSignupPage').then((module) => ({ default: module.PublicCampaignSignupPage })));
+const OdHomeLandingPage = lazy(() => import('./components/OdHomeLandingPage').then((module) => ({ default: module.OdHomeLandingPage })));
 const OdLoginHubPage = lazy(() => import('./components/od/OdLoginHubPage').then((module) => ({ default: module.OdLoginHubPage })));
 const OdMemberLoginPage = lazy(() => import('./components/od/OdMemberLoginPage').then((module) => ({ default: module.OdMemberLoginPage })));
 const OdVendorLoginPage = lazy(() => import('./components/od/OdVendorLoginPage').then((module) => ({ default: module.OdVendorLoginPage })));
@@ -677,7 +678,7 @@ const AppRoutes: React.FC = () => {
       )}
       <Routes>
         {/* Public Routes */}
-        <Route path="/" element={<Navigate to="/login" replace />} />
+        <Route path="/" element={withSuspense(<OdHomeLandingPage />)} />
         <Route path="/:slug/staff" element={withSuspense(<StaffLoginPage />)} />
         <Route path="/:slug/scan/:uniqueId" element={<StaffScanEntryWrapper />} />
         <Route path="/:slug/join/:campaignId" element={withSuspense(<PublicCampaignSignupPage />)} />

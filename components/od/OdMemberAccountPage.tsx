@@ -990,16 +990,16 @@ export const OdMemberAccountPage: React.FC = () => {
             </div>
 
             <div className="px-5 pb-6 pt-5 sm:px-6">
-              {!active && !dirLoading && !dirError && dirPreviewOnly && dirShops.length > 0 && (
+              {/* {!active && !dirLoading && !dirError && dirPreviewOnly && dirShops.length > 0 && (
                 <div className="mb-5 rounded-2xl border border-amber-200/80 bg-amber-50/80 px-4 py-3">
                   <p className="text-sm leading-relaxed text-amber-900">
-                    You are seeing a preview of {dirShops.length} vendor{dirShops.length > 1 ? "s" : ""}. Renew now to
+                    You are seeing a preview of {dirShops.length} partner{dirShops.length > 1 ? "s" : ""}. Renew now to
                     access the full OD directory and save more with member-only deals.
                   </p>
                 </div>
-              )}
+              )} */}
 
-              {!dirLoading && !dirError && active && dirShops.length > 0 && (
+              {!dirLoading && !dirError && !active && dirShops.length > 0 && (
                 <div className="mb-6">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#8a8276]">Browse by industry</p>
                   <div className="mt-3 flex flex-wrap gap-2">

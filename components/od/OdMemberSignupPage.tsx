@@ -116,8 +116,8 @@ export const OdMemberSignupPage: React.FC = () => {
 
         <p className="mt-8 text-center text-sm text-[#6d6658]">
           Already have an account?{" "}
-          <Link className="font-semibold text-[#1b1813] underline-offset-2 hover:underline" to="/od/member/login">
-            Sign in
+          <Link className="font-semibold text-[#1b1813] underline-offset-2 hover:underline" to="/login">
+            Login
           </Link>
         </p>
         <p hidden className="mt-4 text-center text-sm text-[#8a8276]">
