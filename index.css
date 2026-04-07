@@ -128,3 +128,12 @@ h3 {
 .maplibregl-popup-tip {
   display: none !important;
 }
+
+/* iOS Safari zooms when focused control font-size < 16px. Keep controls at 16px on mobile. */
+@media (max-width: 768px) {
+  input,
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
