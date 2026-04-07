@@ -745,6 +745,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const updates: Record<string, string | null> = {};
     if (payload.businessName?.trim()) updates.business_name = payload.businessName.trim();
     if (payload.email?.trim()) updates.email = payload.email.trim().toLowerCase();
+    if (payload.slug !== undefined && currentUser.role === "owner") {
+      const normalized = normalizeSlug(payload.slug);
+      updates.slug = normalized.length > 0 ? normalized : null;
+    }
     if (payload.odBusinessCategory !== undefined) {
       const t = payload.odBusinessCategory.trim();
       updates.od_business_category = t.length > 0 ? t : null;

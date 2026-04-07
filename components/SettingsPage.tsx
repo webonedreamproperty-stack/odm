@@ -21,8 +21,16 @@ import { useSubscriptionContext } from "./SubscriptionContext";
 import { OdGooglePlaceSearch } from "./OdGooglePlaceSearch";
 import { VendorPublicPlaceCard } from "./VendorPublicPlaceCard";
 import type { PublicVendorHandle } from "../lib/db/publicHandle";
+import { getSlugHint, isSlugValid, normalizeSlug } from "../lib/slug";
 
 const DELETE_CONFIRMATION = "DELETE";
+
+function buildReachableSlugCandidate(raw: string): string {
+  const normalized = normalizeSlug(raw);
+  if (normalized.length >= 3) return normalized.slice(0, 30);
+  if (!normalized) return "";
+  return normalized;
+}
 
 /** Persist Google Maps share links with a scheme so member “Directions” opens reliably. */
 function normalizeOdMapsUrl(raw: string): string | null {
@@ -38,7 +46,7 @@ function normalizeOdMapsUrl(raw: string): string | null {
 
 export const SettingsPage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
   const navigate = useNavigate();
-  const { staffAccounts, createStaff, updateStaffPin, setStaffAccess, deleteStaff, currentOwner, currentUser, deleteAccount, updateProfileInfo, updatePassword } = useAuth();
+  const { staffAccounts, createStaff, updateStaffPin, setStaffAccess, deleteStaff, currentOwner, currentUser, deleteAccount, updateProfileInfo, updatePassword, isSlugAvailable } = useAuth();
   useSubscriptionContext();
 
   const [profileForm, setProfileForm] = useState<{
@@ -55,6 +63,9 @@ export const SettingsPage: React.FC<{ embedded?: boolean }> = ({ embedded = fals
   const [profileSuccess, setProfileSuccess] = useState("");
   const [profileError, setProfileError] = useState("");
   const [profileBusy, setProfileBusy] = useState(false);
+  const [slugAvailable, setSlugAvailable] = useState(true);
+  const [slugChecking, setSlugChecking] = useState(false);
+  const [slugCheckFailed, setSlugCheckFailed] = useState(false);
 
   useEffect(() => {
     const rawCat = currentUser?.odBusinessCategory;
@@ -69,6 +80,51 @@ export const SettingsPage: React.FC<{ embedded?: boolean }> = ({ embedded = fals
       odBusinessCategory: validCat,
     });
   }, [currentUser, currentOwner]);
+
+  const normalizedSlug = normalizeSlug(profileForm.slug);
+  const slugValid = isSlugValid(normalizedSlug);
+  const slugHint = getSlugHint(normalizedSlug);
+  const slugChanged = normalizedSlug !== (currentOwner?.slug ?? "");
+
+  useEffect(() => {
+    if (currentUser?.role !== "owner") return;
+    if (!slugChanged) {
+      setSlugAvailable(true);
+      setSlugChecking(false);
+      setSlugCheckFailed(false);
+      return;
+    }
+    if (!slugValid) {
+      setSlugAvailable(false);
+      setSlugChecking(false);
+      setSlugCheckFailed(false);
+      return;
+    }
+    let cancelled = false;
+    setSlugChecking(true);
+    const timer = window.setTimeout(async () => {
+      try {
+        const available = await isSlugAvailable(normalizedSlug);
+        if (!cancelled) {
+          setSlugAvailable(available);
+          setSlugCheckFailed(false);
+          setSlugChecking(false);
+        }
+      } catch {
+        if (!cancelled) {
+          setSlugAvailable(false);
+          setSlugCheckFailed(true);
+          setSlugChecking(false);
+        }
+      }
+    }, 280);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+      setSlugChecking(false);
+    };
+  }, [currentUser?.role, slugChanged, slugValid, normalizedSlug, isSlugAvailable]);
 
   const [passwordForm, setPasswordForm] = useState({ next: "", confirm: "" });
   const [passwordSuccess, setPasswordSuccess] = useState("");
@@ -113,6 +169,20 @@ export const SettingsPage: React.FC<{ embedded?: boolean }> = ({ embedded = fals
   const [odPlacePreviewErr, setOdPlacePreviewErr] = useState<string | null>(null);
 
   const odVerifyQrRef = useRef<HTMLDivElement>(null);
+
+  // Default slug from Google/cached place name (listing area), then business name.
+  // Only applies when slug is currently empty so we don't overwrite manual edits.
+  useEffect(() => {
+    if (currentUser?.role !== "owner") return;
+    const sourceName = odListingArea.trim() || profileForm.businessName.trim();
+    if (!sourceName) return;
+    const candidate = buildReachableSlugCandidate(sourceName);
+    if (!candidate) return;
+    setProfileForm((prev) => {
+      if (prev.slug.trim()) return prev;
+      return { ...prev, slug: candidate };
+    });
+  }, [currentUser?.role, odListingArea, profileForm.businessName]);
 
   const handlePrintOdVerifySheet = useCallback(() => {
     if (!currentOwner?.slug) return;
@@ -321,14 +391,25 @@ export const SettingsPage: React.FC<{ embedded?: boolean }> = ({ embedded = fals
     event.preventDefault();
     setProfileError("");
     setProfileSuccess("");
+    if (currentUser?.role === "owner") {
+      if (!slugValid) {
+        setProfileError("Public URL slug is invalid. Use lowercase letters, numbers, and hyphens.");
+        return;
+      }
+      if (slugChanged && !slugAvailable && !slugCheckFailed) {
+        setProfileError("That public URL slug is already taken.");
+        return;
+      }
+    }
     setProfileBusy(true);
     const result = await updateProfileInfo({
       businessName: profileForm.businessName,
       email: profileForm.email,
+      ...(currentUser?.role === "owner" ? { slug: normalizedSlug } : {}),
       ...(currentUser?.role === "owner" ? { odBusinessCategory: profileForm.odBusinessCategory } : {}),
     });
     setProfileBusy(false);
-    if (!result.ok) {
+    if (result.ok === false) {
       setProfileError(result.error);
     } else {
       setProfileSuccess("Profile updated successfully.");
@@ -347,7 +428,7 @@ export const SettingsPage: React.FC<{ embedded?: boolean }> = ({ embedded = fals
     setPasswordBusy(true);
     const result = await updatePassword(passwordForm.next);
     setPasswordBusy(false);
-    if (!result.ok) {
+    if (result.ok === false) {
       setPasswordError(result.error);
     } else {
       setPasswordSuccess("Password changed successfully.");
@@ -363,7 +444,7 @@ export const SettingsPage: React.FC<{ embedded?: boolean }> = ({ embedded = fals
     setStaffBusy(true);
     const result = await createStaff(form);
     setStaffBusy(false);
-    if (!result.ok) {
+    if (result.ok === false) {
       setError(result.error);
       return;
     }
@@ -376,7 +457,7 @@ export const SettingsPage: React.FC<{ embedded?: boolean }> = ({ embedded = fals
     setResetBusy(true);
     const result = await updateStaffPin(resetTarget.id, resetPin);
     setResetBusy(false);
-    if (!result.ok) {
+    if (result.ok === false) {
       setResetError(result.error);
       return;
     }
@@ -389,7 +470,7 @@ export const SettingsPage: React.FC<{ embedded?: boolean }> = ({ embedded = fals
     setStaffActionBusyId(staffId);
     const result = await setStaffAccess(staffId, access);
     setStaffActionBusyId(null);
-    if (!result.ok) {
+    if (result.ok === false) {
       setStaffActionError(result.error);
     }
   };
@@ -404,7 +485,7 @@ export const SettingsPage: React.FC<{ embedded?: boolean }> = ({ embedded = fals
     setDeleteAccountBusy(true);
     const result = await deleteAccount();
     setDeleteAccountBusy(false);
-    if (!result.ok) {
+    if (result.ok === false) {
       setDeleteError(result.error);
       return;
     }
@@ -420,7 +501,7 @@ export const SettingsPage: React.FC<{ embedded?: boolean }> = ({ embedded = fals
     setDeleteStaffBusy(true);
     const result = await deleteStaff(deleteStaffTarget.id);
     setDeleteStaffBusy(false);
-    if (!result.ok) {
+    if (result.ok === false) {
       setDeleteStaffError(result.error);
       return;
     }
@@ -709,27 +790,42 @@ export const SettingsPage: React.FC<{ embedded?: boolean }> = ({ embedded = fals
                     </span>
                     <Input
                       value={profileForm.slug}
-                      readOnly
-                      className="bg-muted/40 text-muted-foreground cursor-not-allowed"
+                      onChange={(e) =>
+                        setProfileForm({ ...profileForm, slug: buildReachableSlugCandidate(e.target.value) })
+                      }
+                      className="font-mono"
+                      placeholder="your-brand"
+                      autoComplete="off"
                     />
                   </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    {slugChecking
+                      ? "Checking slug availability..."
+                      : slugChanged
+                        ? slugCheckFailed
+                          ? "Could not verify availability right now. You can still try saving."
+                          : slugAvailable
+                            ? "Slug is available."
+                            : "Slug is already taken."
+                        : "This is your current public URL slug."}{" "}
+                    {slugHint}
+                  </p>
                   {profileForm.slug ? (
                     <div className="flex flex-wrap items-center gap-2 rounded-xl border border-black/[0.06] bg-muted/30 px-3 py-2">
                       <code className="min-w-0 flex-1 break-all text-[11px] text-foreground">
-                        {buildAppUrl(`/${profileForm.slug}`)}
+                        {buildAppUrl(`/${normalizedSlug || profileForm.slug}`)}
                       </code>
                       <Button
                         type="button"
                         variant="outline"
                         size="sm"
                         className="shrink-0 rounded-full"
-                        onClick={() => void navigator.clipboard.writeText(buildAppUrl(`/${profileForm.slug}`))}
+                        onClick={() => void navigator.clipboard.writeText(buildAppUrl(`/${normalizedSlug || profileForm.slug}`))}
                       >
                         Copy link
                       </Button>
                     </div>
                   ) : null}
-                  <p className="text-[11px] text-muted-foreground">Your public URL cannot be changed after signup.</p>
                 </div>
               </>
             )}
