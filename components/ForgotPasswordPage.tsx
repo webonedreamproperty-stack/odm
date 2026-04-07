@@ -65,7 +65,7 @@ export const ForgotPasswordPage: React.FC = () => {
             to={nextPath.startsWith("/") ? nextPath : "/login"}
             className="inline-flex h-12 w-full items-center justify-center rounded-full bg-[#1d1d1f] text-base font-medium text-white shadow-sm hover:bg-black/80"
           >
-            Back to Sign In
+            Back to Login
             <ArrowRight className="ml-2 h-4 w-4" />
           </Link>
         </div>
@@ -120,7 +120,7 @@ export const ForgotPasswordPage: React.FC = () => {
             to={nextPath.startsWith("/") ? nextPath : "/login"}
             className="font-semibold text-[#1d1d1f] underline-offset-2 hover:underline"
           >
-            Sign in
+            Login
           </Link>
         </p>
       </form>

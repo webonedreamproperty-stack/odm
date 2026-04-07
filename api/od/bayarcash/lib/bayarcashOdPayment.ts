@@ -280,7 +280,7 @@ export async function handleCreateOdRenewalIntent(opts: {
   const userClient = createClient(sb.url, sb.anonKey);
   const { data: userData, error: userErr } = await userClient.auth.getUser(opts.accessToken);
   if (userErr || !userData.user) {
-    return { ok: false, status: 401, error: "Sign in required." };
+    return { ok: false, status: 401, error: "Login required." };
   }
   const user = userData.user;
 

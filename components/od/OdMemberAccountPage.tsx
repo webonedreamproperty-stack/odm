@@ -488,7 +488,7 @@ export const OdMemberAccountPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-[#f5f3ef] px-4 py-10">
       <div className="mx-auto mb-8 flex max-w-2xl items-center justify-between">
-        <h1 className="text-xl font-semibold text-[#1b1813]">OD membership</h1>
+        <h1 className="text-xl font-semibold text-[#1b1813]">OD Membership</h1>
         <Button
           type="button"
           variant="outline"

@@ -26,7 +26,7 @@ export const LoginClassicPage: React.FC = () => {
   const withTimeout = async <T,>(promise: Promise<T>, ms = 15000): Promise<T> =>
     new Promise<T>((resolve, reject) => {
       const timeoutId = window.setTimeout(() => {
-        reject(new Error("Sign in timed out. Please try again."));
+        reject(new Error("Login timed out. Please try again."));
       }, ms);
       promise
         .then((value) => {
@@ -55,7 +55,7 @@ export const LoginClassicPage: React.FC = () => {
         trackEvent("Login Success", { role: result.user?.role ?? "owner" });
       }
     } catch {
-      setError("Unable to sign in right now. Please try again.");
+      setError("Unable to login right now. Please try again.");
     } finally {
       setBusy(false);
     }
@@ -67,7 +67,7 @@ export const LoginClassicPage: React.FC = () => {
     try {
       await withTimeout(loginDemo());
     } catch {
-      setError("Unable to sign in to demo right now. Please try again.");
+      setError("Unable to login to demo right now. Please try again.");
     } finally {
       setBusy(false);
     }
@@ -80,12 +80,12 @@ export const LoginClassicPage: React.FC = () => {
     <AuthLayout
       title="Welcome back."
       subtitle="Manage campaigns, issue stamps, and track loyalty performance in real time."
-      badge="Sign in"
+      badge="Login"
       theme="login"
     >
       <form className="space-y-5" onSubmit={handleSubmit}>
         <div className="mb-2">
-          <h2 className="text-xl font-semibold text-[#1d1d1f]">Sign in to your account</h2>
+          <h2 className="text-xl font-semibold text-[#1d1d1f]">Login to your account</h2>
           <p className="mt-1 text-sm text-[#6e6e73]">Enter your credentials below to continue.</p>
         </div>
 

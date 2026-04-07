@@ -83,10 +83,10 @@ export const PublicHandlePage: React.FC = () => {
         </p>
         <div className="flex flex-wrap justify-center gap-2">
           <Button asChild variant="outline" className="rounded-full">
-            <Link to="/login">Business sign in</Link>
+            <Link to="/login">Business login</Link>
           </Button>
           <Button asChild className="rounded-full bg-[#1b1813] hover:bg-[#11100d]">
-            <Link to="/od/member/login">OD member sign in</Link>
+            <Link to="/od/member/login">OD member login</Link>
           </Button>
         </div>
       </div>

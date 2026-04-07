@@ -145,8 +145,8 @@ export const OdVerifyPage: React.FC = () => {
         </h1>
         <p className="mt-2 text-sm leading-relaxed text-[#4b5563]">
           {qualified
-            ? `Active OD membership — staff may apply the shop’s manual discount for this visit.`
-            : `No active OD membership. Staff should not apply OD member discounts until this shows green.`}
+            ? `Active OD Member — staff may apply the shop’s manual discount for this visit.`
+            : `No active OD Member. Staff should not apply OD Member discounts until this shows green.`}
         </p>
         <div className="mt-8 rounded-2xl bg-black/[0.04] px-4 py-3 text-left text-sm">
           <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#6b7280]">Shop</div>

@@ -146,7 +146,7 @@ const MODE_CONFIG: Record<AuthMode, ThemeConfig> = {
     navLinkTo: "/login",
     showcaseEyebrow: "Team access",
     showcaseTitle: "Fast, secure staff access.",
-    showcaseCopy: "Staff can sign in with email, PIN, and Org ID, then move directly into issue and kiosk flows.",
+    showcaseCopy: "Staff can login with email, PIN, and Org ID, then move directly into issue and kiosk flows.",
     showcaseSlug: "/brand/staff",
     card: {
       eyebrow: "Staff portal",

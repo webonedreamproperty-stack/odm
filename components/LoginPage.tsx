@@ -94,14 +94,14 @@ export const LoginPage: React.FC = () => {
   const isSubmitting = busy;
   const isDisabled = busy || loading;
 
-  const layoutTitle = loginMode === "business" ? "Welcome back" : "Member sign in";
+  const layoutTitle = loginMode === "business" ? "Welcome back" : "Member Login";
   const layoutSubtitle =
     loginMode === "business"
-      ? "Log in to set up business settings, and let all OD members regularly come to your shop to boost sales."
-      : "Sign in to view your OD membership, participating shops, and member benefits.";
+      ? "Login to set up business settings, and let all OD members regularly come to your shop to boost sales."
+      : "Login to view your OD Membership, participating shops, and member benefits.";
 
   return (
-    <AuthSplitLayout title={layoutTitle} subtitle={layoutSubtitle} badge="Sign in" mode="login">
+    <AuthSplitLayout title={layoutTitle} subtitle={layoutSubtitle} badge="Login" mode="login">
       <form className="space-y-5" onSubmit={handleSubmit}>
         <div className="flex gap-2 rounded-[1.2rem] border border-black/[0.08] bg-[#f4f1ea] p-1.5">
           <button

@@ -452,7 +452,7 @@ export const SettingsPage: React.FC<{ embedded?: boolean }> = ({ embedded = fals
       {currentOwner?.slug && currentUser?.role === "owner" && (
         <section className="rounded-2xl md:rounded-3xl border bg-white p-4 md:p-6 shadow-sm space-y-6">
           <div>
-            <h2 className="text-lg md:text-xl font-semibold">OD membership verification</h2>
+            <h2 className="text-lg md:text-xl font-semibold">OD Membership verification</h2>
             <p className="text-sm text-muted-foreground">
               Members scan this QR in your shop while signed in to OD. Green means active membership; red means not
               qualified for OD discounts.
