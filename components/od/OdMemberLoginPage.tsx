@@ -102,16 +102,16 @@ export const OdMemberLoginPage: React.FC = () => {
           </Button>
         </form>
 
-        <p className="mt-8 text-center text-sm text-[#6d6658]">
+        <p hidden className="mt-8 text-center text-sm text-[#6d6658]">
           New member?{" "}
           <Link className="font-semibold text-[#1b1813] underline-offset-2 hover:underline" to="/od/member/signup">
             Create an account
           </Link>
         </p>
-        <p className="mt-4 text-center text-sm text-[#8a8276]">
+        <p hidden className="mt-4 text-center text-sm text-[#8a8276]">
           Business owner?{" "}
-          <Link className="font-medium text-[#1b1813] underline-offset-2 hover:underline" to="/login">
-            Business sign in
+          <Link hidden className="font-medium text-[#1b1813] underline-offset-2 hover:underline" to="/login">
+            Business Login
           </Link>
         </p>
       </div>

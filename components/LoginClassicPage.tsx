@@ -163,7 +163,7 @@ export const LoginClassicPage: React.FC = () => {
 
         <p className="text-center text-sm text-[#6e6e73]">
           New here?{" "}
-          <Link to="/signup" className="font-semibold text-[#1d1d1f] underline-offset-2 hover:underline">
+          <Link to="/register" className="font-semibold text-[#1d1d1f] underline-offset-2 hover:underline">
             Create your workspace
           </Link>
         </p>

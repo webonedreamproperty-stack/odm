@@ -1,15 +1,16 @@
 import React, { useRef, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
-import { ArrowRight, Printer } from "lucide-react";
+import { ArrowRight, Eye, EyeOff, Printer } from "lucide-react";
 import QRCode from "react-qr-code";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { useAuth } from "../AuthProvider";
 import type { AuthResult } from "../AuthProvider";
-import { getSlugHint, isSlugValid, normalizeSlug } from "../../lib/slug";
 import { OD_BUSINESS_CATEGORIES } from "../../lib/odBusinessCategories";
+import { allocatePartnerSlug, defaultBusinessNameFromEmail } from "../../lib/odPartnerSignup";
 import { buildOdVerifyUrl } from "../../lib/links";
 import { printOdVerifySheet } from "../../lib/printOdVerifySheet";
+import { cn } from "../../lib/utils";
 
 const inputCls =
   "h-12 rounded-[1.2rem] border border-black/[0.08] bg-[#f4f1ea] px-4 text-[15px] text-[#171512] shadow-none placeholder:text-[#8a8276] focus-visible:border-black/25 focus-visible:bg-white focus-visible:ring-0";
@@ -20,25 +21,18 @@ export const OdVendorSignupPage: React.FC = () => {
   const odVerifyQrRef = useRef<HTMLDivElement>(null);
   const { currentUser, currentMember, accountKind, loading, signup, isSlugAvailable } = useAuth();
 
-  const [businessName, setBusinessName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [slugInput, setSlugInput] = useState("");
-  const [category, setCategory] = useState<string>(OD_BUSINESS_CATEGORIES[0]);
-  const [discountKind, setDiscountKind] = useState<"percent" | "fixed">("percent");
-  const [discountValue, setDiscountValue] = useState("10");
 
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
-  const [slugCheck, setSlugCheck] = useState<"idle" | "checking" | "ok" | "taken">("idle");
 
   const [successSlug, setSuccessSlug] = useState<string | null>(null);
   const [showQrSuccess, setShowQrSuccess] = useState(false);
   /** When Supabase returns ok but no session, user must confirm email before QR/dashboard. */
   const [pendingEmailConfirm, setPendingEmailConfirm] = useState(false);
-
-  const normalizedSlug = normalizeSlug(slugInput);
+  const [showPassword, setShowPassword] = useState(false);
 
   if (!loading && currentUser && accountKind === "vendor" && !showQrSuccess) {
     return <Navigate to="/dashboard" replace />;
@@ -47,50 +41,31 @@ export const OdVendorSignupPage: React.FC = () => {
     return <Navigate to="/od/account" replace />;
   }
 
-  const validateDiscount = (): string | null => {
-    const v = Number.parseFloat(discountValue);
-    if (Number.isNaN(v) || v <= 0) return "Enter a valid discount amount.";
-    if (discountKind === "percent" && (v < 1 || v > 100)) return "Percent must be between 1 and 100.";
-    return null;
-  };
-
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     setError("");
     setMessage("");
-    if (!isSlugValid(normalizedSlug)) {
-      setError("Fix your shop link (slug) before continuing.");
-      return;
-    }
-    const dErr = validateDiscount();
-    if (dErr) {
-      setError(dErr);
-      return;
-    }
     setBusy(true);
     try {
-      const available = await isSlugAvailable(normalizedSlug);
-      if (!available) {
-        setError("This shop link is already taken. Choose another.");
-        setBusy(false);
-        return;
-      }
+      const slug = await allocatePartnerSlug(email, isSlugAvailable);
+      const businessName = defaultBusinessNameFromEmail(email);
+      const category = OD_BUSINESS_CATEGORIES[0];
       const result = (await signup({
         businessName,
         email,
         password,
-        slug: normalizedSlug,
+        slug,
         odBusinessCategory: category,
-        odDiscountKind: discountKind,
-        odDiscountValue: Number.parseFloat(discountValue),
+        odDiscountKind: "percent",
+        odDiscountValue: 10,
         emailRedirectTo: "/od/vendor/login",
       })) as AuthResult;
       if (!result.ok) {
-        setError(result.error);
+        setError("error" in result ? result.error : "Could not create account.");
         setBusy(false);
         return;
       }
-      setSuccessSlug(normalizedSlug);
+      setSuccessSlug(slug);
       setShowQrSuccess(true);
       const needsConfirm = Boolean(result.message);
       setPendingEmailConfirm(needsConfirm);
@@ -99,47 +74,22 @@ export const OdVendorSignupPage: React.FC = () => {
       } else {
         setMessage("Welcome! Your shop is set up for OD.");
       }
-    } catch {
-      setError("Unable to sign up right now. Please try again.");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Unable to sign up right now. Please try again.");
     } finally {
       setBusy(false);
     }
   };
-
-  React.useEffect(() => {
-    if (!normalizedSlug || !isSlugValid(normalizedSlug)) {
-      setSlugCheck("idle");
-      return;
-    }
-    let cancelled = false;
-    setSlugCheck("checking");
-    const t = window.setTimeout(() => {
-      void (async () => {
-        try {
-          const ok = await isSlugAvailable(normalizedSlug);
-          if (cancelled) return;
-          setSlugCheck(ok ? "ok" : "taken");
-        } catch {
-          if (!cancelled) setSlugCheck("idle");
-        }
-      })();
-    }, 400);
-    return () => {
-      cancelled = true;
-      window.clearTimeout(t);
-    };
-  }, [normalizedSlug, isSlugAvailable]);
 
   const verifyUrl = successSlug ? buildOdVerifyUrl(successSlug) : "";
 
   return (
     <div className="min-h-screen flex flex-col items-center bg-[#f5f3ef] px-6 py-12">
       <div className="w-full max-w-lg rounded-[1.75rem] border border-black/[0.06] bg-white p-8 shadow-[0_24px_80px_-32px_rgba(0,0,0,0.18)]">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#8a8276]">OD vendor</p>
-        <h1 className="mt-2 text-2xl font-semibold tracking-tight text-[#1b1813]">Register your business</h1>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#8a8276]">OD Partner</p>
+        <h1 className="mt-2 text-2xl font-semibold tracking-tight text-[#1b1813]">Register</h1>
         <p className="mt-2 text-sm leading-relaxed text-[#6d6658]">
-          Set your OD discount, category (same groups as ODMember templates), and get a QR for members to scan at your
-          counter.
+          Enter your email and password. You can add your shop name, link, and offers in Settings after you sign in.
         </p>
 
         {successSlug && showQrSuccess ? (
@@ -198,16 +148,6 @@ export const OdVendorSignupPage: React.FC = () => {
         ) : (
           <form className="mt-8 space-y-5" onSubmit={handleSubmit}>
             <div className="space-y-1.5">
-              <label className={labelCls}>Business name</label>
-              <Input
-                value={businessName}
-                onChange={(e) => setBusinessName(e.target.value)}
-                className={inputCls}
-                placeholder="My Café"
-                required
-              />
-            </div>
-            <div className="space-y-1.5">
               <label className={labelCls}>Email</label>
               <Input
                 value={email}
@@ -220,86 +160,26 @@ export const OdVendorSignupPage: React.FC = () => {
             </div>
             <div className="space-y-1.5">
               <label className={labelCls}>Password</label>
-              <Input
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className={inputCls}
-                type="password"
-                autoComplete="new-password"
-                minLength={6}
-                required
-              />
-            </div>
-            <div className="space-y-1.5">
-              <label className={labelCls}>Shop link (slug)</label>
-              <Input
-                value={slugInput}
-                onChange={(e) => setSlugInput(e.target.value)}
-                className={inputCls}
-                placeholder="my-cafe"
-                autoComplete="off"
-                required
-              />
-              <p className="text-xs text-[#8a8276]">{getSlugHint(normalizedSlug)}</p>
-              {slugCheck === "checking" && <p className="text-xs text-[#8a8276]">Checking availability…</p>}
-              {slugCheck === "ok" && <p className="text-xs text-emerald-700">This link is available.</p>}
-              {slugCheck === "taken" && <p className="text-xs text-red-600">This link is already taken.</p>}
-            </div>
-
-            <div className="space-y-1.5">
-              <label className={labelCls}>What you do</label>
-              <select
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                className={`${inputCls} h-12 appearance-none bg-[#f4f1ea]`}
-                required
-              >
-                {OD_BUSINESS_CATEGORIES.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </select>
-              <p className="text-xs text-[#8a8276]">Same categories as ODMember gallery (F&amp;B, retail, etc.).</p>
-            </div>
-
-            <div className="space-y-3 rounded-2xl border border-black/[0.06] bg-[#faf9f6] p-4">
-              <p className={labelCls}>OD discount for members</p>
-              <div className="flex gap-3">
-                <label className="flex cursor-pointer items-center gap-2 text-sm">
-                  <input
-                    type="radio"
-                    name="dk"
-                    checked={discountKind === "percent"}
-                    onChange={() => setDiscountKind("percent")}
-                  />
-                  Percent (%)
-                </label>
-                <label className="flex cursor-pointer items-center gap-2 text-sm">
-                  <input
-                    type="radio"
-                    name="dk"
-                    checked={discountKind === "fixed"}
-                    onChange={() => setDiscountKind("fixed")}
-                  />
-                  Amount (RM)
-                </label>
+              <div className="relative">
+                <Input
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className={cn(inputCls, "pr-12")}
+                  type={showPassword ? "text" : "password"}
+                  autoComplete="new-password"
+                  minLength={6}
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  className="absolute right-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-xl text-[#777062] transition-colors hover:bg-black/[0.06] hover:text-[#171512] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1b1813]/25"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  aria-pressed={showPassword}
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4 shrink-0" aria-hidden /> : <Eye className="h-4 w-4 shrink-0" aria-hidden />}
+                </button>
               </div>
-              <Input
-                value={discountValue}
-                onChange={(e) => setDiscountValue(e.target.value)}
-                className={inputCls}
-                type="number"
-                min="0.01"
-                step={discountKind === "percent" ? "1" : "0.01"}
-                placeholder={discountKind === "percent" ? "10" : "5.00"}
-                required
-              />
-              <p className="text-xs text-[#6d6658]">
-                {discountKind === "percent"
-                  ? "Example: 10 means 10% off the bill for active OD members."
-                  : "Example: 5 means RM5 off (manual at POS)."}
-              </p>
             </div>
 
             {error && (
@@ -315,12 +195,12 @@ export const OdVendorSignupPage: React.FC = () => {
 
             <Button
               type="submit"
-              disabled={busy || slugCheck === "taken" || !isSlugValid(normalizedSlug)}
+              disabled={busy}
               className="h-14 w-full rounded-[1.2rem] bg-[#1b1813] text-base font-semibold text-white hover:bg-[#11100d] disabled:opacity-60"
             >
               {busy ? "Creating…" : (
                 <>
-                  Create business account <ArrowRight className="ml-2 h-4 w-4" />
+                  Create account <ArrowRight className="ml-2 h-4 w-4" />
                 </>
               )}
             </Button>
@@ -328,12 +208,20 @@ export const OdVendorSignupPage: React.FC = () => {
         )}
 
         {!successSlug && (
-          <p className="mt-8 text-center text-sm text-[#6d6658]">
-            OD member (not a shop)?{" "}
-            <Link className="font-semibold text-[#1b1813] underline-offset-2 hover:underline" to="/od/member/signup">
-              Member sign up
-            </Link>
-          </p>
+          <div className="mt-8 space-y-3 text-center text-sm text-[#6d6658]">
+            <p>
+              Already have a partner account?{" "}
+              <Link className="font-semibold text-[#1b1813] underline-offset-2 hover:underline" to="/od/vendor/login">
+                Business Login
+              </Link>
+            </p>
+            <p hidden>
+              OD member (not a shop)?{" "}
+              <Link className="font-semibold text-[#1b1813] underline-offset-2 hover:underline" to="/od/member/signup">
+                Member sign up
+              </Link>
+            </p>
+          </div>
         )}
       </div>
     </div>

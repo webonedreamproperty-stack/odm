@@ -411,7 +411,7 @@ export const SettingsPage: React.FC<{ embedded?: boolean }> = ({ embedded = fals
 
     setIsDeleteStepTwoOpen(false);
     setDeleteConfirmText("");
-    navigate("/signup");
+    navigate("/register");
   };
 
   const handleDeleteStaff = async () => {
@@ -497,7 +497,7 @@ export const SettingsPage: React.FC<{ embedded?: boolean }> = ({ embedded = fals
             </div>
           </div>
 
-          <div className="border-t border-border/60 pt-6 space-y-4">
+          <div id="od-vendor-listing" className="scroll-mt-28 border-t border-border/60 pt-6 space-y-4">
             <div>
               <h3 className="text-base font-semibold">OD member directory</h3>
               <p className="text-sm text-muted-foreground">

@@ -131,6 +131,12 @@ export interface User {
   odShopPhotoUrl?: string;
   odLogoUrl?: string;
   odMapsUrl?: string;
+  /** Google Place ID from Settings / OD directory search (member-facing card). */
+  odGooglePlaceId?: string;
+  /** Short offer line shown to OD members (e.g. "10% off for OD members"). */
+  odDiscountSummary?: string;
+  /** Area / neighbourhood label for directory filters. */
+  odListingArea?: string;
   odOperatingHours?: OdOperatingHoursState | null;
   vendorOnboardingCompleted?: boolean;
 }

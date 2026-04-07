@@ -21,7 +21,7 @@ const THEME_CONFIG = {
     quote: "Built for coffee shops, bakeries, and local brands that want loyalty without the paperwork.",
     features: [] as string[],
     navLinkLabel: "Create account",
-    navLinkTo: "/signup",
+    navLinkTo: "/odp/signup",
   },
   signup: {
     blobA: "bg-sky-200/40",
@@ -81,14 +81,14 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
       <header className="fixed top-0 z-50 w-full border-b border-black/[0.06] bg-white/75 backdrop-blur-2xl">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
           <Link to="/">
-            <img src="/odmember.svg" alt="ODMember" className="h-8 w-auto" />
+            <img src="/odmember.svg" alt="ODMember" className="h-14 w-auto" />
           </Link>
-          <Link
+          {/* <Link
             to={t.navLinkTo}
             className="rounded-full border border-black/[0.1] bg-white px-5 py-2 text-sm font-medium text-[#1d1d1f] shadow-sm transition-colors hover:bg-[#f5f5f7]"
           >
             {t.navLinkLabel}
-          </Link>
+          </Link> */}
         </div>
       </header>
 

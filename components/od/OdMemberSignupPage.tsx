@@ -1,10 +1,11 @@
 import React, { useState } from "react";
 import { Link, Navigate } from "react-router-dom";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Eye, EyeOff } from "lucide-react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { useAuth } from "../AuthProvider";
 import type { AuthResult } from "../AuthProvider";
+import { cn } from "../../lib/utils";
 
 const inputCls =
   "h-14 rounded-[1.2rem] border border-black/[0.08] bg-[#f4f1ea] px-4 text-[15px] text-[#171512] shadow-none placeholder:text-[#8a8276] focus-visible:border-black/25 focus-visible:bg-white focus-visible:ring-0";
@@ -13,9 +14,9 @@ const labelCls =
 
 export const OdMemberSignupPage: React.FC = () => {
   const { currentMember, loading, memberSignup, accountKind } = useAuth();
-  const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
@@ -30,8 +31,8 @@ export const OdMemberSignupPage: React.FC = () => {
     setMessage("");
     setBusy(true);
     try {
-      const result = await memberSignup({ displayName, email, password }) as AuthResult;
-      if (!result.ok) {
+      const result: AuthResult = await memberSignup({ email, password });
+      if (result.ok === false) {
         setError(result.error);
       } else if (result.message) {
         setMessage(result.message);
@@ -56,17 +57,6 @@ export const OdMemberSignupPage: React.FC = () => {
 
         <form className="mt-8 space-y-5" onSubmit={handleSubmit}>
           <div className="space-y-1.5">
-            <label className={labelCls}>Display name</label>
-            <Input
-              value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
-              placeholder="Your name"
-              className={inputCls}
-              autoComplete="name"
-              required
-            />
-          </div>
-          <div className="space-y-1.5">
             <label className={labelCls}>Email</label>
             <Input
               value={email}
@@ -80,15 +70,26 @@ export const OdMemberSignupPage: React.FC = () => {
           </div>
           <div className="space-y-1.5">
             <label className={labelCls}>Password</label>
-            <Input
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className={inputCls}
-              type="password"
-              autoComplete="new-password"
-              minLength={6}
-              required
-            />
+            <div className="relative">
+              <Input
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className={cn(inputCls, "pr-12")}
+                type={showPassword ? "text" : "password"}
+                autoComplete="new-password"
+                minLength={6}
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                className="absolute right-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-xl text-[#777062] transition-colors hover:bg-black/[0.06] hover:text-[#171512] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1b1813]/25"
+                aria-label={showPassword ? "Hide password" : "Show password"}
+                aria-pressed={showPassword}
+              >
+                {showPassword ? <EyeOff className="h-4 w-4 shrink-0" aria-hidden /> : <Eye className="h-4 w-4 shrink-0" aria-hidden />}
+              </button>
+            </div>
           </div>
           {error && (
             <div className="rounded-[1.2rem] border border-red-200 bg-red-50/90 px-4 py-3 text-sm text-red-600">
@@ -119,9 +120,9 @@ export const OdMemberSignupPage: React.FC = () => {
             Sign in
           </Link>
         </p>
-        <p className="mt-4 text-center text-sm text-[#8a8276]">
+        <p hidden className="mt-4 text-center text-sm text-[#8a8276]">
           <Link className="font-medium text-[#1b1813] underline-offset-2 hover:underline" to="/login">
-            Business sign in
+            Business Login
           </Link>
         </p>
       </div>

@@ -81,6 +81,7 @@ const TemplatesGallery = lazy(() => import('./components/TemplatesGallery').then
 const TransactionsPage = lazy(() => import('./components/TransactionsPage').then((module) => ({ default: module.TransactionsPage })));
 const AnalyticsPage = lazy(() => import('./components/AnalyticsPage').then((module) => ({ default: module.AnalyticsPage })));
 const LoginPage = lazy(() => import('./components/LoginPage').then((module) => ({ default: module.LoginPage })));
+const SignupPage = lazy(() => import('./components/SignupPage').then((module) => ({ default: module.SignupPage })));
 const StaffLoginPage = lazy(() => import('./components/StaffLoginPage').then((module) => ({ default: module.StaffLoginPage })));
 const SettingsPage = lazy(() => import('./components/SettingsPage').then((module) => ({ default: module.SettingsPage })));
 const ForgotPasswordPage = lazy(() => import('./components/ForgotPasswordPage').then((module) => ({ default: module.ForgotPasswordPage })));
@@ -680,14 +681,17 @@ const AppRoutes: React.FC = () => {
         <Route path="/:slug/staff" element={withSuspense(<StaffLoginPage />)} />
         <Route path="/:slug/scan/:uniqueId" element={<StaffScanEntryWrapper />} />
         <Route path="/:slug/join/:campaignId" element={withSuspense(<PublicCampaignSignupPage />)} />
+        <Route path="/odp/signup" element={withSuspense(<OdVendorSignupPage />)} />
+        <Route path="/od/signup" element={<Navigate to="/odp/signup" replace />} />
         <Route path="/:slug/:uniqueId" element={<PublicCardWrapper />} />
         <Route path="/login" element={withSuspense(<LoginPage />)} />
+        <Route path="/register" element={withSuspense(<SignupPage />)} />
+        <Route path="/signup" element={<Navigate to="/register" replace />} />
         <Route path="/forgot-password" element={withSuspense(<ForgotPasswordPage />)} />
         <Route path="/od" element={<Navigate to="/od/login" replace />} />
         <Route path="/od/login" element={withSuspense(<OdLoginHubPage />)} />
         <Route path="/od/member/login" element={withSuspense(<OdMemberLoginPage />)} />
         <Route path="/od/vendor/login" element={withSuspense(<OdVendorLoginPage />)} />
-        <Route path="/od/signup" element={withSuspense(<OdVendorSignupPage />)} />
         <Route path="/od/member/signup" element={withSuspense(<OdMemberSignupPage />)} />
         <Route path="/od/verify/:shopSlug" element={withSuspense(<OdVerifyPage />)} />
 

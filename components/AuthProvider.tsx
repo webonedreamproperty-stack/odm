@@ -57,7 +57,7 @@ interface AuthContextValue {
   accountKind: AccountKind | null;
   currentMember: MemberAccount | null;
   memberLogin: (email: string, password: string) => Promise<AuthResult>;
-  memberSignup: (payload: { displayName: string; email: string; password: string }) => Promise<AuthResult>;
+  memberSignup: (payload: { email: string; password: string; displayName?: string }) => Promise<AuthResult>;
   refreshMemberProfile: () => Promise<void>;
   updateMemberDisplayName: (displayName: string) => Promise<AuthResult>;
   updateMemberPublicUsername: (username: string | null) => Promise<AuthResult>;
@@ -474,13 +474,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [fetchProfileWithRetry, loadFullSession, waitForAuthUser]);
 
   const memberSignup = useCallback(async (payload: {
-    displayName: string;
     email: string;
     password: string;
+    displayName?: string;
   }): Promise<AuthResult> => {
     if (!isSupabaseConfigured) {
       return { ok: false, error: CONFIG_ERROR_MESSAGE };
     }
+    const trimmedName = payload.displayName?.trim();
+    const localPart = payload.email.split("@")[0]?.trim() ?? "";
+    const displayName =
+      trimmedName ||
+      (localPart ? localPart.replace(/[._-]+/g, " ").trim() : "") ||
+      "Member";
     try {
       const { data, error } = await supabase.auth.signUp({
         email: payload.email.trim().toLowerCase(),
@@ -488,7 +494,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         options: {
           data: {
             role: "member",
-            display_name: payload.displayName.trim(),
+            display_name: displayName,
           },
           emailRedirectTo: buildAppUrl("/od/member/login"),
         },

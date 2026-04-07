@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Link, Navigate, useLocation } from "react-router-dom";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Building2, User } from "lucide-react";
 import { AuthSplitLayout } from "./AuthSplitLayout";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -8,13 +8,17 @@ import { useAuth } from "./AuthProvider";
 import type { AuthResult } from "./AuthProvider";
 import { trackEvent } from "../lib/analytics";
 import { DEMO_WORKSPACE_ENABLED } from "../lib/siteConfig";
+import { cn } from "../lib/utils";
 
 const inputCls =
   "h-14 rounded-[1.2rem] border border-black/[0.08] bg-[#f4f1ea] px-4 text-[15px] text-[#171512] shadow-none placeholder:text-[#8a8276] focus-visible:border-black/25 focus-visible:bg-white focus-visible:ring-0";
 const labelCls = "block text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-[#777062]";
 
+type LoginMode = "business" | "member";
+
 export const LoginPage: React.FC = () => {
-  const { currentUser, currentMember, accountKind, loading, login, loginDemo } = useAuth();
+  const { currentUser, currentMember, accountKind, loading, login, loginDemo, memberLogin } = useAuth();
+  const [loginMode, setLoginMode] = useState<LoginMode>("business");
   const location = useLocation();
   const fromPath = (location.state as { from?: { pathname?: string } })?.from?.pathname;
   const showDemoWorkspace = DEMO_WORKSPACE_ENABLED && new URLSearchParams(location.search).get("admin") === "pogi";
@@ -53,18 +57,26 @@ export const LoginPage: React.FC = () => {
     setError("");
     setBusy(true);
     try {
-      const result = await withTimeout<AuthResult>(login(email, password));
-      if ("error" in result) {
-        setError(result.error);
+      if (loginMode === "member") {
+        const result: AuthResult = await withTimeout(memberLogin(email, password));
+        if (result.ok === false) {
+          setError(result.error);
+        } else {
+          trackEvent("Login Success", { role: "member" });
+        }
       } else {
-        trackEvent("Login Success", { role: result.user?.role ?? "owner" });
+        const result: AuthResult = await withTimeout(login(email, password));
+        if (result.ok === false) {
+          setError(result.error);
+        } else {
+          trackEvent("Login Success", { role: result.user?.role ?? "owner" });
+        }
       }
     } catch {
       setError("Unable to sign in right now. Please try again.");
     } finally {
       setBusy(false);
     }
-    // Redirect is handled automatically when currentUser becomes set
   };
 
   const handleDemo = async () => {
@@ -82,16 +94,58 @@ export const LoginPage: React.FC = () => {
   const isSubmitting = busy;
   const isDisabled = busy || loading;
 
+  const layoutTitle = loginMode === "business" ? "Welcome back" : "Member sign in";
+  const layoutSubtitle =
+    loginMode === "business"
+      ? "Log in to set up business settings, and let all OD members regularly come to your shop to boost sales."
+      : "Sign in to view your OD membership, participating shops, and member benefits.";
+
   return (
-    <AuthSplitLayout
-      title="Welcome back"
-      subtitle="Log in to run campaigns, issue digital cards, and track loyalty activity from one place."
-      badge="Sign in"
-      mode="login"
-    >
+    <AuthSplitLayout title={layoutTitle} subtitle={layoutSubtitle} badge="Sign in" mode="login">
       <form className="space-y-5" onSubmit={handleSubmit}>
+        <div className="flex gap-2 rounded-[1.2rem] border border-black/[0.08] bg-[#f4f1ea] p-1.5">
+          <button
+            type="button"
+            onClick={() => {
+              setLoginMode("business");
+              setError("");
+            }}
+            className={cn(
+              "flex flex-1 items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold transition-colors",
+              loginMode === "business"
+                ? "bg-[#1b1813] text-white shadow-sm"
+                : "text-[#6d6658] hover:bg-black/[0.04]"
+            )}
+          >
+            <Building2 className="h-4 w-4 shrink-0" aria-hidden />
+            Business owner
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setLoginMode("member");
+              setError("");
+            }}
+            className={cn(
+              "flex flex-1 items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold transition-colors",
+              loginMode === "member"
+                ? "bg-[#1b1813] text-white shadow-sm"
+                : "text-[#6d6658] hover:bg-black/[0.04]"
+            )}
+          >
+            <User className="h-4 w-4 shrink-0" aria-hidden />
+            OD member
+          </button>
+        </div>
+
         <p className="text-sm leading-6 text-[#6d6658]">
-          Owner access only. Staff members should continue using their dedicated portal link and PIN.
+          {loginMode === "business" ? (
+            <>
+              For shop owners and staff. Staff should use their dedicated portal link and PIN from the business.
+            </>
+          ) : (
+            <>Use the email and password for your OD membership (not your business dashboard login).</>
+          )}
         </p>
 
         <div className="space-y-1.5">
@@ -145,7 +199,7 @@ export const LoginPage: React.FC = () => {
           <p className="text-center text-xs text-[#777062]">Checking existing session...</p>
         )}
 
-        {showDemoWorkspace && (
+        {showDemoWorkspace && loginMode === "business" && (
           <>
             <div className="relative py-1">
               <div className="border-t border-black/[0.08]" />

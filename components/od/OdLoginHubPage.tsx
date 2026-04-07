@@ -34,7 +34,7 @@ export const OdLoginHubPage: React.FC = () => {
             </div>
             <h2 className="mt-4 text-lg font-semibold text-[#1b1813]">Vendor</h2>
             <p className="mt-1 text-sm text-[#6d6658]">Shop dashboard, QR for members, listings.</p>
-            <span className="mt-4 text-sm font-medium text-[#1b1813] group-hover:underline">Business sign in →</span>
+            <span className="mt-4 text-sm font-medium text-[#1b1813] group-hover:underline">Business Login →</span>
           </Link>
         </div>
 
@@ -44,7 +44,7 @@ export const OdLoginHubPage: React.FC = () => {
             Member signup
           </Link>
           {" · "}
-          <Link className="underline-offset-2 hover:underline" to="/od/signup">
+          <Link className="underline-offset-2 hover:underline" to="/odp/signup">
             Vendor signup
           </Link>
         </div>

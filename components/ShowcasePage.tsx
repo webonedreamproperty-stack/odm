@@ -40,7 +40,7 @@ const ShowcasePreviewCard: React.FC<(typeof showcaseImages)[number]> = ({ src, a
 
 export const ShowcasePage: React.FC = () => {
   const { currentUser, isStaff } = useAuth();
-  const primaryPath = currentUser ? (isStaff ? "/issued-cards" : "/dashboard") : "/signup";
+  const primaryPath = currentUser ? (isStaff ? "/issued-cards" : "/dashboard") : "/register";
   const primaryLabel = currentUser ? "Open dashboard" : "Create account";
 
   return (

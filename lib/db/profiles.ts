@@ -19,6 +19,16 @@ export const profileToUser = (row: Record<string, unknown>): User => ({
   odShopPhotoUrl: (row.od_shop_photo_url as string | undefined) ?? undefined,
   odLogoUrl: (row.od_logo_url as string | undefined) ?? undefined,
   odMapsUrl: (row.od_maps_url as string | undefined) ?? undefined,
+  odGooglePlaceId:
+    row.od_google_place_id != null && String(row.od_google_place_id).trim() !== ""
+      ? String(row.od_google_place_id).trim()
+      : undefined,
+  odDiscountSummary:
+    row.od_discount_summary != null ? String(row.od_discount_summary) : undefined,
+  odListingArea:
+    row.od_listing_area != null && String(row.od_listing_area).trim() !== ""
+      ? String(row.od_listing_area)
+      : undefined,
   odOperatingHours:
     row.od_operating_hours != null ? normalizeOdOperatingHours(row.od_operating_hours) : undefined,
   vendorOnboardingCompleted: row.vendor_onboarding_completed === true,

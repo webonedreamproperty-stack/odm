@@ -358,7 +358,7 @@ export const LandingPage: React.FC = () => {
                   <Link to="/login">Log in</Link>
                 </Button>
                 <Button asChild className="rounded-full bg-[#1d1d1f] px-4 text-sm font-medium text-white hover:bg-black/80 sm:px-5">
-                  <Link to="/signup" onClick={() => trackEvent("Landing CTA Clicked", { placement: "header" })}>Get started</Link>
+                  <Link to="/register" onClick={() => trackEvent("Landing CTA Clicked", { placement: "header" })}>Get started</Link>
                 </Button>
               </>
             )}
@@ -405,7 +405,7 @@ export const LandingPage: React.FC = () => {
             </div>
             <div style={rise(hero.visible, 260)} className="mt-10 flex flex-col gap-4 sm:flex-row sm:flex-wrap">
               <Button asChild className="glow-button h-16 rounded-[1.55rem] bg-[#17351a] px-10 text-lg font-semibold text-white shadow-[0_26px_50px_-28px_rgba(23,53,26,0.85)] hover:bg-[#102712] sm:min-w-[17rem]">
-                <Link to="/signup" onClick={() => trackEvent("Landing CTA Clicked", { placement: "hero" })}>Get Started for free</Link>
+                <Link to="/register" onClick={() => trackEvent("Landing CTA Clicked", { placement: "hero" })}>Get Started for free</Link>
               </Button>
               <Button asChild variant="outline" className="h-16 rounded-[1.55rem] border-[#17351a]/16 bg-white/75 px-10 text-lg font-semibold text-[#17351a] shadow-[0_20px_40px_-32px_rgba(23,53,26,0.8)] hover:bg-white hover:text-[#102712] sm:min-w-[14rem]">
                 <Link to="/showcase" onClick={() => trackEvent("Landing Demo CTA Clicked", { placement: "hero" })}>View Demo</Link>
@@ -743,7 +743,7 @@ export const LandingPage: React.FC = () => {
             </p>
             <div style={rise(value.visible, 320)} className="mt-12">
               <Button asChild className="glow-button h-[3.75rem] rounded-full bg-[#dcb7df] px-12 text-lg font-semibold text-black shadow-none hover:bg-[#d2a6d6]">
-                <Link to="/signup" onClick={() => trackEvent("Landing CTA Clicked", { placement: "value" })}>Get started for free</Link>
+                <Link to="/register" onClick={() => trackEvent("Landing CTA Clicked", { placement: "value" })}>Get started for free</Link>
               </Button>
             </div>
           </div>
@@ -826,7 +826,7 @@ export const LandingPage: React.FC = () => {
           </p>
           <div style={rise(cta.visible, 280)}>
             <Button asChild className="glow-button mt-12 h-[3.75rem] rounded-full bg-white px-14 text-base font-semibold text-[#1d1d1f] shadow-xl shadow-white/10 hover:bg-white/90">
-              <Link to="/signup" onClick={() => trackEvent("Landing CTA Clicked", { placement: "footer" })}>Start Free</Link>
+              <Link to="/register" onClick={() => trackEvent("Landing CTA Clicked", { placement: "footer" })}>Start Free</Link>
             </Button>
           </div>
         </div>

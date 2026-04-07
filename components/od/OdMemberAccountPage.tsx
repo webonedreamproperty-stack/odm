@@ -1013,7 +1013,7 @@ export const OdMemberAccountPage: React.FC = () => {
         {/* <p className="text-center text-sm text-[#8a8276]">
           Business owner?{" "}
           <Link className="font-medium text-[#1b1813] underline-offset-2 hover:underline" to="/login">
-            Business sign in
+            Business Login
           </Link>
         </p> */}
       </div>
