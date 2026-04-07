@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { LogOut, MapPin, RefreshCw, Star, Store } from "lucide-react";
+import { Check, CheckCircle2, ChevronLeft, ChevronRight, LogOut, MapPin, PartyPopper, RefreshCw, Star, Store } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "../ui/accordion";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -160,6 +160,11 @@ export const OdMemberAccountPage: React.FC = () => {
   const [geoSilentBusy, setGeoSilentBusy] = useState(false);
   const [memberMapStyle, setMemberMapStyle] = useState<OdMemberMapStyleKey>("openstreetmap3d");
   const memberMapRef = useRef<MapRef | null>(null);
+  const [memberOnboardingOpen, setMemberOnboardingOpen] = useState(false);
+  const [memberOnboardingStep, setMemberOnboardingStep] = useState(0);
+  const [memberOnboardingBusy, setMemberOnboardingBusy] = useState(false);
+  const [memberOnboardingErr, setMemberOnboardingErr] = useState("");
+  const [memberOnboardingMsg, setMemberOnboardingMsg] = useState("");
 
   const memberMapOpenFreeStyle = OD_MEMBER_MAP_STYLES[memberMapStyle];
   const memberMapStylesProp =
@@ -236,6 +241,7 @@ export const OdMemberAccountPage: React.FC = () => {
     if (!currentMember) return;
     if (typeof window === "undefined") return;
     const id = currentMember.id;
+    const profileReady = Boolean(currentMember.displayName?.trim()) && Boolean(currentMember.publicUsername?.trim());
 
     const stored = loadMemberGeoFromLocalStorage(id);
     if (stored) {
@@ -248,10 +254,12 @@ export const OdMemberAccountPage: React.FC = () => {
       setGeoCapturedAt(null);
     }
 
+    // Prevent overlap with member onboarding modal and only prompt after profile step is complete.
+    if (!profileReady || memberOnboardingOpen) return;
     if (stored || isMemberGeoPromptDeclined(id)) return;
     const t = window.setTimeout(() => setGeoDialogOpen(true), 450);
     return () => window.clearTimeout(t);
-  }, [currentMember?.id]);
+  }, [currentMember?.id, currentMember?.displayName, currentMember?.publicUsername, memberOnboardingOpen]);
 
   useEffect(() => {
     if (!currentMember) return;
@@ -323,6 +331,10 @@ export const OdMemberAccountPage: React.FC = () => {
     m.validUntil &&
     new Date(m.validUntil) > new Date() &&
     (!m.validFrom || new Date(m.validFrom) <= new Date());
+  const memberProfileStepDone = Boolean(currentMember.displayName.trim()) && Boolean(currentMember.publicUsername?.trim());
+  const memberLocationStepDone = Boolean(geoCoords);
+  const memberSubscriptionStepDone = active;
+  const memberOnboardingDone = memberProfileStepDone && memberLocationStepDone && memberSubscriptionStepDone;
 
   useEffect(() => {
     let cancelled = false;
@@ -350,6 +362,23 @@ export const OdMemberAccountPage: React.FC = () => {
       cancelled = true;
     };
   }, [active, m?.validUntil, m?.status]);
+
+  useEffect(() => {
+    if (memberOnboardingDone) {
+      setMemberOnboardingOpen(false);
+      return;
+    }
+    setMemberOnboardingOpen(true);
+    if (!memberProfileStepDone) {
+      setMemberOnboardingStep(0);
+      return;
+    }
+    if (!memberLocationStepDone) {
+      setMemberOnboardingStep(1);
+      return;
+    }
+    setMemberOnboardingStep(2);
+  }, [memberOnboardingDone, memberProfileStepDone, memberLocationStepDone]);
 
   const filteredShops = useMemo(() => {
     return dirShops.filter((shop) => shopMatchesIndustryFilter(shop.business_category, industryFilter));
@@ -425,6 +454,37 @@ export const OdMemberAccountPage: React.FC = () => {
     window.setTimeout(() => setPublicUsernameMsg(""), 3000);
   };
 
+  const handleOnboardingSaveProfile = async () => {
+    setMemberOnboardingErr("");
+    setMemberOnboardingMsg("");
+    const nextName = name.trim();
+    const nextPublic = publicUsernameInput.trim().toLowerCase();
+    if (!nextName) {
+      setMemberOnboardingErr("Display name is required.");
+      return;
+    }
+    if (!nextPublic) {
+      setMemberOnboardingErr("Public profile username is required.");
+      return;
+    }
+    setMemberOnboardingBusy(true);
+    const nameResult = await updateMemberDisplayName(nextName);
+    if (nameResult.ok === false) {
+      setMemberOnboardingBusy(false);
+      setMemberOnboardingErr(nameResult.error);
+      return;
+    }
+    const usernameResult = await updateMemberPublicUsername(nextPublic);
+    setMemberOnboardingBusy(false);
+    if (usernameResult.ok === false) {
+      setMemberOnboardingErr(usernameResult.error);
+      return;
+    }
+    setMemberOnboardingMsg("Profile saved.");
+    await refreshMemberProfile();
+    setMemberOnboardingStep(1);
+  };
+
   return (
     <div className="min-h-screen bg-[#f5f3ef] px-4 py-10">
       <div className="mx-auto mb-8 flex max-w-2xl items-center justify-between">
@@ -442,6 +502,182 @@ export const OdMemberAccountPage: React.FC = () => {
       </div>
 
       <div className="mx-auto max-w-2xl space-y-6">
+        <Dialog open={memberOnboardingOpen} onOpenChange={setMemberOnboardingOpen}>
+          <DialogContent className="max-h-[90dvh] max-w-2xl overflow-y-auto rounded-[1.25rem]">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-lg font-semibold text-[#1b1813]">
+                <PartyPopper className="h-5 w-5" aria-hidden />
+                Member onboarding
+              </DialogTitle>
+            </DialogHeader>
+
+            <ol className="flex items-center justify-center gap-2">
+              {[
+                { label: "Profile", done: memberProfileStepDone },
+                { label: "Location", done: memberLocationStepDone },
+                { label: "Package", done: memberSubscriptionStepDone },
+              ].map((step, idx) => {
+                const activeStep = memberOnboardingStep === idx;
+                const unlocked =
+                  idx === 0 || (idx === 1 && memberProfileStepDone) || (idx === 2 && memberProfileStepDone && memberLocationStepDone);
+                return (
+                  <li key={step.label} className="flex items-center gap-2">
+                    {idx > 0 && <span className={cn("h-px w-6", memberOnboardingStep >= idx ? "bg-emerald-500" : "bg-black/10")} />}
+                    <button
+                      type="button"
+                      className={cn(
+                        "rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em]",
+                        activeStep ? "bg-[#1b1813] text-white" : "bg-[#f4f1ea] text-[#6d6658]",
+                        !unlocked && "opacity-50"
+                      )}
+                      disabled={!unlocked}
+                      onClick={() => setMemberOnboardingStep(idx)}
+                    >
+                      {step.done ? <Check className="h-3.5 w-3.5" aria-hidden /> : idx + 1} {step.label}
+                    </button>
+                  </li>
+                );
+              })}
+            </ol>
+
+            {memberOnboardingErr && (
+              <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{memberOnboardingErr}</div>
+            )}
+            {memberOnboardingMsg && (
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{memberOnboardingMsg}</div>
+            )}
+
+            {memberOnboardingStep === 0 && (
+              <div className="space-y-4">
+                <div>
+                  <p className="text-sm font-medium text-[#1b1813]">1. Update basic profile</p>
+                  <p className="text-sm text-[#6d6658]">Set your display name and public username so your member profile can be shared.</p>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-medium text-[#6B7280]">Display name</label>
+                  <Input value={name} onChange={(e) => setName(e.target.value)} className={inputCls} />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-medium text-[#6B7280]">Public username</label>
+                  <div className="flex items-center gap-2">
+                    <span className="shrink-0 text-sm text-[#6d6658]">{buildAppUrl("/").replace(/\/$/, "")}/</span>
+                    <Input
+                      value={publicUsernameInput}
+                      onChange={(e) => setPublicUsernameInput(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ""))}
+                      className={cn(inputCls, "flex-1")}
+                      placeholder="mykluang"
+                      autoComplete="off"
+                    />
+                  </div>
+                </div>
+                <div className="flex justify-end">
+                  <Button type="button" disabled={memberOnboardingBusy} className="rounded-full bg-[#1b1813] hover:bg-[#11100d]" onClick={() => void handleOnboardingSaveProfile()}>
+                    {memberOnboardingBusy ? "Saving…" : <>Save & continue <ChevronRight className="ml-1 h-4 w-4" /></>}
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {memberOnboardingStep === 1 && (
+              <div className="space-y-4">
+                <div>
+                  <p className="text-sm font-medium text-[#1b1813]">2. Location request</p>
+                  <p className="text-sm text-[#6d6658]">Allow location so we can show nearby participating shops.</p>
+                </div>
+                {geoCoords ? (
+                  <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+                    Location captured: {geoCoords.lat.toFixed(5)}, {geoCoords.lng.toFixed(5)}
+                  </div>
+                ) : (
+                  <div className="rounded-xl border border-black/[0.08] bg-[#faf9f7] px-3 py-2 text-sm text-[#6d6658]">
+                    We only store this on your device (localStorage).
+                  </div>
+                )}
+                <div className="flex flex-wrap justify-between gap-2">
+                  <Button type="button" variant="outline" className="rounded-full" onClick={() => setMemberOnboardingStep(0)}>
+                    <ChevronLeft className="mr-1 h-4 w-4" /> Back
+                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="rounded-full bg-[lightgreen] hover:bg-[lightgreen/80]"
+                      disabled={geoLoading || geoSilentBusy}
+                      onClick={() => void requestMemberLocation(currentMember.id)}
+                    >
+                      {geoLoading || geoSilentBusy ? "Getting location…" : "Use my location"}
+                    </Button>
+                    <Button
+                      type="button"
+                      className="rounded-full bg-[#1b1813] hover:bg-[#11100d]"
+                      disabled={!geoCoords}
+                      onClick={() => setMemberOnboardingStep(2)}
+                    >
+                      Continue <ChevronRight className="ml-1 h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {memberOnboardingStep === 2 && (
+              <div className="space-y-4">
+                <div>
+                  <p className="text-sm font-medium text-[#1b1813]">3. Subscription package</p>
+                  <p className="text-sm text-[#6d6658]">Select your package to activate full OD member benefits.</p>
+                </div>
+                {active ? (
+                  <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+                    Active package: {m?.plan ? odPlanLabel(m.plan) : "Active"}
+                  </div>
+                ) : (
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {OD_RENEWAL_PACKAGES.map((pkg) => (
+                      <div key={pkg.plan} className="rounded-xl border border-black/[0.08] bg-[#fafbfa] p-3">
+                        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#8a8276]">{pkg.title}</p>
+                        <p className="mt-1 text-xl font-semibold text-[#1b1813]">{formatRm(pkg.priceRm)}</p>
+                        <p className="mt-1 text-sm text-[#6d6658]">{pkg.blurb}</p>
+                        <Button
+                          type="button"
+                          className="mt-3 w-full rounded-full bg-[#1b1813] hover:bg-[#11100d]"
+                          disabled={renewSubmitting}
+                          onClick={() => {
+                            setRenewError("");
+                            setRenewDialogPkg(pkg);
+                          }}
+                        >
+                          Choose {pkg.title}
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <div className="flex justify-between">
+                  <Button type="button" variant="outline" className="rounded-full" onClick={() => setMemberOnboardingStep(1)}>
+                    <ChevronLeft className="mr-1 h-4 w-4" /> Back
+                  </Button>
+                  <Button
+                    type="button"
+                    className="rounded-full bg-[#1b1813] hover:bg-[#11100d]"
+                    disabled={!memberOnboardingDone}
+                    onClick={() => setMemberOnboardingOpen(false)}
+                  >
+                    <CheckCircle2 className="mr-1 h-4 w-4" /> Finish
+                  </Button>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {!memberOnboardingDone && !memberOnboardingOpen && (
+          <div className="fixed bottom-5 right-5 z-50 sm:bottom-8 sm:right-8">
+            <Button type="button" size="sm" className="rounded-full shadow-lg" onClick={() => setMemberOnboardingOpen(true)}>
+              Continue onboarding
+            </Button>
+          </div>
+        )}
+
         <div className="overflow-hidden rounded-[1.5rem] border border-black/[0.06] bg-white shadow-sm">
           <Accordion
             type="single"
