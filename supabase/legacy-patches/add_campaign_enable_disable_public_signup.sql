@@ -1,4 +1,4 @@
--- Stampee upgrade script: add campaign enable/disable support and
+-- ODMember upgrade script: add campaign enable/disable support and
 -- the public campaign signup flow on existing projects.
 -- New projects should use migration.sql instead.
 

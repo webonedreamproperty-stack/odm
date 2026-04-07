@@ -1,4 +1,4 @@
-/** Aligned with TemplatesGallery template groupings (Stampee models). */
+/** Aligned with TemplatesGallery template groupings (ODMember models). */
 export const OD_BUSINESS_CATEGORIES = [
   "Food & Drink",
   "Retail",

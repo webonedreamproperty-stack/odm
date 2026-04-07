@@ -271,7 +271,7 @@ export const VendorOnboardingWizard: React.FC = () => {
                   </option>
                 ))}
               </select>
-              <p className="text-xs text-muted-foreground">Same categories as Stampee templates (F&amp;B, retail, barber, etc.).</p>
+              <p className="text-xs text-muted-foreground">Same categories as ODMember templates (F&amp;B, retail, barber, etc.).</p>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">

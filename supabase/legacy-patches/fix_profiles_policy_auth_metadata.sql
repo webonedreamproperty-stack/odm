@@ -1,4 +1,4 @@
--- Stampee upgrade script: avoid using editable auth user_metadata in
+-- ODMember upgrade script: avoid using editable auth user_metadata in
 -- profiles RLS on existing projects.
 -- New projects should use migration.sql instead.
 

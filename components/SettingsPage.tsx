@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Printer, Trash2 } from "lucide-react";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
@@ -19,6 +19,8 @@ import QRCode from "react-qr-code";
 import { Link, useNavigate } from "react-router-dom";
 import { useSubscriptionContext } from "./SubscriptionContext";
 import { OdGooglePlaceSearch } from "./OdGooglePlaceSearch";
+import { VendorPublicPlaceCard } from "./VendorPublicPlaceCard";
+import type { PublicVendorHandle } from "../lib/db/publicHandle";
 
 const DELETE_CONFIRMATION = "DELETE";
 
@@ -104,6 +106,11 @@ export const SettingsPage: React.FC<{ embedded?: boolean }> = ({ embedded = fals
   const [odListingLat, setOdListingLat] = useState<number | null>(null);
   const [odListingLng, setOdListingLng] = useState<number | null>(null);
   const [odGooglePlaceId, setOdGooglePlaceId] = useState<string>("");
+  const [odShopPhotoUrl, setOdShopPhotoUrl] = useState<string | null>(null);
+  const [odLogoUrl, setOdLogoUrl] = useState<string | null>(null);
+  const [odPlacePreviewPayload, setOdPlacePreviewPayload] = useState<Record<string, unknown> | null>(null);
+  const [odPlacePreviewLoading, setOdPlacePreviewLoading] = useState(false);
+  const [odPlacePreviewErr, setOdPlacePreviewErr] = useState<string | null>(null);
 
   const odVerifyQrRef = useRef<HTMLDivElement>(null);
 
@@ -120,7 +127,7 @@ export const SettingsPage: React.FC<{ embedded?: boolean }> = ({ embedded = fals
     const { data: row, error } = await supabase
       .from("profiles")
       .select(
-        "od_directory_visible, od_discount_summary, od_listing_area, od_listing_lat, od_listing_lng, od_maps_url, od_google_place_id"
+        "od_directory_visible, od_discount_summary, od_listing_area, od_listing_lat, od_listing_lng, od_maps_url, od_google_place_id, od_shop_photo_url, od_logo_url"
       )
       .eq("id", currentOwner.id)
       .maybeSingle();
@@ -133,6 +140,8 @@ export const SettingsPage: React.FC<{ embedded?: boolean }> = ({ embedded = fals
         od_listing_lng?: number | null;
         od_maps_url?: string | null;
         od_google_place_id?: string | null;
+        od_shop_photo_url?: string | null;
+        od_logo_url?: string | null;
       };
       setOdDirVisible(r.od_directory_visible !== false);
       setOdDiscountSummary(r.od_discount_summary ?? "");
@@ -143,6 +152,10 @@ export const SettingsPage: React.FC<{ embedded?: boolean }> = ({ embedded = fals
       setOdListingLng(typeof lng === "number" && Number.isFinite(lng) ? lng : null);
       setOdMapsUrl(r.od_maps_url ?? "");
       setOdGooglePlaceId((r.od_google_place_id ?? "").trim());
+      const sp = (r.od_shop_photo_url ?? "").trim();
+      const lg = (r.od_logo_url ?? "").trim();
+      setOdShopPhotoUrl(sp || null);
+      setOdLogoUrl(lg || null);
     }
     const { data: svc } = await supabase
       .from("od_shop_services")
@@ -156,6 +169,73 @@ export const SettingsPage: React.FC<{ embedded?: boolean }> = ({ embedded = fals
   useEffect(() => {
     void loadOdListing();
   }, [loadOdListing]);
+
+  useEffect(() => {
+    const pid = odGooglePlaceId.trim();
+    const mapsKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY?.trim();
+    if (!pid) {
+      setOdPlacePreviewPayload(null);
+      setOdPlacePreviewErr(null);
+      setOdPlacePreviewLoading(false);
+      return;
+    }
+    if (!mapsKey) {
+      setOdPlacePreviewPayload(null);
+      setOdPlacePreviewErr("Set VITE_GOOGLE_MAPS_API_KEY in your env to load the member-facing preview.");
+      setOdPlacePreviewLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setOdPlacePreviewLoading(true);
+    setOdPlacePreviewErr(null);
+    void fetchGooglePlaceDetails(pid, mapsKey)
+      .then((d) => {
+        if (!cancelled) setOdPlacePreviewPayload(d);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setOdPlacePreviewErr("Could not load Google place details for this preview.");
+          setOdPlacePreviewPayload(null);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setOdPlacePreviewLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [odGooglePlaceId]);
+
+  const odListingPreviewVendor = useMemo((): PublicVendorHandle => {
+    const slug = (profileForm.slug || currentOwner?.slug || "").trim() || "preview";
+    return {
+      kind: "vendor",
+      slug,
+      business_name: (profileForm.businessName || currentUser?.businessName || "").trim() || "Your business",
+      listing_area: normalizeOdListingAreaValue(odListingArea) || null,
+      discount_summary: odDiscountSummary.trim() || null,
+      maps_url: normalizeOdMapsUrl(odMapsUrl),
+      logo_url: odLogoUrl,
+      shop_photo_url: odShopPhotoUrl,
+      business_category: profileForm.odBusinessCategory,
+      directory_visible: odDirVisible,
+      google_place_id: odGooglePlaceId.trim() || null,
+      place_details: null,
+    };
+  }, [
+    profileForm.slug,
+    profileForm.businessName,
+    profileForm.odBusinessCategory,
+    currentOwner?.slug,
+    currentUser?.businessName,
+    odListingArea,
+    odDiscountSummary,
+    odMapsUrl,
+    odLogoUrl,
+    odShopPhotoUrl,
+    odDirVisible,
+    odGooglePlaceId,
+  ]);
 
   const handleSaveOdListing = async () => {
     if (!currentOwner?.id) return;
@@ -183,6 +263,8 @@ export const SettingsPage: React.FC<{ embedded?: boolean }> = ({ embedded = fals
     if (pid && mapsKey) {
       try {
         const details = await fetchGooglePlaceDetails(pid, mapsKey);
+        setOdPlacePreviewPayload(details);
+        setOdPlacePreviewErr(null);
         const { error: cacheErr } = await supabase.rpc("upsert_od_place_details_cache", {
           p_place_id: pid,
           p_payload: details,
@@ -198,6 +280,9 @@ export const SettingsPage: React.FC<{ embedded?: boolean }> = ({ embedded = fals
         window.setTimeout(() => setOdListingMsg(""), 5000);
         return;
       }
+    } else if (!pid) {
+      setOdPlacePreviewPayload(null);
+      setOdPlacePreviewErr(null);
     }
     setOdListingMsg("OD listing saved.");
     window.setTimeout(() => setOdListingMsg(""), 3000);
@@ -460,7 +545,7 @@ export const SettingsPage: React.FC<{ embedded?: boolean }> = ({ embedded = fals
                 disabled={odListingBusy}
               />
             </div>
-            
+
             <div className="space-y-1.5">
               <Label htmlFor="od-maps-url">Google Maps link (optional)</Label>
               <p className="text-xs text-muted-foreground">
@@ -479,7 +564,32 @@ export const SettingsPage: React.FC<{ embedded?: boolean }> = ({ embedded = fals
                 className="font-mono text-[12px]"
               />
             </div>
-       
+
+            <div className="space-y-3 rounded-2xl border border-border/80 bg-muted/20 p-4 md:p-5">
+              <div>
+                <Label className="text-sm">Member-facing preview</Label>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Same Google-style card members see on your public link. It combines the place you selected, your
+                  discount above, and your shop photo / logo from branding.
+                </p>
+              </div>
+              {!odGooglePlaceId.trim() ? (
+                <p className="text-sm text-muted-foreground">Pick a result from Google search above to load the preview.</p>
+              ) : odPlacePreviewLoading ? (
+                <div className="flex justify-center py-12">
+                  <div className="h-9 w-9 animate-spin rounded-full border-2 border-muted-foreground/30 border-t-foreground" />
+                </div>
+              ) : odPlacePreviewErr ? (
+                <p className="text-sm text-destructive">{odPlacePreviewErr}</p>
+              ) : odPlacePreviewPayload && Object.keys(odPlacePreviewPayload).length > 0 ? (
+                <div className="mx-auto max-w-md overflow-hidden rounded-xl shadow-lg ring-1 ring-border">
+                  <VendorPublicPlaceCard vendor={odListingPreviewVendor} placeDetails={odPlacePreviewPayload} />
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">No place details to preview yet.</p>
+              )}
+            </div>
+
             <div className="space-y-2">
               <Label>Services (optional)</Label>
               <p className="text-xs text-muted-foreground">List what OD members can redeem or use a discount on.</p>
@@ -690,8 +800,8 @@ export const SettingsPage: React.FC<{ embedded?: boolean }> = ({ embedded = fals
       </section>
 
       {embedded && currentUser?.role === "owner" && (
-        <section className="rounded-2xl md:rounded-3xl border border-dashed border-border/80 bg-muted/20 p-4 md:p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-foreground">Full Stampee app</h2>
+        <section hidden className="rounded-2xl md:rounded-3xl border border-dashed border-border/80 bg-muted/20 p-4 md:p-6 shadow-sm">
+          <h2 className="text-lg font-semibold text-foreground">Full ODMember app</h2>
           <p className="mt-1 text-sm text-muted-foreground">
             Loyalty campaigns, issued cards, staff logins, and advanced options are in the main settings area (with
             navigation).

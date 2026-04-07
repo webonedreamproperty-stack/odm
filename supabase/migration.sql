@@ -1,5 +1,5 @@
 -- ============================================================
--- Stampee: Full Database Schema (Idempotent)
+-- ODMember: Full Database Schema (Idempotent)
 -- Canonical fresh-install script for new Supabase projects.
 -- Safe to re-run in Supabase SQL Editor.
 -- For existing or older projects, use the targeted upgrade/repair

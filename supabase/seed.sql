@@ -1,5 +1,5 @@
 -- ============================================================
--- Stampee: Demo Admin Seed Script
+-- ODMember: Demo Admin Seed Script
 -- Local/development use only.
 -- ============================================================
 -- Run this in the Supabase SQL Editor AFTER running migration.sql.
@@ -7,7 +7,7 @@
 -- credentials for local or development environments only.
 --
 -- Demo credentials:
---   Email   : admin@stampee.local
+--   Email   : admin@odmember.local
 --   Password: Admin1234
 --   Slug    : demo
 -- ============================================================
@@ -15,7 +15,7 @@
 do $$
 declare
   v_uid uuid := gen_random_uuid();
-  v_email text := 'admin@stampee.local';
+  v_email text := 'admin@odmember.local';
   v_password text := 'Admin1234';
   v_business_name text := 'Demo Business';
   v_slug text := 'demo';
@@ -98,5 +98,5 @@ $$;
 
 -- OD admin (optional): after demo user exists, allow /od/admin for that account:
 -- insert into public.od_admins (user_id)
--- select id from auth.users where email = 'admin@stampee.local' limit 1
+-- select id from auth.users where email = 'admin@odmember.local' limit 1
 -- on conflict (user_id) do nothing;

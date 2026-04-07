@@ -24,7 +24,7 @@ import { SubscriptionProvider } from './components/SubscriptionContext';
 import { APP_ORIGIN } from './lib/siteConfig';
 
 const SITE_ORIGIN = APP_ORIGIN;
-const DEFAULT_SOCIAL_DESCRIPTION = 'Stampee is a digital loyalty card platform for small businesses, including loyalty program for cafes, loyalty program for spa, loyalty program for laundry, loyalty program for carwash, and loyalty program for salons.';
+const DEFAULT_SOCIAL_DESCRIPTION = 'ODMember is a digital loyalty card platform for small businesses, including loyalty program for cafes, loyalty program for spa, loyalty program for laundry, loyalty program for carwash, and loyalty program for salons.';
 const DEFAULT_OG_IMAGE = `${SITE_ORIGIN}/social-preview-v2.jpg`;
 const SERVICE_UNAVAILABLE_MESSAGE = 'Service is temporarily unavailable. Please try again later.';
 
@@ -132,7 +132,7 @@ const getSeoForPathname = (pathname: string): SeoConfig => {
   const normalizedPath = pathname === '/' ? '/' : pathname.replace(/\/+$/, '');
   const canonical = `${SITE_ORIGIN}${normalizedPath}`;
   const defaultSeo: SeoConfig = {
-    title: 'Stampee | Digital Loyalty Cards',
+    title: 'ODMember | Digital Loyalty Cards',
     description: DEFAULT_SOCIAL_DESCRIPTION,
     socialDescription: DEFAULT_SOCIAL_DESCRIPTION,
     canonical,
@@ -156,7 +156,7 @@ const SeoManager: React.FC = () => {
     setMetaTag('name', 'robots', seo.robots);
     setMetaTag('property', 'og:locale', 'en_US');
     setMetaTag('property', 'og:type', seo.type ?? 'website');
-    setMetaTag('property', 'og:site_name', 'Stampee');
+    setMetaTag('property', 'og:site_name', 'ODMember');
     setMetaTag('property', 'og:title', seo.title);
     setMetaTag('property', 'og:description', socialDescription);
     setMetaTag('property', 'og:url', seo.canonical);
@@ -166,14 +166,14 @@ const SeoManager: React.FC = () => {
     setMetaTag('property', 'og:image:type', 'image/jpeg');
     setMetaTag('property', 'og:image:width', '1536');
     setMetaTag('property', 'og:image:height', '1024');
-    setMetaTag('property', 'og:image:alt', 'Stampee digital loyalty card preview');
+    setMetaTag('property', 'og:image:alt', 'ODMember digital loyalty card preview');
     setMetaTag('name', 'twitter:card', 'summary_large_image');
     setMetaTag('name', 'twitter:title', seo.title);
     setMetaTag('name', 'twitter:description', socialDescription);
     setMetaTag('name', 'twitter:url', seo.canonical);
     setMetaTag('name', 'twitter:image', DEFAULT_OG_IMAGE);
     setMetaTag('name', 'twitter:image:src', DEFAULT_OG_IMAGE);
-    setMetaTag('name', 'twitter:image:alt', 'Stampee digital loyalty card preview');
+    setMetaTag('name', 'twitter:image:alt', 'ODMember digital loyalty card preview');
   }, [location.pathname]);
 
   return null;
@@ -503,7 +503,7 @@ const DashboardLayout: React.FC = () => {
       <div className="flex min-h-screen flex-col bg-background font-sans text-foreground">
         <header className="sticky top-0 z-40 flex items-center justify-between border-b border-border/80 bg-card/95 px-4 py-3 backdrop-blur-sm md:px-8">
           <Link to="/dashboard" className="text-lg font-semibold tracking-tight text-foreground">
-            stampee
+            ODMember
           </Link>
           <div className="flex min-w-0 items-center gap-3">
             {currentUser?.businessName ? (

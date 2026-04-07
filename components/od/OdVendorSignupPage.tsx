@@ -138,7 +138,7 @@ export const OdVendorSignupPage: React.FC = () => {
         <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#8a8276]">OD vendor</p>
         <h1 className="mt-2 text-2xl font-semibold tracking-tight text-[#1b1813]">Register your business</h1>
         <p className="mt-2 text-sm leading-relaxed text-[#6d6658]">
-          Set your OD discount, category (same groups as Stampee templates), and get a QR for members to scan at your
+          Set your OD discount, category (same groups as ODMember templates), and get a QR for members to scan at your
           counter.
         </p>
 
@@ -260,7 +260,7 @@ export const OdVendorSignupPage: React.FC = () => {
                   </option>
                 ))}
               </select>
-              <p className="text-xs text-[#8a8276]">Same categories as Stampee gallery (F&amp;B, retail, etc.).</p>
+              <p className="text-xs text-[#8a8276]">Same categories as ODMember gallery (F&amp;B, retail, etc.).</p>
             </div>
 
             <div className="space-y-3 rounded-2xl border border-black/[0.06] bg-[#faf9f6] p-4">

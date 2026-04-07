@@ -22,13 +22,13 @@ interface UpgradePromptProps {
 const buildSubject = (reason?: UpgradePromptProps["reason"]) => {
   switch (reason) {
     case "campaign":
-      return "Stampee beta campaign limits";
+      return "ODMember beta campaign limits";
     case "card":
-      return "Stampee beta issued card limits";
+      return "ODMember beta issued card limits";
     case "staff":
-      return "Stampee beta staff limits";
+      return "ODMember beta staff limits";
     default:
-      return "Stampee beta access";
+      return "ODMember beta access";
   }
 };
 
@@ -109,7 +109,7 @@ export const UpgradePrompt: React.FC<UpgradePromptProps> = ({
           <Button asChild className="h-12 w-full rounded-full text-base font-semibold">
             <a href={mailtoHref}>
               <Mail className="mr-2 h-4 w-4" />
-              Contact hello@stampee.co
+              Contact hello@odmember.co
             </a>
           </Button>
           <Button

@@ -20,4 +20,4 @@ Disallow: /*/staff*
 Disallow: /*/scan/
 Disallow: /*/scan/*
 
-Sitemap: https://stampee.co/sitemap.xml
+Sitemap: https://odmember.co/sitemap.xml

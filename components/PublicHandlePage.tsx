@@ -54,11 +54,11 @@ export const PublicHandlePage: React.FC = () => {
 
   useEffect(() => {
     if (vendor) {
-      document.title = `${vendor.business_name} · Stampee`;
+      document.title = `${vendor.business_name} · ODMember`;
     } else if (member) {
-      document.title = `${member.display_name} · Stampee`;
+      document.title = `${member.display_name} · ODMember`;
     } else {
-      document.title = "Stampee";
+      document.title = "ODMember";
     }
   }, [vendor, member]);
 
@@ -157,7 +157,7 @@ export const PublicHandlePage: React.FC = () => {
                 ) : null}
 
                 {!showListing ? (
-                  <p className="text-sm text-[#6d6658]">This business uses Stampee. Contact them directly for offers.</p>
+                  <p className="text-sm text-[#6d6658]">This business uses ODMember. Contact them directly for offers.</p>
                 ) : null}
 
                 <div className="flex flex-col gap-2 pt-1">

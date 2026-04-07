@@ -668,7 +668,7 @@ export const OdMemberAccountPage: React.FC = () => {
                   <p className="text-sm text-[#6d6658]">
                     {active
                       ? "Browse participating shops below, then show verification at the counter when you visit."
-                      : "Renew below to unlock the member directory and shop discounts."}
+                      : "Renew in this section to unlock the member directory and shop discounts."}
                   </p>
                   {m?.validUntil && (
                     <p className="text-sm text-[#374151]">
@@ -680,6 +680,52 @@ export const OdMemberAccountPage: React.FC = () => {
                     <p className="text-sm text-[#6d6658]">
                       Plan: <span className="font-medium"> {odPlanLabel(m.plan)}</span>
                     </p>
+                  )}
+
+                  {!active && (
+                    <div className="space-y-4 border-t border-black/[0.06] pt-5">
+                      <h3 className="text-sm font-semibold uppercase tracking-[0.14em] text-[#8a8276]">
+                        Renew subscription
+                      </h3>
+                      <p className="text-sm text-[#6d6658]">
+                        Malaysia · Prices in MYR.{" "}
+                        {odPaymentsEnabled
+                          ? "You will complete payment on Bayarcash, then return here when paid."
+                          : "Confirming applies your membership immediately in this app."}
+                      </p>
+                      <div className="rounded-2xl border border-emerald-200/70 bg-emerald-50/80 px-4 py-3 text-sm leading-relaxed text-emerald-900">
+                        Renew to unlock full OD privileges: all participating vendors, member-only discounts, and easier
+                        trip planning with maps and service details. Member pricing can save your costs across frequent
+                        visits.
+                      </div>
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        {OD_RENEWAL_PACKAGES.map((pkg) => (
+                          <div
+                            key={pkg.plan}
+                            className="flex flex-col rounded-2xl border border-black/[0.08] bg-[#fafbfa] p-4 transition hover:border-black/15"
+                          >
+                            <div className="text-xs font-semibold uppercase tracking-[0.12em] text-[#8a8276]">
+                              {pkg.title}
+                            </div>
+                            <div className="mt-2 text-2xl font-semibold tabular-nums text-[#1b1813]">
+                              {formatRm(pkg.priceRm)}
+                            </div>
+                            <p className="mt-1 flex-1 text-sm text-[#6d6658]">{pkg.blurb}</p>
+                            <Button
+                              type="button"
+                              className="mt-4 w-full rounded-full bg-[#1b1813] hover:bg-[#11100d] disabled:opacity-60"
+                              disabled={renewSubmitting}
+                              onClick={() => {
+                                setRenewError("");
+                                setRenewDialogPkg(pkg);
+                              }}
+                            >
+                              Renew {pkg.title}
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   )}
                 </div>
               </AccordionContent>
@@ -782,12 +828,14 @@ export const OdMemberAccountPage: React.FC = () => {
 
               {!dirLoading && directoryShopsToRender.length > 0 && (
                 <ul
-                  className="-mx-5 flex touch-pan-x snap-x snap-mandatory gap-5 overflow-x-auto scroll-pl-5 scroll-pr-5 pb-1 pl-5 pr-5 [-ms-overflow-style:none] [scrollbar-width:none] sm:-mx-6 sm:scroll-pl-6 sm:scroll-pr-6 sm:pl-6 sm:pr-6 md:mx-0 md:grid md:max-w-none md:grid-cols-2 md:gap-6 md:overflow-visible md:px-0 md:pb-0 md:pl-0 md:pr-0 md:scroll-pl-0 md:scroll-pr-0 [&::-webkit-scrollbar]:hidden"
+                  role="list"
+                  aria-label="Participating vendors, swipe horizontally for more"
+                  className="-mx-5 flex touch-pan-x snap-x snap-mandatory gap-4 overflow-x-auto scroll-smooth scroll-pl-5 scroll-pr-[max(1.25rem,5vw)] pb-2 pl-5 pr-[max(1.25rem,5vw)] [-ms-overflow-style:none] [scrollbar-width:none] sm:-mx-6 sm:gap-4 sm:scroll-pl-6 sm:scroll-pr-[max(1.5rem,5vw)] sm:pl-6 sm:pr-[max(1.5rem,5vw)] md:mx-0 md:grid md:max-w-none md:grid-cols-2 md:gap-6 md:overflow-visible md:px-0 md:pb-0 md:pl-0 md:pr-0 md:scroll-pl-0 md:scroll-pr-0 [&::-webkit-scrollbar]:hidden"
                 >
                   {directoryShopsToRender.map((shop: OdDirectoryShop) => (
                     <li
                       key={shop.owner_id}
-                      className="w-[min(88vw,380px)] shrink-0 snap-center md:w-full md:min-w-0 md:snap-none"
+                      className="w-[70vw] shrink-0 snap-start md:w-full md:min-w-0 md:snap-none"
                     >
                       <article className="group overflow-hidden rounded-[1.2rem] bg-[#202124] text-[#e8eaed] shadow-[0_6px_24px_rgba(0,0,0,0.22)] ring-1 ring-black/20">
                         <div className="relative aspect-[4/5] min-h-[168px] w-full overflow-hidden sm:aspect-[16/10] sm:min-h-[200px]">
@@ -842,114 +890,75 @@ export const OdMemberAccountPage: React.FC = () => {
         )}
 
         {!active && (
-          <>
-            <div className="rounded-[1.5rem] border border-black/[0.06] bg-white p-6 shadow-sm">
-              <h2 className="text-sm font-semibold uppercase tracking-[0.14em] text-[#8a8276]">Renew subscription</h2>
-              <p className="mt-2 text-sm text-[#6d6658]">
-                Malaysia · Prices in MYR.{" "}
-                {odPaymentsEnabled
-                  ? "You will complete payment on Bayarcash, then return here when paid."
-                  : "Confirming applies your membership immediately in this app."}
-              </p>
-              <div className="mt-3 rounded-2xl border border-emerald-200/70 bg-emerald-50/80 px-4 py-3 text-sm leading-relaxed text-emerald-900">
-                Renew to unlock full OD privileges: all participating vendors, member-only discounts, and easier trip
-                planning with maps and service details. Member pricing can save your costs across frequent visits.
-              </div>
-              <div className="mt-5 grid gap-4 sm:grid-cols-2">
-                {OD_RENEWAL_PACKAGES.map((pkg) => (
-                  <div
-                    key={pkg.plan}
-                    className="flex flex-col rounded-2xl border border-black/[0.08] bg-[#fafbfa] p-4 transition hover:border-black/15"
-                  >
-                    <div className="text-xs font-semibold uppercase tracking-[0.12em] text-[#8a8276]">{pkg.title}</div>
-                    <div className="mt-2 text-2xl font-semibold tabular-nums text-[#1b1813]">{formatRm(pkg.priceRm)}</div>
-                    <p className="mt-1 flex-1 text-sm text-[#6d6658]">{pkg.blurb}</p>
-                    <Button
-                      type="button"
-                      className="mt-4 w-full rounded-full bg-[#1b1813] hover:bg-[#11100d] disabled:opacity-60"
-                      disabled={renewSubmitting}
-                      onClick={() => {
-                        setRenewError("");
-                        setRenewDialogPkg(pkg);
-                      }}
-                    >
-                      Renew {pkg.title}
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <Dialog
-              open={renewDialogPkg !== null}
-              onOpenChange={(open) => {
-                if (!open && !renewSubmitting) {
-                  setRenewDialogPkg(null);
-                  setRenewError("");
-                }
-              }}
-            >
-              {renewDialogPkg && (
-                <DialogContent className="rounded-[1.25rem] sm:max-w-md">
-                  <DialogHeader>
-                    <DialogTitle className="text-lg font-semibold text-[#1b1813]">
-                      {odPaymentsEnabled ? `Pay for ${renewDialogPkg.title}?` : `Activate ${renewDialogPkg.title}?`}
-                    </DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-3 text-sm text-[#6d6658]">
-                    <p>
-                      <span className="font-semibold text-[#1b1813]">{renewDialogPkg.title}</span> ·{" "}
-                      <span className="font-semibold text-[#1b1813]">{formatRm(renewDialogPkg.priceRm)}</span>
-                    </p>
-                    <p>
-                      {odPaymentsEnabled ? (
-                        <>
-                          You will be redirected to <span className="font-medium text-[#1b1813]">Bayarcash</span> to pay.
-                          When payment succeeds, your OD membership becomes{" "}
-                          <span className="font-medium text-emerald-700">active</span> for this period.
-                        </>
-                      ) : (
-                        <>
-                          Your OD membership will turn <span className="font-medium text-emerald-700">active</span> for
-                          this period right away.
-                        </>
-                      )}
-                    </p>
-                    {renewError && (
-                      <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-                        {renewError}
-                      </div>
+          <Dialog
+            open={renewDialogPkg !== null}
+            onOpenChange={(open) => {
+              if (!open && !renewSubmitting) {
+                setRenewDialogPkg(null);
+                setRenewError("");
+              }
+            }}
+          >
+            {renewDialogPkg && (
+              <DialogContent className="rounded-[1.25rem] sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle className="text-lg font-semibold text-[#1b1813]">
+                    {odPaymentsEnabled ? `Pay for ${renewDialogPkg.title}?` : `Activate ${renewDialogPkg.title}?`}
+                  </DialogTitle>
+                </DialogHeader>
+                <div className="space-y-3 text-sm text-[#6d6658]">
+                  <p>
+                    <span className="font-semibold text-[#1b1813]">{renewDialogPkg.title}</span> ·{" "}
+                    <span className="font-semibold text-[#1b1813]">{formatRm(renewDialogPkg.priceRm)}</span>
+                  </p>
+                  <p>
+                    {odPaymentsEnabled ? (
+                      <>
+                        You will be redirected to <span className="font-medium text-[#1b1813]">Bayarcash</span> to pay.
+                        When payment succeeds, your OD membership becomes{" "}
+                        <span className="font-medium text-emerald-700">active</span> for this period.
+                      </>
+                    ) : (
+                      <>
+                        Your OD membership will turn <span className="font-medium text-emerald-700">active</span> for
+                        this period right away.
+                      </>
                     )}
-                  </div>
-                  <DialogFooter className="flex-col gap-2 sm:flex-row sm:justify-end">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="rounded-full border-black/15"
-                      disabled={renewSubmitting}
-                      onClick={() => setRenewDialogPkg(null)}
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      type="button"
-                      className="rounded-full bg-[#1b1813] hover:bg-[#11100d]"
-                      disabled={renewSubmitting}
-                      onClick={() => void handleConfirmRenew()}
-                    >
-                      {renewSubmitting
-                        ? odPaymentsEnabled
-                          ? "Redirecting…"
-                          : "Activating…"
-                        : odPaymentsEnabled
-                          ? "Continue to payment"
-                          : "Confirm & activate"}
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              )}
-            </Dialog>
-          </>
+                  </p>
+                  {renewError && (
+                    <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                      {renewError}
+                    </div>
+                  )}
+                </div>
+                <DialogFooter className="flex-col gap-2 sm:flex-row sm:justify-end">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="rounded-full border-black/15"
+                    disabled={renewSubmitting}
+                    onClick={() => setRenewDialogPkg(null)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="button"
+                    className="rounded-full bg-[#1b1813] hover:bg-[#11100d]"
+                    disabled={renewSubmitting}
+                    onClick={() => void handleConfirmRenew()}
+                  >
+                    {renewSubmitting
+                      ? odPaymentsEnabled
+                        ? "Redirecting…"
+                        : "Activating…"
+                      : odPaymentsEnabled
+                        ? "Continue to payment"
+                        : "Confirm & activate"}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            )}
+          </Dialog>
         )}
 
         <div className="rounded-[1.5rem] border border-black/[0.06] bg-white p-6 shadow-sm">
@@ -1001,12 +1010,12 @@ export const OdMemberAccountPage: React.FC = () => {
           </form>
         </div>
 
-        <p className="text-center text-sm text-[#8a8276]">
+        {/* <p className="text-center text-sm text-[#8a8276]">
           Business owner?{" "}
           <Link className="font-medium text-[#1b1813] underline-offset-2 hover:underline" to="/login">
             Business sign in
           </Link>
-        </p>
+        </p> */}
       </div>
     </div>
   );

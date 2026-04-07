@@ -77,7 +77,7 @@ const MODE_CONFIG: Record<AuthMode, ThemeConfig> = {
     showcaseEyebrow: "Owner workspace",
     showcaseTitle: "Cards that live in the browser.",
     showcaseCopy: "Keep campaigns, issued cards, and return visits in one place without sending customers to an app store.",
-    showcaseSlug: "/stampee",
+    showcaseSlug: "/odmember",
     card: {
       eyebrow: "Repeat visits",
       title: "Launch, stamp, retain.",
@@ -98,7 +98,7 @@ const MODE_CONFIG: Record<AuthMode, ThemeConfig> = {
       className: "bg-[#edd9bf] text-[#473521] shadow-[0_28px_96px_-52px_rgba(60,31,7,0.48)]",
     },
     pills: [
-      { label: "/stampee", className: "bg-[#f4f1ec] text-[#1f1d19]", icon: Sparkles },
+      { label: "/odmember", className: "bg-[#f4f1ec] text-[#1f1d19]", icon: Sparkles },
       { label: "Owner dashboard", className: "bg-white/88 text-[#3c342a]", icon: WalletCards },
       { label: "Browser card", className: "bg-white/72 text-[#3c342a]", icon: QrCode },
     ],
@@ -358,7 +358,7 @@ export const AuthSplitLayout: React.FC<AuthSplitLayoutProps> = ({
         <section className={`relative flex min-h-[100dvh] flex-col ${theme.leftBg} px-5 pb-10 pt-5 sm:px-8 sm:pt-7 lg:px-10 lg:pb-12 xl:px-16`}>
           <header className="flex items-center justify-between gap-4">
             <Link to="/login" className="inline-flex items-center">
-              <img src="/stampee.svg" alt="Stampee" className="h-10 w-auto sm:h-11" />
+              <img src="/odmember.svg" alt="ODMember" className="h-10 w-auto sm:h-11" />
             </Link>
 
             {theme.navLinkLabel && (

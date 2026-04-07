@@ -1,4 +1,4 @@
-# Contributing to Stampee
+# Contributing to ODMember
 
 Thanks for your interest in contributing.
 

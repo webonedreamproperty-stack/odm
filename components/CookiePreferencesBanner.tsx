@@ -7,7 +7,7 @@ type CookiePreferences = {
   updatedAt: string;
 };
 
-const COOKIE_PREFS_KEY = "stampee_cookie_preferences_v1";
+const COOKIE_PREFS_KEY = "odmember_cookie_preferences_v1";
 
 export const CookiePreferencesBanner: React.FC = () => {
   const [isVisible, setIsVisible] = useState(false);

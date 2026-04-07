@@ -579,7 +579,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       throw new Error("Demo workspace is currently unavailable.");
     }
     if (!isSupabaseConfigured) return;
-    const demoEmail = "demo@stampee.co";
+    const demoEmail = "demo@odmember.co";
     const demoPassword = "demo1234";
     const { error } = await supabase.auth.signInWithPassword({
       email: demoEmail,
@@ -614,7 +614,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (staffAccounts.length >= staffLimit) {
       return {
         ok: false,
-        error: `Free beta access allows only ${staffLimit} staff account${staffLimit === 1 ? "" : "s"}. Contact hello@stampee.co if you need higher limits.`,
+        error: `Free beta access allows only ${staffLimit} staff account${staffLimit === 1 ? "" : "s"}. Contact hello@odmember.co if you need higher limits.`,
       };
     }
 

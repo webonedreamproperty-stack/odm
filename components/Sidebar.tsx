@@ -71,8 +71,8 @@ export const SidebarContent: React.FC<SidebarContentProps> = ({ onNavigate, onSc
         <div className="mb-6 px-4 flex items-center gap-3">
           <Link to="/" className="inline-flex items-center" onClick={onNavigate}>
             <img
-              src="/stampee.svg"
-              alt="Stampee logo"
+              src="/odmember.svg"
+              alt="ODMember logo"
               className="h-12 w-auto"
             />
           </Link>
