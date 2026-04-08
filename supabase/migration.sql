@@ -1663,6 +1663,7 @@ begin
         nullif(trim(p.od_listing_area), '') as area,
         nullif(trim(p.od_maps_url), '') as maps_url,
         nullif(trim(p.od_shop_photo_url), '') as shop_photo_url,
+        nullif(trim(p.od_google_place_id), '') as google_place_id,
         p.od_listing_lat as listing_lat,
         p.od_listing_lng as listing_lng,
         (
@@ -1692,6 +1693,48 @@ begin
             and c.expires_at > now()
           limit 1
         ) as google_place_photo_name,
+        (
+          select
+            case
+              when c.payload->'primaryTypeDisplayName'->>'text' is not null
+                then nullif(trim(c.payload->'primaryTypeDisplayName'->>'text'), '')
+              when c.payload->>'primaryType' is not null
+                then initcap(replace(trim(c.payload->>'primaryType'), '_', ' '))
+              else null
+            end
+          from public.od_place_details_cache c
+          where p.od_google_place_id is not null
+            and trim(p.od_google_place_id) <> ''
+            and c.place_id = trim(p.od_google_place_id)
+            and c.expires_at > now()
+          limit 1
+        ) as place_google_category,
+        (
+          select
+            case
+              when c.payload->'currentOpeningHours' is null then null
+              when c.payload->'currentOpeningHours'->>'openNow' is null then null
+              else (c.payload->'currentOpeningHours'->>'openNow')::boolean
+            end
+          from public.od_place_details_cache c
+          where p.od_google_place_id is not null
+            and trim(p.od_google_place_id) <> ''
+            and c.place_id = trim(p.od_google_place_id)
+            and c.expires_at > now()
+          limit 1
+        ) as place_open_now,
+        (
+          select coalesce(
+            nullif(trim(c.payload #>> '{currentOpeningHours,weekdayDescriptions,0}'), ''),
+            nullif(trim(c.payload #>> '{regularOpeningHours,weekdayDescriptions,0}'), '')
+          )
+          from public.od_place_details_cache c
+          where p.od_google_place_id is not null
+            and trim(p.od_google_place_id) <> ''
+            and c.place_id = trim(p.od_google_place_id)
+            and c.expires_at > now()
+          limit 1
+        ) as place_opening_line,
         (
           select coalesce(
             jsonb_agg(
@@ -1747,6 +1790,7 @@ begin
         nullif(trim(p.od_listing_area), '') as area,
         nullif(trim(p.od_maps_url), '') as maps_url,
         nullif(trim(p.od_shop_photo_url), '') as shop_photo_url,
+        nullif(trim(p.od_google_place_id), '') as google_place_id,
         p.od_listing_lat as listing_lat,
         p.od_listing_lng as listing_lng,
         (
@@ -1776,6 +1820,48 @@ begin
             and c.expires_at > now()
           limit 1
         ) as google_place_photo_name,
+        (
+          select
+            case
+              when c.payload->'primaryTypeDisplayName'->>'text' is not null
+                then nullif(trim(c.payload->'primaryTypeDisplayName'->>'text'), '')
+              when c.payload->>'primaryType' is not null
+                then initcap(replace(trim(c.payload->>'primaryType'), '_', ' '))
+              else null
+            end
+          from public.od_place_details_cache c
+          where p.od_google_place_id is not null
+            and trim(p.od_google_place_id) <> ''
+            and c.place_id = trim(p.od_google_place_id)
+            and c.expires_at > now()
+          limit 1
+        ) as place_google_category,
+        (
+          select
+            case
+              when c.payload->'currentOpeningHours' is null then null
+              when c.payload->'currentOpeningHours'->>'openNow' is null then null
+              else (c.payload->'currentOpeningHours'->>'openNow')::boolean
+            end
+          from public.od_place_details_cache c
+          where p.od_google_place_id is not null
+            and trim(p.od_google_place_id) <> ''
+            and c.place_id = trim(p.od_google_place_id)
+            and c.expires_at > now()
+          limit 1
+        ) as place_open_now,
+        (
+          select coalesce(
+            nullif(trim(c.payload #>> '{currentOpeningHours,weekdayDescriptions,0}'), ''),
+            nullif(trim(c.payload #>> '{regularOpeningHours,weekdayDescriptions,0}'), '')
+          )
+          from public.od_place_details_cache c
+          where p.od_google_place_id is not null
+            and trim(p.od_google_place_id) <> ''
+            and c.place_id = trim(p.od_google_place_id)
+            and c.expires_at > now()
+          limit 1
+        ) as place_opening_line,
         (
           select coalesce(
             jsonb_agg(

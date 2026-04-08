@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { Check, CheckCircle2, ChevronLeft, ChevronRight, LogOut, MapPin, PartyPopper, RefreshCw, Star, Store } from "lucide-react";
+import { Check, CheckCircle2, ChevronLeft, ChevronRight, LogOut, MapPin, PartyPopper, RefreshCw, Store } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "../ui/accordion";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -18,7 +18,13 @@ import { cn } from "../../lib/utils";
 import { OD_BUSINESS_CATEGORIES } from "../../lib/odBusinessCategories";
 import { OD_INDUSTRY_FILTER_LABEL, shopMatchesIndustryFilter } from "../../lib/odMemberDirectoryFilters";
 import { buildAppUrl } from "../../lib/siteConfig";
-import { googlePlacePhotoMediaUrl } from "../../lib/googlePlaceDetails";
+import {
+  fetchOdPlaceSearchCacheExtrasBatch,
+  type OdPlaceSearchExtras,
+} from "../../lib/odPlaceSearchCacheExtras";
+import { startViewTransition } from "../../lib/viewTransition";
+import { OdDirectoryShopDetailDialog } from "./OdDirectoryShopDetailDialog";
+import { OdDirectoryShopCard } from "./OdDirectoryShopCard";
 import { OdMembershipCard } from "./OdMembershipCard";
 import {
   Map,
@@ -47,68 +53,8 @@ import {
 const inputCls =
   "h-12 rounded-xl border border-black/[0.08] bg-[#f4f1ea] px-4 text-[15px] text-[#171512] shadow-none focus-visible:ring-0";
 
-function getShopPosterGradient(category: string | null): string {
-  const c = (category ?? "").toLowerCase();
-  if (c.includes("food") || c.includes("drink")) {
-    return "linear-gradient(145deg, #431407 0%, #9a3412 38%, #ea580c 72%, #fb923c 100%)";
-  }
-  if (c.includes("retail")) {
-    return "linear-gradient(145deg, #0f172a 0%, #1e3a5f 45%, #475569 100%)";
-  }
-  if (c.includes("barber") || c.includes("hair")) {
-    return "linear-gradient(145deg, #1e1b4b 0%, #3730a3 50%, #6366f1 100%)";
-  }
-  if (c.includes("beauty") || c.includes("wellness")) {
-    return "linear-gradient(145deg, #4c1d95 0%, #7c3aed 55%, #c084fc 100%)";
-  }
-  if (c.includes("service")) {
-    return "linear-gradient(145deg, #14532d 0%, #15803d 50%, #4ade80 100%)";
-  }
-  return "linear-gradient(145deg, #18181b 0%, #3f3f46 55%, #71717a 100%)";
-}
-
 const GOOGLE_MAPS_KEY =
   typeof import.meta.env.VITE_GOOGLE_MAPS_API_KEY === "string" ? import.meta.env.VITE_GOOGLE_MAPS_API_KEY : "";
-
-function resolveOdDirectoryHeroUrl(shop: OdDirectoryShop, apiKey: string): string | null {
-  const direct = shop.shop_photo_url?.trim();
-  if (direct) return direct;
-  const photoName = shop.google_place_photo_name?.trim();
-  if (photoName && apiKey) return googlePlacePhotoMediaUrl(photoName, apiKey, 900);
-  return null;
-}
-
-/** Shop-uploaded photo, else first Google Place photo from cache (same as public profile). */
-function OdDirectoryVendorHeroSurface({ shop, apiKey }: { shop: OdDirectoryShop; apiKey: string }) {
-  const [imgFailed, setImgFailed] = React.useState(false);
-  const heroUrl = React.useMemo(() => resolveOdDirectoryHeroUrl(shop, apiKey), [shop, apiKey]);
-  const showImg = Boolean(heroUrl) && !imgFailed;
-
-  if (showImg && heroUrl) {
-    return (
-      <img
-        src={heroUrl}
-        alt=""
-        className="h-full w-full object-cover object-center transition duration-300 group-hover:scale-[1.02]"
-        loading="lazy"
-        onError={() => setImgFailed(true)}
-      />
-    );
-  }
-  return (
-    <div
-      className="h-full w-full"
-      style={{ background: getShopPosterGradient(shop.business_category) }}
-    />
-  );
-}
-
-function getShopInitials(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return "?";
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-}
 
 const odPaymentsEnabled =
   import.meta.env.VITE_OD_BAYARCASH_RENEWAL === "true" || import.meta.env.VITE_OD_PAYMENTS_ENABLED === "true";
@@ -140,9 +86,11 @@ export const OdMemberAccountPage: React.FC = () => {
 
   const [dirLoading, setDirLoading] = useState(false);
   const [dirShops, setDirShops] = useState<OdDirectoryShop[]>([]);
+  const [dirPlaceExtras, setDirPlaceExtras] = useState<Record<string, OdPlaceSearchExtras>>({});
   const [dirError, setDirError] = useState<string | null>(null);
   const [dirPreviewOnly, setDirPreviewOnly] = useState(false);
   const [industryFilter, setIndustryFilter] = useState<"all" | string>("all");
+  const [directoryDetailShop, setDirectoryDetailShop] = useState<OdDirectoryShop | null>(null);
   const [statusAccordionValue, setStatusAccordionValue] = useState<string | undefined>(undefined);
   const [locationAccordionValue, setLocationAccordionValue] = useState<string | undefined>(undefined);
 
@@ -364,6 +312,36 @@ export const OdMemberAccountPage: React.FC = () => {
   }, [active, m?.validUntil, m?.status]);
 
   useEffect(() => {
+    if (dirShops.length === 0) {
+      setDirPlaceExtras({});
+      return;
+    }
+    const needSearch = dirShops.filter((s) => {
+      const hasCat = Boolean(s.place_google_category?.trim());
+      const hasOpen = s.place_open_now !== null || Boolean(s.place_opening_line?.trim());
+      return !hasCat || !hasOpen;
+    });
+    if (needSearch.length === 0) {
+      setDirPlaceExtras({});
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      const extras = await fetchOdPlaceSearchCacheExtrasBatch(
+        needSearch.map((s) => ({
+          owner_id: s.owner_id,
+          business_name: s.business_name,
+          google_place_id: s.google_place_id,
+        }))
+      );
+      if (!cancelled) setDirPlaceExtras(extras);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [dirShops]);
+
+  useEffect(() => {
     if (memberOnboardingDone) {
       setMemberOnboardingOpen(false);
       return;
@@ -488,7 +466,9 @@ export const OdMemberAccountPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-[#f5f3ef] px-4 py-10">
       <div className="mx-auto mb-8 flex max-w-2xl items-center justify-between">
-        <h1 className="text-xl font-semibold text-[#1b1813]">OD Membership</h1>
+      
+      {/* show logo here */}
+      <img src="/odmember.png" alt="ODMember" className="h-12 sm:h-20 w-auto" />
         <Button
           type="button"
           variant="outline"
@@ -977,12 +957,24 @@ export const OdMemberAccountPage: React.FC = () => {
                   <Store className="h-5 w-5" aria-hidden />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <h2 className="text-[13px] font-semibold uppercase tracking-[0.16em] text-[#8a8276]">
-                    Participating shops & services
-                  </h2>
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <h2 className="text-[13px] font-semibold uppercase tracking-[0.16em] text-[#8a8276]">
+                      OD Partners
+                    </h2>
+                    {!dirLoading && dirShops.length > 0 && active && (
+                      <Button variant="default" size="sm" className="rounded-full border-black/15">
+                        <Link
+                          to="/shops"
+                          className="shrink-0 text-[13px] font-semibold text-white underline-offset-4 transition hover:underline"
+                        >
+                          View all
+                        </Link>
+                      </Button>
+                    )}
+                  </div>
                   <p className="mt-2 text-[15px] leading-relaxed text-[#3d3830]">
                     {active
-                      ? "Member pricing at these businesses. At the counter, open verification and show staff the green screen."
+                      ? "At counter, scan ODMember QR Code for verification and get discounts"
                       : "Preview a few participating vendors. Renew to unlock the full directory, discounts, and all OD member perks."}
                   </p>
                 </div>
@@ -1073,50 +1065,22 @@ export const OdMemberAccountPage: React.FC = () => {
                       key={shop.owner_id}
                       className="w-[70vw] shrink-0 snap-start md:w-full md:min-w-0 md:snap-none"
                     >
-                      <article className="group overflow-hidden rounded-[1.2rem] bg-[#202124] text-[#e8eaed] shadow-[0_6px_24px_rgba(0,0,0,0.22)] ring-1 ring-black/20">
-                        <div className="relative aspect-[4/5] min-h-[168px] w-full overflow-hidden sm:aspect-[16/10] sm:min-h-[200px]">
-                          <OdDirectoryVendorHeroSurface shop={shop} apiKey={GOOGLE_MAPS_KEY} />
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/25 to-transparent" />
-                          <div className="absolute bottom-0 left-0 right-0 p-4">
-                            <h3 className="truncate text-[18px] font-semibold tracking-tight text-white">
-                              {shop.business_name}
-                            </h3>
-                            <div className="mt-1 flex items-center gap-2 text-[12px] text-[#d5d7da]">
-                              <Star className="h-3.5 w-3.5 fill-[#fdd663] text-[#fdd663]" aria-hidden />
-                              <span>
-                                {shop.rating != null ? shop.rating.toFixed(1) : "—"}
-                                {shop.rating_count != null ? ` (${shop.rating_count})` : ""}
-                              </span>
-                              {shop.business_category ? (
-                                <>
-                                  <span>·</span>
-                                  <span className="truncate">
-                                    {OD_INDUSTRY_FILTER_LABEL[shop.business_category] ?? shop.business_category}
-                                  </span>
-                                </>
-                              ) : null}
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="p-4">
-                          <p className="text-[11px] font-semibold uppercase tracking-[0.13em] text-[#9aa0a6]">Services</p>
-                          {shop.services && shop.services.length > 0 ? (
-                            <div className="mt-2 flex flex-wrap gap-2">
-                              {shop.services.slice(0, 6).map((svc) => (
-                                <span
-                                  key={svc.id}
-                                  className="rounded-full bg-white/10 px-2.5 py-1 text-[12px] text-[#e8eaed] ring-1 ring-white/10"
-                                >
-                                  {svc.name}
-                                </span>
-                              ))}
-                            </div>
-                          ) : (
-                            <p className="mt-2 text-[13px] text-[#9aa0a6]">No services listed yet.</p>
-                          )}
-                        </div>
-                      </article>
+                      {directoryDetailShop?.owner_id === shop.owner_id ? (
+                        <div
+                          className="rounded-[1.2rem] bg-[#e8e4dc]/40 ring-1 ring-black/[0.06]"
+                          style={{ minHeight: "min(420px, 72vw)" }}
+                          aria-hidden
+                        />
+                      ) : (
+                        <OdDirectoryShopCard
+                          shop={shop}
+                          placeExtra={dirPlaceExtras[shop.owner_id]}
+                          googleMapsApiKey={GOOGLE_MAPS_KEY}
+                          onSelect={() => {
+                            startViewTransition(() => setDirectoryDetailShop(shop));
+                          }}
+                        />
+                      )}
                     </li>
                   ))}
                 </ul>
@@ -1252,6 +1216,20 @@ export const OdMemberAccountPage: React.FC = () => {
             Business Login
           </Link>
         </p> */}
+
+        {directoryDetailShop ? (
+          <OdDirectoryShopDetailDialog
+            open
+            shop={directoryDetailShop}
+            placeExtra={dirPlaceExtras[directoryDetailShop.owner_id]}
+            googleMapsApiKey={GOOGLE_MAPS_KEY}
+            onOpenChange={(open) => {
+              if (!open) {
+                startViewTransition(() => setDirectoryDetailShop(null));
+              }
+            }}
+          />
+        ) : null}
       </div>
     </div>
   );

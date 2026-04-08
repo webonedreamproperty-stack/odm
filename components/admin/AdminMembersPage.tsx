@@ -1,10 +1,20 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../ui/dialog";
-import { AdminMemberRow, adminCreateMember, adminDeleteMember, adminListMembers, adminUpdateMember } from "../../lib/db/adminPortal";
+import {
+  type AdminSubscriptionRow,
+  AdminMemberRow,
+  adminCreateMember,
+  adminDeleteMember,
+  adminListMembers,
+  adminListSubscriptions,
+  adminUpdateMember,
+} from "../../lib/db/adminPortal";
 
 type DialogFormState = { displayName: string; country: string; publicUsername: string };
+type EditDialogTab = "details" | "subscription";
 
 export const AdminMembersPage: React.FC = () => {
   const [rows, setRows] = useState<AdminMemberRow[]>([]);
@@ -22,6 +32,9 @@ export const AdminMembersPage: React.FC = () => {
   const [busyRow, setBusyRow] = useState<string | null>(null);
   const [selected, setSelected] = useState<AdminMemberRow | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editDialogTab, setEditDialogTab] = useState<EditDialogTab>("details");
+  const [subscriptionRow, setSubscriptionRow] = useState<AdminSubscriptionRow | null>(null);
+  const [subscriptionLoading, setSubscriptionLoading] = useState(false);
   const [dialogForm, setDialogForm] = useState<DialogFormState>({ displayName: "", country: "MY", publicUsername: "" });
 
   const load = async () => {
@@ -44,6 +57,8 @@ export const AdminMembersPage: React.FC = () => {
 
   const openDialog = (row: AdminMemberRow) => {
     setSelected(row);
+    setEditDialogTab("details");
+    setSubscriptionRow(null);
     setDialogForm({
       displayName: row.display_name ?? "",
       country: row.country ?? "MY",
@@ -51,6 +66,28 @@ export const AdminMembersPage: React.FC = () => {
     });
     setDialogOpen(true);
   };
+
+  useEffect(() => {
+    if (!dialogOpen || !selected) {
+      setSubscriptionRow(null);
+      return;
+    }
+    let active = true;
+    setSubscriptionLoading(true);
+    void (async () => {
+      const res = await adminListSubscriptions();
+      if (!active) return;
+      setSubscriptionLoading(false);
+      if (!res.ok) {
+        setSubscriptionRow(null);
+        return;
+      }
+      setSubscriptionRow(res.data.find((r) => r.member_id === selected.id) ?? null);
+    })();
+    return () => {
+      active = false;
+    };
+  }, [dialogOpen, selected?.id]);
 
   const onCreate = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -193,52 +230,153 @@ export const AdminMembersPage: React.FC = () => {
         )}
       </div>
 
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      <Dialog
+        open={dialogOpen}
+        onOpenChange={(open) => {
+          setDialogOpen(open);
+          if (!open) setEditDialogTab("details");
+        }}
+      >
         <DialogContent className="max-h-[88vh] overflow-y-auto sm:max-w-xl">
           <DialogHeader>
             <DialogTitle>Edit member</DialogTitle>
-            <DialogDescription>Update member details or delete this account.</DialogDescription>
+            <DialogDescription>
+              {editDialogTab === "details"
+                ? "Update member details or delete this account."
+                : "View OD membership for this member."}
+            </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-3">
-            <div className="space-y-1.5">
-              <label htmlFor="member-email" className="text-xs font-semibold uppercase tracking-[0.12em] text-[#6b7280]">Email</label>
-              <Input id="member-email" value={selected?.email ?? ""} disabled />
-            </div>
-            <div className="space-y-1.5">
-              <label htmlFor="member-display-name" className="text-xs font-semibold uppercase tracking-[0.12em] text-[#6b7280]">Display name</label>
-              <Input
-                id="member-display-name"
-                value={dialogForm.displayName}
-                onChange={(e) => setDialogForm((prev) => ({ ...prev, displayName: e.target.value }))}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <label htmlFor="member-country" className="text-xs font-semibold uppercase tracking-[0.12em] text-[#6b7280]">Country</label>
-              <Input
-                id="member-country"
-                value={dialogForm.country}
-                onChange={(e) => setDialogForm((prev) => ({ ...prev, country: e.target.value }))}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <label htmlFor="member-public-username" className="text-xs font-semibold uppercase tracking-[0.12em] text-[#6b7280]">Public username</label>
-              <Input
-                id="member-public-username"
-                value={dialogForm.publicUsername}
-                onChange={(e) => setDialogForm((prev) => ({ ...prev, publicUsername: e.target.value }))}
-              />
-            </div>
+
+          <div className="flex gap-1 rounded-xl border border-[#e3e9fb] bg-[#f8faff] p-1">
+            {(["details", "subscription"] as const).map((tab) => (
+              <button
+                key={tab}
+                type="button"
+                onClick={() => setEditDialogTab(tab)}
+                className={`flex-1 rounded-lg px-3 py-2 text-sm font-medium transition ${
+                  editDialogTab === tab
+                    ? "bg-white text-[#1f3fb0] shadow-sm ring-1 ring-[#dfe6fb]"
+                    : "text-[#64748b] hover:text-[#111827]"
+                }`}
+              >
+                {tab === "details" ? "Details" : "Subscription"}
+              </button>
+            ))}
           </div>
+
+          {editDialogTab === "details" ? (
+            <div className="grid gap-3">
+              <div className="space-y-1.5">
+                <label htmlFor="member-email" className="text-xs font-semibold uppercase tracking-[0.12em] text-[#6b7280]">Email</label>
+                <Input id="member-email" value={selected?.email ?? ""} disabled />
+              </div>
+              <div className="space-y-1.5">
+                <label htmlFor="member-display-name" className="text-xs font-semibold uppercase tracking-[0.12em] text-[#6b7280]">Display name</label>
+                <Input
+                  id="member-display-name"
+                  value={dialogForm.displayName}
+                  onChange={(e) => setDialogForm((prev) => ({ ...prev, displayName: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label htmlFor="member-country" className="text-xs font-semibold uppercase tracking-[0.12em] text-[#6b7280]">Country</label>
+                <Input
+                  id="member-country"
+                  value={dialogForm.country}
+                  onChange={(e) => setDialogForm((prev) => ({ ...prev, country: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label htmlFor="member-public-username" className="text-xs font-semibold uppercase tracking-[0.12em] text-[#6b7280]">Public username</label>
+                <Input
+                  id="member-public-username"
+                  value={dialogForm.publicUsername}
+                  onChange={(e) => setDialogForm((prev) => ({ ...prev, publicUsername: e.target.value }))}
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {subscriptionLoading ? (
+                <div className="space-y-3 py-2">
+                  <div className="h-10 animate-pulse rounded-xl bg-[#edf2ff]" />
+                  <div className="h-10 animate-pulse rounded-xl bg-[#edf2ff]" />
+                  <div className="h-10 animate-pulse rounded-xl bg-[#edf2ff]" />
+                </div>
+              ) : subscriptionRow ? (
+                <dl className="space-y-3 rounded-2xl border border-[#e3e9fb] bg-[#f8faff] p-4 text-sm">
+                  <div className="flex justify-between gap-4">
+                    <dt className="text-xs font-semibold uppercase tracking-[0.12em] text-[#6b7280]">Status</dt>
+                    <dd className="font-medium text-[#111827]">{subscriptionRow.status}</dd>
+                  </div>
+                  <div className="flex justify-between gap-4">
+                    <dt className="text-xs font-semibold uppercase tracking-[0.12em] text-[#6b7280]">Plan</dt>
+                    <dd className="font-medium text-[#111827]">{subscriptionRow.plan ?? "—"}</dd>
+                  </div>
+                  <div className="flex justify-between gap-4">
+                    <dt className="text-xs font-semibold uppercase tracking-[0.12em] text-[#6b7280]">Valid from</dt>
+                    <dd className="text-[#111827]">
+                      {subscriptionRow.valid_from ? new Date(subscriptionRow.valid_from).toLocaleString() : "—"}
+                    </dd>
+                  </div>
+                  <div className="flex justify-between gap-4">
+                    <dt className="text-xs font-semibold uppercase tracking-[0.12em] text-[#6b7280]">Valid until</dt>
+                    <dd className="text-[#111827]">
+                      {subscriptionRow.valid_until ? new Date(subscriptionRow.valid_until).toLocaleString() : "—"}
+                    </dd>
+                  </div>
+                  <div className="flex justify-between gap-4">
+                    <dt className="text-xs font-semibold uppercase tracking-[0.12em] text-[#6b7280]">Member code</dt>
+                    <dd className="font-mono text-xs text-[#111827]">{subscriptionRow.member_code}</dd>
+                  </div>
+                </dl>
+              ) : selected ? (
+                <div className="rounded-2xl border border-dashed border-[#cbd5f5] bg-[#f8faff] p-4 text-sm text-[#5f6673]">
+                  <p>No subscription row found for this member.</p>
+                  <p className="mt-2 text-xs">
+                    Summary from directory:{" "}
+                    <span className="font-medium text-[#111827]">
+                      {selected.membership_status ?? "none"}
+                      {selected.membership_plan ? ` · ${selected.membership_plan}` : ""}
+                      {selected.valid_until ? ` · until ${new Date(selected.valid_until).toLocaleDateString()}` : ""}
+                    </span>
+                  </p>
+                  <Button asChild variant="outline" className="mt-3 w-full sm:w-auto">
+                    <Link to="/admin/subscriptions">Manage subscriptions</Link>
+                  </Button>
+                </div>
+              ) : null}
+
+              {!subscriptionLoading && subscriptionRow ? (
+                <p className="text-xs text-[#6b7280]">
+                  To create or change subscription, use{" "}
+                  <Link to="/admin/subscriptions" className="font-medium text-[#1f3fb0] underline-offset-2 hover:underline">
+                    Subscriptions
+                  </Link>
+                  .
+                </p>
+              ) : null}
+            </div>
+          )}
+
           <DialogFooter className="gap-2">
-            <Button variant="destructive" disabled={!selected || busyRow === selected.id} onClick={() => void onDelete()}>
-              {busyRow && selected && busyRow === selected.id ? "Deleting..." : "Delete"}
-            </Button>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button disabled={!selected || busyRow === selected.id} onClick={() => void onSave()}>
-              {busyRow && selected && busyRow === selected.id ? "Saving..." : "Save changes"}
-            </Button>
+            {editDialogTab === "details" ? (
+              <>
+                <Button variant="destructive" disabled={!selected || busyRow === selected.id} onClick={() => void onDelete()}>
+                  {busyRow && selected && busyRow === selected.id ? "Deleting..." : "Delete"}
+                </Button>
+                <Button variant="outline" onClick={() => setDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button disabled={!selected || busyRow === selected.id} onClick={() => void onSave()}>
+                  {busyRow && selected && busyRow === selected.id ? "Saving..." : "Save changes"}
+                </Button>
+              </>
+            ) : (
+              <Button variant="outline" className="w-full sm:ml-auto sm:w-auto" onClick={() => setDialogOpen(false)}>
+                Close
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

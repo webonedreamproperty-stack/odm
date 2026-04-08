@@ -96,6 +96,9 @@ const OdMemberSignupPage = lazy(() => import('./components/od/OdMemberSignupPage
 const OdVendorSignupPage = lazy(() => import('./components/od/OdVendorSignupPage').then((module) => ({ default: module.OdVendorSignupPage })));
 const OdVerifyPage = lazy(() => import('./components/od/OdVerifyPage').then((module) => ({ default: module.OdVerifyPage })));
 const OdMemberAccountPage = lazy(() => import('./components/od/OdMemberAccountPage').then((module) => ({ default: module.OdMemberAccountPage })));
+const OdMemberDirectoryAllPage = lazy(() =>
+  import('./components/od/OdMemberDirectoryAllPage').then((module) => ({ default: module.OdMemberDirectoryAllPage }))
+);
 const OdAdminPage = lazy(() => import('./components/od/OdAdminPage').then((module) => ({ default: module.OdAdminPage })));
 const AdminLoginPage = lazy(() => import('./components/AdminLoginPage').then((module) => ({ default: module.AdminLoginPage })));
 const AdminShell = lazy(() => import('./components/admin/AdminShell').then((module) => ({ default: module.AdminShell })));
@@ -749,6 +752,8 @@ const AppRoutes: React.FC = () => {
         {/* Authenticated Routes */}
         <Route element={<RequireMemberAuth />}>
           <Route path="/od/account" element={withSuspense(<OdMemberAccountPage />)} />
+          <Route path="/shops" element={withSuspense(<OdMemberDirectoryAllPage />)} />
+          <Route path="/od/account/shops" element={<Navigate to="/shops" replace />} />
         </Route>
 
         <Route element={<RequireAuth />}>

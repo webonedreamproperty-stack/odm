@@ -24,6 +24,7 @@
     "clsx": "^2.1.1",
     "dotenv": "^16.6.1",
     "express": "^4.21.2",
+    "framer-motion": "^11.18.2",
     "lottie-react": "^2.4.1",
     "lucide-react": "^0.563.0",
     "malaysia-postcodes": "^2.7.3",

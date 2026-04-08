@@ -214,13 +214,21 @@ begin
 end;
 $$;
 
+-- Replace legacy 6-arg overload when upgrading (Postgres keeps both signatures otherwise).
+drop function if exists public.admin_update_partner_account(uuid, text, text, text, text, text);
+
 create or replace function public.admin_update_partner_account(
   p_partner_id uuid,
   p_business_name text,
   p_slug text,
   p_account_status text,
   p_access_status text,
-  p_tier text
+  p_tier text,
+  p_od_listing_area text default null,
+  p_od_listing_lat double precision default null,
+  p_od_listing_lng double precision default null,
+  p_od_maps_url text default null,
+  p_od_google_place_id text default null
 )
 returns jsonb
 language plpgsql
@@ -240,7 +248,12 @@ begin
     slug = v_slug,
     status = coalesce(p_account_status, status),
     access = coalesce(p_access_status, access),
-    tier = coalesce(p_tier, tier)
+    tier = coalesce(p_tier, tier),
+    od_listing_area = nullif(trim(coalesce(p_od_listing_area, '')), ''),
+    od_listing_lat = p_od_listing_lat,
+    od_listing_lng = p_od_listing_lng,
+    od_maps_url = nullif(trim(coalesce(p_od_maps_url, '')), ''),
+    od_google_place_id = nullif(trim(coalesce(p_od_google_place_id, '')), '')
   where id = p_partner_id
     and role = 'owner';
 
@@ -278,7 +291,7 @@ grant execute on function public.admin_create_member_account(text, text, text, t
 grant execute on function public.admin_update_member_account(uuid, text, text, text) to authenticated;
 grant execute on function public.admin_delete_member_account(uuid) to authenticated;
 grant execute on function public.admin_create_partner_account(text, text, text, text) to authenticated;
-grant execute on function public.admin_update_partner_account(uuid, text, text, text, text, text) to authenticated;
+grant execute on function public.admin_update_partner_account(uuid, text, text, text, text, text, text, double precision, double precision, text, text) to authenticated;
 grant execute on function public.admin_delete_partner_account(uuid) to authenticated;
 
 create or replace function public.admin_list_od_memberships()

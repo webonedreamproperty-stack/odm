@@ -15,6 +15,8 @@ export type OdDirectoryShop = {
   area: string | null;
   maps_url: string | null;
   shop_photo_url: string | null;
+  /** Linked Google Place ID (from vendor profile) when set. */
+  google_place_id: string | null;
   /** First Places API photo resource name from cache (used when shop photo unset). */
   google_place_photo_name: string | null;
   /** Vendor-picked listing coordinates when saved from Settings (optional). */
@@ -22,6 +24,12 @@ export type OdDirectoryShop = {
   listing_lng: number | null;
   rating: number | null;
   rating_count: number | null;
+  /** From od_place_details_cache (Google primary type / display). */
+  place_google_category: string | null;
+  /** From od_place_details_cache currentOpeningHours.openNow when available. */
+  place_open_now: boolean | null;
+  /** First weekday line from cached place details. */
+  place_opening_line: string | null;
   services: OdDirectoryService[] | null;
 };
 
@@ -59,6 +67,7 @@ export async function fetchOdMemberDirectory(): Promise<
     area: row.area != null ? String(row.area) : null,
     maps_url: row.maps_url != null ? String(row.maps_url) : null,
     shop_photo_url: row.shop_photo_url != null ? String(row.shop_photo_url) : null,
+    google_place_id: row.google_place_id != null ? String(row.google_place_id) : null,
     google_place_photo_name:
       row.google_place_photo_name != null ? String(row.google_place_photo_name) : null,
     listing_lat: (() => {
@@ -77,6 +86,16 @@ export async function fetchOdMemberDirectory(): Promise<
       const n = row.rating_count != null && row.rating_count !== "" ? Number(row.rating_count) : NaN;
       return Number.isFinite(n) ? n : null;
     })(),
+    place_google_category: row.place_google_category != null ? String(row.place_google_category) : null,
+    place_open_now:
+      typeof row.place_open_now === "boolean"
+        ? row.place_open_now
+        : row.place_open_now === "true"
+          ? true
+          : row.place_open_now === "false"
+            ? false
+            : null,
+    place_opening_line: row.place_opening_line != null ? String(row.place_opening_line) : null,
     services: Array.isArray(row.services)
       ? (row.services as Record<string, unknown>[]).map((s) => ({
           id: String(s.id ?? ''),
@@ -122,6 +141,7 @@ export async function fetchOdMemberDirectoryPreview(limit = 2): Promise<
     area: row.area != null ? String(row.area) : null,
     maps_url: row.maps_url != null ? String(row.maps_url) : null,
     shop_photo_url: row.shop_photo_url != null ? String(row.shop_photo_url) : null,
+    google_place_id: row.google_place_id != null ? String(row.google_place_id) : null,
     google_place_photo_name:
       row.google_place_photo_name != null ? String(row.google_place_photo_name) : null,
     listing_lat: (() => {
@@ -140,6 +160,16 @@ export async function fetchOdMemberDirectoryPreview(limit = 2): Promise<
       const n = row.rating_count != null && row.rating_count !== "" ? Number(row.rating_count) : NaN;
       return Number.isFinite(n) ? n : null;
     })(),
+    place_google_category: row.place_google_category != null ? String(row.place_google_category) : null,
+    place_open_now:
+      typeof row.place_open_now === "boolean"
+        ? row.place_open_now
+        : row.place_open_now === "true"
+          ? true
+          : row.place_open_now === "false"
+            ? false
+            : null,
+    place_opening_line: row.place_opening_line != null ? String(row.place_opening_line) : null,
     services: Array.isArray(row.services)
       ? (row.services as Record<string, unknown>[]).map((s) => ({
           id: String(s.id ?? ""),

@@ -120,6 +120,11 @@ export async function adminUpdatePartner(input: {
   accountStatus: string;
   accessStatus: string;
   tier: string;
+  odListingArea: string | null;
+  odListingLat: number | null;
+  odListingLng: number | null;
+  odMapsUrl: string | null;
+  odGooglePlaceId: string | null;
 }) {
   const { data, error } = await supabase.rpc("admin_update_partner_account", {
     p_partner_id: input.partnerId,
@@ -128,6 +133,11 @@ export async function adminUpdatePartner(input: {
     p_account_status: input.accountStatus,
     p_access_status: input.accessStatus,
     p_tier: input.tier,
+    p_od_listing_area: input.odListingArea,
+    p_od_listing_lat: input.odListingLat,
+    p_od_listing_lng: input.odListingLng,
+    p_od_maps_url: input.odMapsUrl,
+    p_od_google_place_id: input.odGooglePlaceId,
   });
   if (error) return { ok: false as const, error: error.message };
   return { ok: true as const, data };

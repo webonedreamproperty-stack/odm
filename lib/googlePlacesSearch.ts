@@ -11,6 +11,9 @@ export type GooglePlaceSearchResult = {
   latitude: number | null;
   longitude: number | null;
   googleMapsUri: string | null;
+  /** Google primary type label when returned by API (e.g. restaurant). */
+  primaryTypeLabel: string | null;
+  openNow: boolean | null;
 };
 
 export class GooglePlacesSearchError extends Error {
@@ -36,6 +39,19 @@ function normalizeResults(raw: unknown): GooglePlaceSearchResult[] {
       const location = p.location as Record<string, unknown> | undefined;
       const lat = typeof location?.latitude === "number" ? location.latitude : null;
       const lng = typeof location?.longitude === "number" ? location.longitude : null;
+      const ptd = p.primaryTypeDisplayName as { text?: string } | undefined;
+      const primaryRaw = typeof p.primaryType === "string" ? p.primaryType : null;
+      const primaryTypeLabel =
+        (typeof ptd?.text === "string" && ptd.text.trim()) ||
+        (primaryRaw
+          ? primaryRaw
+              .split("_")
+              .map((w) => w.charAt(0) + w.slice(1).toLowerCase())
+              .join(" ")
+          : null) ||
+        null;
+      const coh = p.currentOpeningHours as { openNow?: boolean } | undefined;
+      const openNow = typeof coh?.openNow === "boolean" ? coh.openNow : null;
       return {
         id: typeof p.id === "string" ? p.id : "",
         name: typeof displayName?.text === "string" ? displayName.text : "",
@@ -44,6 +60,8 @@ function normalizeResults(raw: unknown): GooglePlaceSearchResult[] {
         latitude: lat,
         longitude: lng,
         googleMapsUri: typeof p.googleMapsUri === "string" ? p.googleMapsUri : null,
+        primaryTypeLabel,
+        openNow,
       };
     })
     .filter((x) => x.id && x.name);
@@ -86,7 +104,7 @@ export async function searchGooglePlacesText(
       "Content-Type": "application/json",
       "X-Goog-Api-Key": apiKey,
       "X-Goog-FieldMask":
-        "places.id,places.displayName,places.formattedAddress,places.location,places.businessStatus,places.googleMapsUri",
+        "places.id,places.displayName,places.formattedAddress,places.location,places.businessStatus,places.googleMapsUri,places.primaryType,places.primaryTypeDisplayName,places.currentOpeningHours,places.regularOpeningHours",
     },
     body: JSON.stringify({
       textQuery: trimmed,

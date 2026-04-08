@@ -137,3 +137,19 @@ h3 {
     font-size: 16px !important;
   }
 }
+
+/* OD member directory: View Transitions — hero / title / star morph (enlarging star in detail). */
+@media (prefers-reduced-motion: no-preference) {
+  ::view-transition-group(*) {
+    animation-duration: 0.48s;
+    animation-timing-function: cubic-bezier(0.22, 0.85, 0.28, 1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation-duration: 0.01ms !important;
+  }
+}
