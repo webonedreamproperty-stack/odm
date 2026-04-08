@@ -266,7 +266,7 @@ export function printOdVerifySheet({
 }: PrintOdVerifySheetOptions): void {
   if (typeof document === "undefined") return;
 
-  const logoSrc = `${window.location.origin}/odmember.svg`;
+  const logoSrc = `${window.location.origin}/odmember.png`;
   const html = buildPrintHtml(verifyUrl, qrSvgOuterHTML, logoSrc, { shopName, discountLine });
 
   const iframe = document.createElement("iframe");

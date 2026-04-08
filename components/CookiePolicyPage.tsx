@@ -39,7 +39,7 @@ export const CookiePolicyPage: React.FC = () => {
       <header className="fixed top-0 z-30 w-full border-b border-black/[0.06] bg-white/78 backdrop-blur-2xl">
         <div className="mx-auto flex max-w-[88rem] items-center justify-between px-4 py-4 sm:px-6 lg:px-10">
           <Link to="/" className="inline-flex items-center">
-            <img src="/odmember.svg" alt="ODMember" className="h-8 w-auto" />
+            <img src="/odmember.png" alt="ODMember" className="h-8 w-auto" />
           </Link>
           <Button asChild variant="ghost" className="rounded-full text-sm text-[#1d1d1f] hover:bg-black/[0.05]">
             <Link to="/">

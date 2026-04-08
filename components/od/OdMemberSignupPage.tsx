@@ -55,6 +55,10 @@ export const OdMemberSignupPage: React.FC = () => {
           Malaysia · One account for participating shops. Subscription is activated by your OD admin after payment.
         </p>
 
+          <p className="mt-2 text-sm leading-relaxed text-[#ff0000]">
+            Website ini adalah untuk kegunaan Member dibawah OD Network sahaja. ahli selain OD Network tidak dibenarkan berdaftar. Jika pihak admin dapat mengesan ahli selain OD Network, akaun anda akan dipadam dan tiada sebarang pulangan bayaran.
+          </p>
+
         <form className="mt-8 space-y-5" onSubmit={handleSubmit}>
           <div className="space-y-1.5">
             <label className={labelCls}>Email</label>

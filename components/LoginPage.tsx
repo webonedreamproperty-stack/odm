@@ -118,7 +118,7 @@ export const LoginPage: React.FC = () => {
             )}
           >
             <Building2 className="h-4 w-4 shrink-0" aria-hidden />
-            Business owner
+            ODPartner
           </button>
           <button
             type="button"
@@ -134,7 +134,7 @@ export const LoginPage: React.FC = () => {
             )}
           >
             <User className="h-4 w-4 shrink-0" aria-hidden />
-            OD member
+            ODMember
           </button>
         </div>
 
@@ -142,6 +142,13 @@ export const LoginPage: React.FC = () => {
           {loginMode === "business" ? (
             <>
               For shop owners and staff. Staff should use their dedicated portal link and PIN from the business.
+              <p className="text-sm text-[#6d6658] mt-2">
+                New OD Partner?{" "}
+                <Link to="/odp/signup" className="font-semibold text-[#1b1813] underline hover:underline">
+                  Register as ODPartner
+                </Link>
+              </p>
+
             </>
           ) : (
             <>Use the email and password for your OD membership (not your business dashboard login).</>
@@ -150,8 +157,8 @@ export const LoginPage: React.FC = () => {
         {loginMode === "member" && (
           <p className="text-sm text-[#6d6658]">
             New OD member?{" "}
-            <Link to="/od/member/signup" className="font-semibold text-[#1b1813] underline-offset-2 hover:underline">
-              Register as OD member
+            <Link to="/od/member/signup" className="font-semibold text-[#1b1813] underline hover:underline">
+              Register as ODMember
             </Link>
           </p>
         )}

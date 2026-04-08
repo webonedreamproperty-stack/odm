@@ -358,7 +358,7 @@ export const AuthSplitLayout: React.FC<AuthSplitLayoutProps> = ({
         <section className={`relative flex min-h-[100dvh] flex-col ${theme.leftBg} px-5 pb-10 pt-5 sm:px-8 sm:pt-7 lg:px-10 lg:pb-12 xl:px-16`}>
           <header className="flex items-center justify-between gap-4">
             <Link to="/login" className="inline-flex items-center">
-              <img src="/odmember.svg" alt="ODMember" className="h-13 w-auto sm:h-[5rem]" />
+              <img src="/odmember.png" alt="ODMember" className="h-13 w-auto sm:h-[5rem]" />
             </Link>
 
             {theme.navLinkLabel && (
@@ -372,7 +372,7 @@ export const AuthSplitLayout: React.FC<AuthSplitLayoutProps> = ({
           </header>
 
           <div className="mx-auto flex w-full max-w-[37rem] flex-1 flex-col justify-center py-6 sm:py-8 lg:py-10">
-            <MobileShowcase theme={theme} />
+            {/* <MobileShowcase theme={theme} /> */}
 
             <div className="mt-8 text-center lg:mt-0 lg:text-left">
               {badge && (
@@ -392,7 +392,7 @@ export const AuthSplitLayout: React.FC<AuthSplitLayoutProps> = ({
               </p>
             </div>
 
-            <div className="mt-8 rounded-[2rem] border border-black/[0.08] bg-white/86 p-4 shadow-[0_18px_50px_-34px_rgba(0,0,0,0.28)] sm:p-6 lg:mt-10 lg:rounded-[2.15rem] lg:p-7">
+            <div className="mt-8 rounded-[2rem] border border-black/[0.08] bg-white p-4 shadow-[0_18px_50px_-34px_rgba(0,0,0,0.28)] sm:p-6 lg:mt-10 lg:rounded-[2.15rem] lg:p-7">
               {children}
             </div>
           </div>

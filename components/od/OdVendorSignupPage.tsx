@@ -212,7 +212,7 @@ export const OdVendorSignupPage: React.FC = () => {
           <div className="mt-8 space-y-3 text-center text-sm text-[#6d6658]">
             <p>
               Already have a partner account?{" "}
-              <Link className="font-semibold text-[#1b1813] underline-offset-2 hover:underline" to="/od/vendor/login">
+              <Link className="font-semibold text-[#1b1813] underline-offset-2 hover:underline" to="/login">
                 Business Login
               </Link>
             </p>
