@@ -22,6 +22,7 @@ import { isSupabaseConfigured, supabase } from './lib/supabase';
 import { useSubscription } from './lib/useSubscription';
 import { SubscriptionProvider } from './components/SubscriptionContext';
 import { APP_ORIGIN } from './lib/siteConfig';
+import { fetchIsOdAdmin } from './lib/db/members';
 
 const SITE_ORIGIN = APP_ORIGIN;
 const DEFAULT_SOCIAL_DESCRIPTION = 'ODMember is a digital loyalty card platform for small businesses, including loyalty program for cafes, loyalty program for spa, loyalty program for laundry, loyalty program for carwash, and loyalty program for salons.';
@@ -96,6 +97,12 @@ const OdVendorSignupPage = lazy(() => import('./components/od/OdVendorSignupPage
 const OdVerifyPage = lazy(() => import('./components/od/OdVerifyPage').then((module) => ({ default: module.OdVerifyPage })));
 const OdMemberAccountPage = lazy(() => import('./components/od/OdMemberAccountPage').then((module) => ({ default: module.OdMemberAccountPage })));
 const OdAdminPage = lazy(() => import('./components/od/OdAdminPage').then((module) => ({ default: module.OdAdminPage })));
+const AdminLoginPage = lazy(() => import('./components/AdminLoginPage').then((module) => ({ default: module.AdminLoginPage })));
+const AdminShell = lazy(() => import('./components/admin/AdminShell').then((module) => ({ default: module.AdminShell })));
+const AdminDashboardHomePage = lazy(() => import('./components/admin/AdminDashboardHomePage').then((module) => ({ default: module.AdminDashboardHomePage })));
+const AdminMembersPage = lazy(() => import('./components/admin/AdminMembersPage').then((module) => ({ default: module.AdminMembersPage })));
+const AdminPartnersPage = lazy(() => import('./components/admin/AdminPartnersPage').then((module) => ({ default: module.AdminPartnersPage })));
+const AdminSubscriptionsPage = lazy(() => import('./components/admin/AdminSubscriptionsPage').then((module) => ({ default: module.AdminSubscriptionsPage })));
 const PublicHandlePage = lazy(() => import('./components/PublicHandlePage').then((module) => ({ default: module.PublicHandlePage })));
 
 const RouteLoader: React.FC = () => (
@@ -594,6 +601,39 @@ const DashboardLayout: React.FC = () => {
   );
 };
 
+const RequireAdminPortalAuth: React.FC = () => {
+  const { loading, currentUser, currentMember } = useAuth();
+  const [isAllowed, setIsAllowed] = useState<boolean | null>(null);
+  const userId = currentUser?.id ?? currentMember?.id ?? null;
+
+  useEffect(() => {
+    let active = true;
+    if (!userId) {
+      setIsAllowed(false);
+      return () => {
+        active = false;
+      };
+    }
+    void (async () => {
+      const allowed = await fetchIsOdAdmin(userId);
+      if (!active) return;
+      setIsAllowed(allowed);
+    })();
+    return () => {
+      active = false;
+    };
+  }, [userId]);
+
+  if (loading || isAllowed === null) {
+    return <RouteLoader />;
+  }
+
+  if (!userId || !isAllowed) {
+    return <Navigate to="/admin/login" replace />;
+  }
+  return <Outlet />;
+};
+
 const AppRoutes: React.FC = () => {
   const { currentOwner, isStaff } = useAuth();
   const [createdCards, setCreatedCards] = useState<Template[]>([]);
@@ -695,6 +735,16 @@ const AppRoutes: React.FC = () => {
         <Route path="/od/vendor/login" element={withSuspense(<OdVendorLoginPage />)} />
         <Route path="/od/member/signup" element={withSuspense(<OdMemberSignupPage />)} />
         <Route path="/od/verify/:shopSlug" element={withSuspense(<OdVerifyPage />)} />
+        <Route path="/admin/login" element={withSuspense(<AdminLoginPage />)} />
+        <Route element={<RequireAdminPortalAuth />}>
+          <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
+          <Route element={withSuspense(<AdminShell />)}>
+            <Route path="/admin/dashboard" element={withSuspense(<AdminDashboardHomePage />)} />
+            <Route path="/admin/members" element={withSuspense(<AdminMembersPage />)} />
+            <Route path="/admin/partners" element={withSuspense(<AdminPartnersPage />)} />
+            <Route path="/admin/subscriptions" element={withSuspense(<AdminSubscriptionsPage />)} />
+          </Route>
+        </Route>
 
         {/* Authenticated Routes */}
         <Route element={<RequireMemberAuth />}>
