@@ -15,8 +15,7 @@ import {
   type OdDirectoryShop,
 } from "../../lib/db/odDirectory";
 import { cn } from "../../lib/utils";
-import { OD_BUSINESS_CATEGORIES } from "../../lib/odBusinessCategories";
-import { OD_INDUSTRY_FILTER_LABEL, shopMatchesIndustryFilter } from "../../lib/odMemberDirectoryFilters";
+import { getShopCategoryFilterLabel } from "../../lib/odMemberDirectoryDisplay";
 import { buildAppUrl } from "../../lib/siteConfig";
 import {
   fetchOdPlaceSearchCacheExtrasBatch,
@@ -359,10 +358,21 @@ export const OdMemberAccountPage: React.FC = () => {
     setMemberOnboardingStep(2);
   }, [memberOnboardingDone, memberProfileStepDone, memberLocationStepDone]);
 
+  const categoryOptions = useMemo(() => {
+    const set = new Set<string>();
+    for (const shop of dirShops) {
+      set.add(getShopCategoryFilterLabel(shop, dirPlaceExtras[shop.owner_id]));
+    }
+    return Array.from(set).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }));
+  }, [dirShops, dirPlaceExtras]);
+
   const filteredShops = useMemo(() => {
-    return dirShops.filter((shop) => shopMatchesIndustryFilter(shop.business_category, industryFilter));
-  }, [dirShops, industryFilter]);
-  const directoryShopsToRender = active ? filteredShops : dirShops;
+    if (industryFilter === "all") return dirShops;
+    return dirShops.filter(
+      (shop) => getShopCategoryFilterLabel(shop, dirPlaceExtras[shop.owner_id]) === industryFilter
+    );
+  }, [dirShops, dirPlaceExtras, industryFilter]);
+  const directoryShopsToRender = filteredShops;
 
   const accountQrUrl = useMemo(() => {
     if (typeof window === "undefined") return "";
@@ -997,9 +1007,9 @@ export const OdMemberAccountPage: React.FC = () => {
                 </div>
               )} */}
 
-              {!dirLoading && !dirError && !active && dirShops.length > 0 && (
+              {!dirLoading && !dirError && dirShops.length > 0 && (
                 <div className="mb-6">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#8a8276]">Browse by industry</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#8a8276]">Filter</p>
                   <div className="mt-3 flex flex-wrap gap-2">
                     <button
                       type="button"
@@ -1008,24 +1018,24 @@ export const OdMemberAccountPage: React.FC = () => {
                         "rounded-full border px-4 py-2 text-[13px] font-medium transition-all duration-200",
                         industryFilter === "all"
                           ? "border-transparent bg-[#1b1813] text-white shadow-md shadow-black/15"
-                          : "border-black/[0.08] bg-white/70 text-[#374151] backdrop-blur-md hover:border-black/15 hover:bg-white"
+                          : "border-black/[0.08] bg-[#faf9f6] text-[#374151] hover:border-black/15"
                       )}
                     >
                       All
                     </button>
-                    {OD_BUSINESS_CATEGORIES.map((cat) => (
+                    {categoryOptions.map((label) => (
                       <button
-                        key={cat}
+                        key={label}
                         type="button"
-                        onClick={() => setIndustryFilter(cat)}
+                        onClick={() => setIndustryFilter(label)}
                         className={cn(
                           "rounded-full border px-4 py-2 text-[13px] font-medium transition-all duration-200",
-                          industryFilter === cat
+                          industryFilter === label
                             ? "border-transparent bg-[#1b1813] text-white shadow-md shadow-black/15"
-                            : "border-black/[0.08] bg-white/70 text-[#374151] backdrop-blur-md hover:border-black/15 hover:bg-white"
+                            : "border-black/[0.08] bg-[#faf9f6] text-[#374151] hover:border-black/15"
                         )}
                       >
-                        {OD_INDUSTRY_FILTER_LABEL[cat] ?? cat}
+                        {label}
                       </button>
                     ))}
                   </div>
@@ -1046,7 +1056,7 @@ export const OdMemberAccountPage: React.FC = () => {
                 </p>
               )}
 
-              {!dirLoading && !dirError && active && dirShops.length > 0 && filteredShops.length === 0 && (
+              {!dirLoading && !dirError && dirShops.length > 0 && filteredShops.length === 0 && (
                 <p className="rounded-2xl border border-dashed border-black/[0.1] bg-[#faf9f6] px-5 py-10 text-center text-[15px] leading-relaxed text-[#6d6658]">
                   No shops in this category. Try{" "}
                   <button
