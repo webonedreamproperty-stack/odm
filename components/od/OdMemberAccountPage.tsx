@@ -1058,7 +1058,7 @@ export const OdMemberAccountPage: React.FC = () => {
                 <ul
                   role="list"
                   aria-label="Participating vendors, swipe horizontally for more"
-                  className="-mx-5 flex touch-pan-x snap-x snap-mandatory gap-4 overflow-x-auto scroll-smooth scroll-pl-5 scroll-pr-[max(1.25rem,5vw)] pb-2 pl-5 pr-[max(1.25rem,5vw)] [-ms-overflow-style:none] [scrollbar-width:none] sm:-mx-6 sm:gap-4 sm:scroll-pl-6 sm:scroll-pr-[max(1.5rem,5vw)] sm:pl-6 sm:pr-[max(1.5rem,5vw)] md:mx-0 md:grid md:max-w-none md:grid-cols-2 md:gap-6 md:overflow-visible md:px-0 md:pb-0 md:pl-0 md:pr-0 md:scroll-pl-0 md:scroll-pr-0 [&::-webkit-scrollbar]:hidden"
+                  className="-mx-5 flex snap-x snap-mandatory gap-4 overflow-x-auto scroll-smooth scroll-pl-5 scroll-pr-[max(1.25rem,5vw)] pb-2 pl-5 pr-[max(1.25rem,5vw)] [touch-action:pan-x_pan-y] [-ms-overflow-style:none] [scrollbar-width:none] sm:-mx-6 sm:gap-4 sm:scroll-pl-6 sm:scroll-pr-[max(1.5rem,5vw)] sm:pl-6 sm:pr-[max(1.5rem,5vw)] md:mx-0 md:grid md:max-w-none md:grid-cols-2 md:gap-6 md:overflow-visible md:px-0 md:pb-0 md:pl-0 md:pr-0 md:scroll-pl-0 md:scroll-pr-0 [&::-webkit-scrollbar]:hidden"
                 >
                   {directoryShopsToRender.map((shop: OdDirectoryShop) => (
                     <li

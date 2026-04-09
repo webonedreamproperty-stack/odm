@@ -100,7 +100,7 @@ export const OdDirectoryShopCard: React.FC<OdDirectoryShopCardProps> = ({
         <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/25 to-transparent" />
         <div className="absolute bottom-0 left-0 right-0 p-4">
           <h3
-            className="truncate text-[18px] font-semibold tracking-tight text-white"
+            className="truncate text-[18px] font-semibold tracking-tight text-white capitalize"
             style={{ viewTransitionName: vt.title } as React.CSSProperties}
           >
             {shop.business_name}

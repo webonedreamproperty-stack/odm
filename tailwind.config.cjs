@@ -68,6 +68,8 @@ module.exports = {
         "zoom-in-95": "zoom-in-95 0.18s ease-out forwards",
         "zoom-in-95-center": "zoom-in-95-center 0.18s ease-out forwards",
         "zoom-out-95-center": "zoom-out-95-center 0.18s ease-out forwards",
+        "sheet-in": "sheet-in 0.38s cubic-bezier(0.32, 0.72, 0, 1) forwards",
+        "sheet-out": "sheet-out 0.26s cubic-bezier(0.4, 0, 1, 1) forwards",
       },
       keyframes: {
         "bounce-short": {
@@ -101,6 +103,14 @@ module.exports = {
         "zoom-out-95-center": {
           from: { transform: "translate(-50%, -50%) scale(1)", opacity: "1" },
           to: { transform: "translate(-50%, -50%) scale(0.95)", opacity: "0" },
+        },
+        "sheet-in": {
+          from: { transform: "translateY(100%)" },
+          to: { transform: "translateY(0)" },
+        },
+        "sheet-out": {
+          from: { transform: "translateY(0)" },
+          to: { transform: "translateY(100%)" },
         },
       },
     },
