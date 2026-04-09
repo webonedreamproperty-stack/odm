@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Link, Navigate, useLocation } from "react-router-dom";
-import { ArrowRight, Building2, User } from "lucide-react";
+import { ArrowRight, Building2, Eye, EyeOff, User } from "lucide-react";
 import { AuthSplitLayout } from "./AuthSplitLayout";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -25,6 +25,7 @@ export const LoginPage: React.FC = () => {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -168,7 +169,7 @@ export const LoginPage: React.FC = () => {
           <Input
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="you@brand.com"
+            placeholder="you@mail.com"
             className={inputCls}
             type="email"
             autoComplete="email"
@@ -186,15 +187,25 @@ export const LoginPage: React.FC = () => {
               Forgot password?
             </Link>
           </div>
-          <Input
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Your password"
-            className={inputCls}
-            type="password"
-            autoComplete="current-password"
-            required
-          />
+          <div className="relative">
+            <Input
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Your password"
+              className={`${inputCls} pr-12`}
+              type={showPassword ? "text" : "password"}
+              autoComplete="current-password"
+              required
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword((prev) => !prev)}
+              className="absolute inset-y-0 right-3 inline-flex items-center text-[#6e6e73] hover:text-[#1d1d1f]"
+              aria-label={showPassword ? "Hide password" : "Show password"}
+            >
+              {showPassword ? <EyeOff className="h-4 w-4" aria-hidden /> : <Eye className="h-4 w-4" aria-hidden />}
+            </button>
+          </div>
         </div>
 
         {error && (

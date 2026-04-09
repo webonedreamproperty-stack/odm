@@ -764,7 +764,7 @@ export const SettingsPage: React.FC<{ embedded?: boolean }> = ({ embedded = fals
                 value={profileForm.email}
                 onChange={(e) => setProfileForm({ ...profileForm, email: e.target.value })}
                 type="email"
-                placeholder="you@brand.com"
+                placeholder="you@mail.com"
                 required
               />
             </div>

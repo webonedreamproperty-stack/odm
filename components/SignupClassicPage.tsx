@@ -158,7 +158,7 @@ export const SignupClassicPage: React.FC = () => {
           <Input
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="you@brand.com"
+            placeholder="you@mail.com"
             className={inputCls}
             type="email"
             autoComplete="email"

@@ -92,7 +92,7 @@ export const StaffLoginPage: React.FC = () => {
           <Input
             value={email}
             onChange={(event) => setEmail(event.target.value)}
-            placeholder="you@brand.com"
+            placeholder="you@mail.com"
             className={inputCls}
             type="email"
             autoComplete="email"

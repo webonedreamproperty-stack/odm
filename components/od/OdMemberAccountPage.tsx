@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Check, CheckCircle2, ChevronLeft, ChevronRight, LogOut, MapPin, PartyPopper, RefreshCw, Store } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "../ui/accordion";
 import { Button } from "../ui/button";
@@ -71,6 +71,7 @@ type OdMemberMapStyleKey = keyof typeof OD_MEMBER_MAP_STYLES;
 export const OdMemberAccountPage: React.FC = () => {
   const { currentMember, logout, updateMemberDisplayName, updateMemberPublicUsername, refreshMemberProfile } =
     useAuth();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [name, setName] = useState(currentMember?.displayName ?? "");
   const [busy, setBusy] = useState(false);
@@ -463,6 +464,11 @@ export const OdMemberAccountPage: React.FC = () => {
     setMemberOnboardingStep(1);
   };
 
+  const handleLogout = async () => {
+    await logout();
+    navigate("/login", { replace: true });
+  };
+
   return (
     <div className="min-h-screen bg-[#f5f3ef] px-4 py-10">
       <div className="mx-auto mb-8 flex max-w-2xl items-center justify-between">
@@ -474,10 +480,10 @@ export const OdMemberAccountPage: React.FC = () => {
           variant="outline"
           size="sm"
           className="rounded-full border-black/10"
-          onClick={() => void logout()}
+          onClick={() => void handleLogout()}
         >
           <LogOut className="mr-2 h-4 w-4" />
-          Sign out
+          Logout
         </Button>
       </div>
 
