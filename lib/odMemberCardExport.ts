@@ -204,7 +204,7 @@ function escapeHtml(s: string): string {
 export function printOdMemberCard(payload: OdMemberCardExportPayload): void {
   if (typeof document === "undefined") return;
 
-  const logoSrc = `${window.location.origin}/od-member-logo.svg`;
+  const logoSrc = `${window.location.origin}/odmember.png`;
   const html = buildPrintHtml(payload, logoSrc);
 
   const iframe = document.createElement("iframe");
@@ -322,7 +322,7 @@ export async function downloadOdMemberCardPng(payload: OdMemberCardExportPayload
   const padX = Math.round(W * 0.042);
   const padY = Math.round(H * 0.055);
 
-  const logoSrc = `${window.location.origin}/od-member-logo.svg`;
+  const logoSrc = `${window.location.origin}/odmember.png`;
   try {
     const logo = await loadHtmlImage(logoSrc);
     const lh = Math.round(H * 0.2);
