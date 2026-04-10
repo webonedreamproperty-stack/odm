@@ -22,6 +22,7 @@ import { isSupabaseConfigured, supabase } from './lib/supabase';
 import { useSubscription } from './lib/useSubscription';
 import { SubscriptionProvider } from './components/SubscriptionContext';
 import { APP_ORIGIN } from './lib/siteConfig';
+import { sendGaPageView } from './lib/gtag';
 import { fetchIsOdAdmin } from './lib/db/members';
 
 const SITE_ORIGIN = APP_ORIGIN;
@@ -157,6 +158,7 @@ const getSeoForPathname = (pathname: string): SeoConfig => {
 
 const SeoManager: React.FC = () => {
   const location = useLocation();
+  const gaSpaSkipFirst = React.useRef(true);
 
   useEffect(() => {
     const seo = getSeoForPathname(location.pathname);
@@ -186,7 +188,13 @@ const SeoManager: React.FC = () => {
     setMetaTag('name', 'twitter:image', DEFAULT_OG_IMAGE);
     setMetaTag('name', 'twitter:image:src', DEFAULT_OG_IMAGE);
     setMetaTag('name', 'twitter:image:alt', 'ODMember digital loyalty card preview');
-  }, [location.pathname]);
+
+    if (gaSpaSkipFirst.current) {
+      gaSpaSkipFirst.current = false;
+    } else {
+      sendGaPageView(`${location.pathname}${location.search}`, seo.title);
+    }
+  }, [location.pathname, location.search]);
 
   return null;
 };
