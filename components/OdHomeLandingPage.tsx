@@ -72,7 +72,7 @@ export const OdHomeLandingPage: React.FC = () => {
       <header className="sticky top-0 z-50 border-b border-[#eceef4] bg-white/82 backdrop-blur-xl">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
           <Link to="/" className="flex items-center gap-3 outline-offset-4">
-            <img src="/odmember.png" alt="OD Gold Member" className="h-15 w-auto sm:h-[5rem]" width={200} height={64} />
+            <img src="/odmember.png" alt="OD Gold Member" className="h-15 w-auto sm:h-[10rem]" width={200} height={64} />
           </Link>
           <div className="flex items-center gap-2 sm:gap-3">
             {/* <Button
