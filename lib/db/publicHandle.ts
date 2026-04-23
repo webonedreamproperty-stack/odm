@@ -80,7 +80,7 @@ export async function fetchPublicHandlePage(handle: string): Promise<PublicHandl
       data: {
         kind: "member",
         username: String(row.username ?? ""),
-        display_name: String(row.display_name ?? "OD Member"),
+        display_name: String(row.display_name ?? "OD Gold Member"),
         membership_active: Boolean(row.membership_active),
       },
     };

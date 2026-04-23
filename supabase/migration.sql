@@ -1068,7 +1068,7 @@ begin
   loop
     attempts := attempts + 1;
     if attempts > 40 then
-      raise exception 'Could not generate unique OD member code';
+      raise exception 'Could not generate unique OD Gold member code';
     end if;
     candidate := 'OD-' || upper(substr(replace(gen_random_uuid()::text, '-', ''), 1, 6));
     exit when not exists (select 1 from public.member_profiles where member_code = candidate);
@@ -1152,9 +1152,9 @@ begin
 
   v_od_summary := '';
   if v_od_kind = 'percent' and v_od_val is not null then
-    v_od_summary := trim(to_char(v_od_val, 'FM999999990.99')) || '% off for OD members';
+    v_od_summary := trim(to_char(v_od_val, 'FM999999990.99')) || '% off for OD Gold members';
   elsif v_od_kind = 'fixed' and v_od_val is not null then
-    v_od_summary := 'RM' || trim(to_char(v_od_val, 'FM999999990.99')) || ' off for OD members';
+    v_od_summary := 'RM' || trim(to_char(v_od_val, 'FM999999990.99')) || ' off for OD Gold members';
   end if;
 
   insert into public.profiles (
@@ -1978,7 +1978,7 @@ begin
     return jsonb_build_object(
       'kind', 'member',
       'username', m_user,
-      'display_name', coalesce(nullif(trim(m_display), ''), 'OD Member'),
+      'display_name', coalesce(nullif(trim(m_display), ''), 'OD Gold Member'),
       'membership_active', m_active
     );
   end if;

@@ -72,7 +72,7 @@ export const SidebarContent: React.FC<SidebarContentProps> = ({ onNavigate, onSc
           <Link to="/" className="inline-flex items-center" onClick={onNavigate}>
             <img
               src="/odmember.png"
-              alt="ODMember logo"
+              alt="OD Gold Member logo"
               className="h-12 w-auto"
             />
           </Link>

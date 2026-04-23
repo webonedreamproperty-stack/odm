@@ -96,7 +96,7 @@ export const OdVerifyPage: React.FC = () => {
             to={`/od/member/login?next=${encodeURIComponent(nextPath)}`}
             className="mt-6 inline-flex h-12 items-center justify-center rounded-full bg-[#1b1813] px-8 text-sm font-semibold text-white transition hover:bg-[#11100d]"
           >
-            OD member sign in
+            OD Gold member sign in
           </Link>
           <p className="mt-6 text-sm text-[#8a8276]">
             <Link className="underline-offset-2 hover:underline" to="/od/member/signup">
@@ -151,8 +151,8 @@ export const OdVerifyPage: React.FC = () => {
         </h1>
         <p className="mt-2 text-sm leading-relaxed text-[#4b5563]">
           {qualified
-            ? `Active OD Member — staff may apply the shop’s manual discount for this visit.`
-            : `No active OD Member. Staff should not apply OD Member discounts until this shows green.`}
+            ? `Active OD Gold Member — staff may apply the shop’s manual discount for this visit.`
+            : `No active OD Gold Member. Staff should not apply OD Gold Member discounts until this shows green.`}
         </p>
         <div className="mt-8 rounded-2xl bg-black/[0.04] px-4 py-3 text-left text-sm">
           <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#6b7280]">Verified at</div>

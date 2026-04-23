@@ -292,7 +292,7 @@ export async function handleCreateOdRenewalIntent(opts: {
     .maybeSingle();
 
   if (pErr || !profile) {
-    return { ok: false, status: 403, error: "OD member account required." };
+    return { ok: false, status: 403, error: "OD Gold member account required." };
   }
 
   const pkg = OD_RENEWAL_PACKAGES.find((p) => p.plan === plan);

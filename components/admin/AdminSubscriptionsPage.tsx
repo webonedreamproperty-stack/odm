@@ -220,7 +220,7 @@ export const AdminSubscriptionsPage: React.FC = () => {
                   onClick={() => openEdit(row)}
                 >
                   <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#6b7280]">{row.member_code}</p>
-                  <p className="mt-1 text-sm font-semibold text-[#111827]">{row.display_name || "OD Member"}</p>
+                  <p className="mt-1 text-sm font-semibold text-[#111827]">{row.display_name || "OD Gold Member"}</p>
                   <p className="mt-0.5 text-sm text-[#4b5563]">{row.email}</p>
                   <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-[#6b7280]">
                     <span>Status: {row.status}</span>

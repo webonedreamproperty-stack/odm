@@ -1,5 +1,5 @@
 /**
- * OD member renewal (Malaysia). Amounts match Bayarcash when `VITE_OD_BAYARCASH_RENEWAL` or `VITE_OD_PAYMENTS_ENABLED` is true.
+ * OD Gold member renewal (Malaysia). Amounts match Bayarcash when `VITE_OD_BAYARCASH_RENEWAL` or `VITE_OD_PAYMENTS_ENABLED` is true.
  * Serverless checkout amounts must match `api/od/bayarcash/lib/renewalPackages.ts`.
  */
 

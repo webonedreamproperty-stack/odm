@@ -133,7 +133,7 @@ export interface User {
   odMapsUrl?: string;
   /** Google Place ID from Settings / OD directory search (member-facing card). */
   odGooglePlaceId?: string;
-  /** Short offer line shown to OD members (e.g. "10% off for OD members"). */
+  /** Short offer line shown to OD Gold members (e.g. "10% off for OD Gold members"). */
   odDiscountSummary?: string;
   /** Area / neighbourhood label for directory filters. */
   odListingArea?: string;

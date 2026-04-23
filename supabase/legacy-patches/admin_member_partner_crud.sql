@@ -1,4 +1,4 @@
--- Admin CRUD helpers for OD members and partner accounts.
+-- Admin CRUD helpers for OD Gold members and partner accounts.
 -- Run in Supabase SQL Editor.
 
 create or replace function public.admin_create_member_account(

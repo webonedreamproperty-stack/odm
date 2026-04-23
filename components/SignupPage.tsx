@@ -140,7 +140,7 @@ export const SignupPage: React.FC = () => {
   const layoutSubtitle =
     signupMode === "partner"
       ? "Register your shop on OD — email and password only. You can refine your offer and profile in Settings after sign in."
-      : "Join OD membership with one account for participating shops. Subscription is activated by your OD admin after payment.";
+      : "Join OD Gold membership with one account for participating shops. Subscription is activated by your OD admin after payment.";
 
   const isSubmitting = busy;
   const isDisabled = busy || loading;
@@ -189,9 +189,9 @@ export const SignupPage: React.FC = () => {
 
             <p className="text-sm leading-6 text-[#6d6658]">
               {signupMode === "partner" ? (
-                <>For business owners joining the OD partner network.</>
+                <>For business owners joining the OD Privilege Partner network.</>
               ) : (
-                <>For customers joining as OD members (not a shop dashboard account).</>
+                <>For customers joining as OD Gold members (not a shop dashboard account).</>
               )}
             </p>
           </>
@@ -301,7 +301,7 @@ export const SignupPage: React.FC = () => {
                   <Link to="/dashboard">Go to dashboard</Link>
                 </Button>
                 <p className="text-center text-sm text-[#8a8276]">
-                  You can change your offer anytime in Settings → OD member directory.
+                  You can change your offer anytime in Settings → OD Gold member directory.
                 </p>
               </>
             )}

@@ -1,5 +1,5 @@
 /**
- * Prints an OD member verification flyer (paper or Save as PDF).
+ * Prints an OD Gold member verification flyer (paper or Save as PDF).
  * Warm yellow background, official OD logo, centered QR, shop name.
  * Uses a hidden iframe (no popup) so browsers don't block the action.
  */
@@ -235,7 +235,7 @@ function buildPrintHtml(
   <div class="page">
     <div class="main">
       <div class="brand">
-        <img src="${logoSrc}" alt="OD Member" />
+        <img src="${logoSrc}" alt="OD Gold Member" />
       </div>
       <header class="hero">
         <h1 class="hero-title">Member verify</h1>
@@ -250,7 +250,7 @@ function buildPrintHtml(
       </div>
       <footer class="footer">
         <p class="footer-url">${safeUrl}</p>
-        <p class="footer-brand">OD Member verification</p>
+        <p class="footer-brand">OD Gold Member verification</p>
       </footer>
     </div>
   </div>

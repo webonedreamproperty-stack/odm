@@ -39,7 +39,7 @@ async function reverseViaNominatim(lat: number, lon: number): Promise<string | n
   const res = await fetch(url.toString(), {
     headers: {
       Accept: "application/json",
-      "User-Agent": `ODMember/1.0 (${origin})`,
+      "User-Agent": `OD Gold Member/1.0 (${origin})`,
     },
   });
 

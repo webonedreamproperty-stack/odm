@@ -1,5 +1,5 @@
 /**
- * OD membership wallet card: exact ISO ID-1 size (85.6 × 54 mm) for print,
+ * OD Gold membership wallet card: exact ISO ID-1 size (85.6 × 54 mm) for print,
  * plus PNG export at matching aspect ratio for downloads.
  */
 
@@ -50,7 +50,7 @@ function buildPrintHtml(payload: OdMemberCardExportPayload, logoSrc: string): st
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>OD Member card</title>
+  <title>OD Gold Member card</title>
   <style>
     @page {
       margin: 0;
@@ -169,7 +169,7 @@ function buildPrintHtml(payload: OdMemberCardExportPayload, logoSrc: string): st
 <body>
   <div class="card">
     <div class="top">
-      <img class="logo" src="${logoSrc}" alt="OD Member" />
+      <img class="logo" src="${logoSrc}" alt="OD Gold Member" />
       <div class="brand">
         <div class="brand-script">OneDream</div>
         <div class="brand-sub">MEMBER</div>
@@ -208,7 +208,7 @@ export function printOdMemberCard(payload: OdMemberCardExportPayload): void {
   const html = buildPrintHtml(payload, logoSrc);
 
   const iframe = document.createElement("iframe");
-  iframe.setAttribute("title", "Print OD member card");
+  iframe.setAttribute("title", "Print OD Gold member card");
   iframe.setAttribute("aria-hidden", "true");
   Object.assign(iframe.style, {
     position: "fixed",

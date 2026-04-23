@@ -696,7 +696,7 @@ export const VendorPublicPlaceCard: React.FC<VendorPublicPlaceCardProps> = ({ ve
 
       <div className="border-t border-white/10 px-4 py-4">
         <Button asChild variant="outline" className="w-full rounded-full border-white/20 bg-transparent text-[#e8eaed] hover:bg-white/10">
-          <Link to={`/od/verify/${encodeURIComponent(vendor.slug)}`}>OD member verification</Link>
+          <Link to={`/od/verify/${encodeURIComponent(vendor.slug)}`}>OD Gold member verification</Link>
         </Button>
       </div>
 

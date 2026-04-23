@@ -98,8 +98,8 @@ export const LoginPage: React.FC = () => {
   const layoutTitle = loginMode === "business" ? "Welcome back" : "Member Login";
   const layoutSubtitle =
     loginMode === "business"
-      ? "Login to set up business settings, and let all OD members regularly come to your shop to boost sales."
-      : "Login to view your OD Membership, participating shops, and member benefits.";
+      ? "Login to set up business settings, and let all OD Gold members regularly come to your shop to boost sales."
+      : "Login to view your OD Gold Membership, participating shops, and member benefits.";
 
   return (
     <AuthSplitLayout title={layoutTitle} subtitle={layoutSubtitle} badge="Login" mode="login">
@@ -119,7 +119,7 @@ export const LoginPage: React.FC = () => {
             )}
           >
             <Building2 className="h-4 w-4 shrink-0" aria-hidden />
-            ODPartner
+            OD Privilege Partner
           </button>
           <button
             type="button"
@@ -135,7 +135,7 @@ export const LoginPage: React.FC = () => {
             )}
           >
             <User className="h-4 w-4 shrink-0" aria-hidden />
-            ODMember
+            OD Gold Member
           </button>
         </div>
 
@@ -144,22 +144,22 @@ export const LoginPage: React.FC = () => {
             <>
               For shop owners and staff. Staff should use their dedicated portal link and PIN from the business.
               <p className="text-sm text-[#6d6658] mt-2">
-                New OD Partner?{" "}
+                New OD Privilege Partner?{" "}
                 <Link to="/odp/signup" className="font-semibold text-[#1b1813] underline hover:underline">
-                  Register as ODPartner
+                  Register as OD Privilege Partner
                 </Link>
               </p>
 
             </>
           ) : (
-            <>Use the email and password for your OD membership (not your business dashboard login).</>
+            <>Use the email and password for your OD Gold membership (not your business dashboard login).</>
           )}
         </p>
         {loginMode === "member" && (
           <p className="text-sm text-[#6d6658]">
-            New OD member?{" "}
+            New OD Gold member?{" "}
             <Link to="/od/member/signup" className="font-semibold text-[#1b1813] underline hover:underline">
-              Register as ODMember
+              Register as OD Gold Member
             </Link>
           </p>
         )}

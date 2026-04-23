@@ -138,7 +138,7 @@ h3 {
   }
 }
 
-/* OD member directory: View Transitions — hero / title / star morph (enlarging star in detail). */
+/* OD Gold member directory: View Transitions — hero / title / star morph (enlarging star in detail). */
 @media (prefers-reduced-motion: no-preference) {
   ::view-transition-group(*) {
     animation-duration: 0.48s;

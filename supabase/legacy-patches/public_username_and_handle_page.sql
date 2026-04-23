@@ -79,7 +79,7 @@ begin
     return jsonb_build_object(
       'kind', 'member',
       'username', m_user,
-      'display_name', coalesce(nullif(trim(m_display), ''), 'OD Member'),
+      'display_name', coalesce(nullif(trim(m_display), ''), 'OD Gold Member'),
       'membership_active', m_active
     );
   end if;

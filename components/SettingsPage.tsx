@@ -540,7 +540,7 @@ export const SettingsPage: React.FC<{ embedded?: boolean }> = ({ embedded = fals
       {currentOwner?.slug && currentUser?.role === "owner" && (
         <section className="rounded-2xl md:rounded-3xl border bg-white p-4 md:p-6 shadow-sm space-y-6">
           <div>
-            <h2 className="text-lg md:text-xl font-semibold">OD Membership verification</h2>
+            <h2 className="text-lg md:text-xl font-semibold">OD Gold Membership verification</h2>
             <p className="text-sm text-muted-foreground">
               Members scan this QR in your shop while signed in to OD. Green means active membership; red means not
               qualified for OD discounts.
@@ -573,7 +573,7 @@ export const SettingsPage: React.FC<{ embedded?: boolean }> = ({ embedded = fals
                   size="sm"
                   className="shrink-0"
                   onClick={() => handlePrintOdVerifySheet()}
-                  aria-label="Print QR sheet with OD Member logo"
+                  aria-label="Print QR sheet with OD Gold Member logo"
                 >
                   <Printer className="mr-1.5 h-4 w-4" aria-hidden />
                   Print QR
@@ -588,9 +588,9 @@ export const SettingsPage: React.FC<{ embedded?: boolean }> = ({ embedded = fals
 
           <div id="od-vendor-listing" className="scroll-mt-28 border-t border-border/60 pt-6 space-y-4">
             <div>
-              <h3 className="text-base font-semibold">OD member directory</h3>
+              <h3 className="text-base font-semibold">OD Gold member directory</h3>
               <p className="text-sm text-muted-foreground">
-                Active OD members see your shop, discount, and services on their account page. Toggle off to hide your
+                Active OD Gold members see your shop, discount, and services on their account page. Toggle off to hide your
                 shop from the list.
               </p>
             </div>
@@ -681,7 +681,7 @@ export const SettingsPage: React.FC<{ embedded?: boolean }> = ({ embedded = fals
 
             <div className="space-y-2">
               <Label>Services (optional)</Label>
-              <p className="text-xs text-muted-foreground">List what OD members can redeem or use a discount on.</p>
+              <p className="text-xs text-muted-foreground">List what OD Gold members can redeem or use a discount on.</p>
               <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
                 <div className="min-w-0 flex-1 space-y-1.5">
                   <Input
@@ -787,7 +787,7 @@ export const SettingsPage: React.FC<{ embedded?: boolean }> = ({ embedded = fals
                     ))}
                   </select>
                   <p className="text-[11px] text-muted-foreground">
-                    Shown in the OD member directory and industry filters (F&amp;B, retail, barber, etc.).
+                    Shown in the OD Gold member directory and industry filters (F&amp;B, retail, barber, etc.).
                   </p>
                 </div>
                 <div className="space-y-1.5 sm:col-span-2">
@@ -905,7 +905,7 @@ export const SettingsPage: React.FC<{ embedded?: boolean }> = ({ embedded = fals
 
       {embedded && currentUser?.role === "owner" && (
         <section hidden className="rounded-2xl md:rounded-3xl border border-dashed border-border/80 bg-muted/20 p-4 md:p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-foreground">Full ODMember app</h2>
+          <h2 className="text-lg font-semibold text-foreground">Full OD Gold Member app</h2>
           <p className="mt-1 text-sm text-muted-foreground">
             Loyalty campaigns, issued cards, staff logins, and advanced options are in the main settings area (with
             navigation).

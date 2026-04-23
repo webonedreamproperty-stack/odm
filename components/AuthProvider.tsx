@@ -75,7 +75,7 @@ const PASSWORD_UPDATE_ERROR = "Unable to update your password right now. Please 
 const PASSWORD_RESET_ERROR = "Unable to send a reset link right now. Please try again.";
 const STAFF_ACTION_ERROR = "Unable to complete this staff action right now. Please try again.";
 const ACCOUNT_ACTION_ERROR = "Unable to complete this account action right now. Please try again.";
-const MEMBER_USE_OD_LOGIN = "This is an OD member account. Sign in from the OD member page.";
+const MEMBER_USE_OD_LOGIN = "This is an OD Gold member account. Sign in from the OD Gold member page.";
 const VENDOR_USE_BUSINESS_LOGIN = "This is a business account. Sign in from the business login page.";
 
 const isDuplicateSignupError = (message: string | undefined) => {
@@ -463,7 +463,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (!member) {
         await supabase.auth.signOut();
-        return { ok: false, error: "This email is not registered as an OD member." };
+        return { ok: false, error: "This email is not registered as an OD Gold member." };
       }
 
       await loadFullSession(data.user.id, data.user);
@@ -572,7 +572,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return { ok: false, error: "That username is already taken (or matches a business URL)." };
       }
       if (code === "not_member") {
-        return { ok: false, error: "Only OD members can set this." };
+        return { ok: false, error: "Only OD Gold members can set this." };
       }
       return { ok: false, error: PROFILE_UPDATE_ERROR };
     }

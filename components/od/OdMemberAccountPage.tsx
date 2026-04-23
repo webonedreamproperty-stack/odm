@@ -484,7 +484,7 @@ export const OdMemberAccountPage: React.FC = () => {
       <div className="mx-auto mb-8 flex max-w-2xl items-center justify-between">
       
       {/* show logo here */}
-      <img src="/odmember.png" alt="ODMember" className="h-12 sm:h-20 w-auto" />
+      <img src="/odmember.png" alt="OD Gold Member" className="h-12 sm:h-20 w-auto" />
         <Button
           type="button"
           variant="outline"
@@ -620,7 +620,7 @@ export const OdMemberAccountPage: React.FC = () => {
               <div className="space-y-4">
                 <div>
                   <p className="text-sm font-medium text-[#1b1813]">3. Subscription package</p>
-                  <p className="text-sm text-[#6d6658]">Select your package to activate full OD member benefits.</p>
+                  <p className="text-sm text-[#6d6658]">Select your package to activate full OD Gold member benefits.</p>
                 </div>
                 {active ? (
                   <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
@@ -975,7 +975,7 @@ export const OdMemberAccountPage: React.FC = () => {
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <h2 className="text-[13px] font-semibold uppercase tracking-[0.16em] text-[#8a8276]">
-                      OD Partners
+                      OD Privilege Partners
                     </h2>
                     {!dirLoading && dirShops.length > 0 && active && (
                       <Button variant="default" size="sm" className="rounded-full border-black/15">
@@ -990,8 +990,8 @@ export const OdMemberAccountPage: React.FC = () => {
                   </div>
                   <p className="mt-2 text-[15px] leading-relaxed text-[#3d3830]">
                     {active
-                      ? "At counter, scan ODMember QR Code for verification and get discounts"
-                      : "Preview a few participating vendors. Renew to unlock the full directory, discounts, and all OD member perks."}
+                      ? "At counter, scan OD Gold Member QR Code for verification and get discounts"
+                      : "Preview a few participating vendors. Renew to unlock the full directory, discounts, and all OD Gold member perks."}
                   </p>
                 </div>
               </div>
@@ -1052,7 +1052,7 @@ export const OdMemberAccountPage: React.FC = () => {
 
               {!dirLoading && !dirError && dirShops.length === 0 && (
                 <p className="rounded-2xl border border-dashed border-black/[0.1] bg-[#faf9f6] px-5 py-10 text-center text-[15px] leading-relaxed text-[#6d6658]">
-                  No shops listed yet. Vendors set their OD offer in Settings → OD member directory.
+                  No shops listed yet. Vendors set their OD offer in Settings → OD Gold member directory.
                 </p>
               )}
 
@@ -1131,12 +1131,12 @@ export const OdMemberAccountPage: React.FC = () => {
                     {odPaymentsEnabled ? (
                       <>
                         You will be redirected to <span className="font-medium text-[#1b1813]">Bayarcash</span> to pay.
-                        When payment succeeds, your OD membership becomes{" "}
+                        When payment succeeds, your OD Gold membership becomes{" "}
                         <span className="font-medium text-emerald-700">active</span> for this period.
                       </>
                     ) : (
                       <>
-                        Your OD membership will turn <span className="font-medium text-emerald-700">active</span> for
+                        Your OD Gold membership will turn <span className="font-medium text-emerald-700">active</span> for
                         this period right away.
                       </>
                     )}

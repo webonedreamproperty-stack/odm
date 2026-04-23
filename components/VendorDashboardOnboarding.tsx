@@ -26,7 +26,7 @@ function normalizeOdMapsUrl(raw: string): string | null {
 
 const STEP_META = [
   { label: "Google", title: "Link on Google", description: "Search for your shop and select the correct listing." },
-  { label: "Discount", title: "Member discount", description: "Set the offer line shown to OD members." },
+  { label: "Discount", title: "Member discount", description: "Set the offer line shown to OD Gold members." },
   { label: "Preview", title: "Member preview", description: "See the Google-style card members get on your listing." },
 ] as const;
 
@@ -392,7 +392,7 @@ export const VendorDashboardOnboarding: React.FC = () => {
                 {activeStep === 1 && (
                   <div className="space-y-4">
                     <div className="space-y-2">
-                      <Label htmlFor="onb-discount">OD member offer</Label>
+                      <Label htmlFor="onb-discount">OD Gold member offer</Label>
                       <textarea
                         id="onb-discount"
                         value={odDiscountSummary}

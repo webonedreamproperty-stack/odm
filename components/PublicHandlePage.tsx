@@ -54,11 +54,11 @@ export const PublicHandlePage: React.FC = () => {
 
   useEffect(() => {
     if (vendor) {
-      document.title = `${vendor.business_name} · ODMember`;
+      document.title = `${vendor.business_name} · OD Gold Member`;
     } else if (member) {
-      document.title = `${member.display_name} · ODMember`;
+      document.title = `${member.display_name} · OD Gold Member`;
     } else {
-      document.title = "ODMember";
+      document.title = "OD Gold Member";
     }
   }, [vendor, member]);
 
@@ -86,7 +86,7 @@ export const PublicHandlePage: React.FC = () => {
             <Link to="/login">Business login</Link>
           </Button>
           <Button asChild className="rounded-full bg-[#1b1813] hover:bg-[#11100d]">
-            <Link to="/od/member/login">OD member login</Link>
+            <Link to="/od/member/login">OD Gold member login</Link>
           </Button>
         </div>
       </div>
@@ -157,7 +157,7 @@ export const PublicHandlePage: React.FC = () => {
                 ) : null}
 
                 {!showListing ? (
-                  <p className="text-sm text-[#6d6658]">This business uses ODMember. Contact them directly for offers.</p>
+                  <p className="text-sm text-[#6d6658]">This business uses OD Gold Member. Contact them directly for offers.</p>
                 ) : null}
 
                 <div className="flex flex-col gap-2 pt-1">
@@ -173,7 +173,7 @@ export const PublicHandlePage: React.FC = () => {
                     </a>
                   ) : null}
                   <Button asChild variant="outline" className="w-full rounded-full border-black/12">
-                    <Link to={`/od/verify/${encodeURIComponent(vendor.slug)}`}>OD member verification</Link>
+                    <Link to={`/od/verify/${encodeURIComponent(vendor.slug)}`}>OD Gold member verification</Link>
                   </Button>
                 </div>
               </div>
@@ -205,7 +205,7 @@ export const PublicHandlePage: React.FC = () => {
             {m.display_name.trim().slice(0, 1).toUpperCase() || "M"}
           </div>
           <h1 className="text-center text-2xl font-semibold tracking-tight text-[#1b1813]">{m.display_name}</h1>
-          <p className="mt-1 text-center text-sm text-[#6d6658]">OD member</p>
+          <p className="mt-1 text-center text-sm text-[#6d6658]">OD Gold member</p>
           <p className="mt-4 text-center font-mono text-[11px] text-[#8a8276]">{publicUrl}</p>
 
           <div

@@ -341,7 +341,7 @@ export const AdminPartnersPage: React.FC = () => {
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#6b7280]">Partners</p>
-            <h1 className="mt-2 text-2xl font-semibold tracking-tight text-[#111827]">OD Partners</h1>
+            <h1 className="mt-2 text-2xl font-semibold tracking-tight text-[#111827]">OD Privilege Partners</h1>
           </div>
           <Button onClick={() => setCreateDialogOpen(true)}>Create partner</Button>
         </div>
@@ -620,7 +620,7 @@ export const AdminPartnersPage: React.FC = () => {
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Create partner</DialogTitle>
-            <DialogDescription>Create a new OD partner account.</DialogDescription>
+            <DialogDescription>Create a new OD Privilege Partner account.</DialogDescription>
           </DialogHeader>
           <form onSubmit={onCreate} className="grid gap-3">
             <div className="space-y-1.5">

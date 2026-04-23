@@ -142,7 +142,7 @@ export const OdAdminPage: React.FC = () => {
         )}
 
         <section className="rounded-[1.5rem] border border-black/[0.06] bg-white p-6 shadow-sm">
-          <h2 className="text-sm font-semibold uppercase tracking-[0.14em] text-[#8a8276]">OD members</h2>
+          <h2 className="text-sm font-semibold uppercase tracking-[0.14em] text-[#8a8276]">OD Gold members</h2>
           <p className="mt-1 text-xs text-[#6d6658]">Consumer accounts · membership status</p>
           {loading ? (
             <div className="py-12 text-center text-sm text-[#6d6658]">Loading…</div>

@@ -51,7 +51,7 @@ export const OdLoginHubPage: React.FC = () => {
 
         <p className="text-center text-sm text-[#8a8276]">
           <Link className="font-medium text-[#1b1813] underline-offset-2 hover:underline" to="/login">
-            ODMember business login (full URL)
+            OD Gold Member business login (full URL)
           </Link>
         </p>
       </div>

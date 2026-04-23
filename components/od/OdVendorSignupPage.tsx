@@ -86,7 +86,7 @@ export const OdVendorSignupPage: React.FC = () => {
   return (
     <div className="min-h-screen flex flex-col items-center bg-[#f5f3ef] px-6 py-12">
       <div className="w-full max-w-lg rounded-[1.75rem] border border-black/[0.06] bg-white p-8 shadow-[0_24px_80px_-32px_rgba(0,0,0,0.18)]">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#8a8276]">OD Partner</p>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#8a8276]">OD Privilege Partner</p>
         <h1 className="mt-2 text-2xl font-semibold tracking-tight text-[#1b1813]">Register</h1>
         <p className="mt-2 text-sm leading-relaxed text-[#6d6658]">
           Enter your email and password. You can add your shop name, link, and offers in Settings after you sign in.
@@ -136,7 +136,7 @@ export const OdVendorSignupPage: React.FC = () => {
                   <Link to="/dashboard">Go to dashboard</Link>
                 </Button>
                 <p className="text-center text-sm text-[#8a8276]">
-                  You can change your offer anytime in Settings → OD member directory.
+                  You can change your offer anytime in Settings → OD Gold member directory.
                 </p>
               </>
             )}
@@ -217,7 +217,7 @@ export const OdVendorSignupPage: React.FC = () => {
               </Link>
             </p>
             <p hidden>
-              OD member (not a shop)?{" "}
+              OD Gold member (not a shop)?{" "}
               <Link className="font-semibold text-[#1b1813] underline-offset-2 hover:underline" to="/od/member/signup">
                 Member sign up
               </Link>

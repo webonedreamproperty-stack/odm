@@ -34,7 +34,7 @@ export const buildIssuedCardsKioskUrl = (uniqueId: string) => {
   return `/issued-cards?kiosk=${encodeURIComponent(uniqueId)}`;
 };
 
-/** Member scans this URL at a shop; shows green/red OD membership status. */
+/** Member scans this URL at a shop; shows green/red OD Gold membership status. */
 export const buildOdVerifyPath = (shopSlug: string) => `/od/verify/${encodeURIComponent(shopSlug)}`;
 
 export const buildOdVerifyUrl = (shopSlug: string) => {

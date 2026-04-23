@@ -30,7 +30,7 @@ export const OdVendorLoginPage: React.FC = () => {
         <div className="max-w-md rounded-2xl border bg-white p-8 text-center shadow-sm">
           <p className="text-sm text-[#6d6658]">This is a member account. Use member sign-in instead.</p>
           <Button type="button" className="mt-4 rounded-full" asChild>
-            <Link to="/od/member/login">OD member sign in</Link>
+            <Link to="/od/member/login">OD Gold member sign in</Link>
           </Button>
         </div>
       </div>
@@ -58,7 +58,7 @@ export const OdVendorLoginPage: React.FC = () => {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-[#f5f3ef] px-6 py-12">
       <div className="w-full max-w-md rounded-[1.75rem] border border-black/[0.06] bg-white p-8 shadow-[0_24px_80px_-32px_rgba(0,0,0,0.18)]">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#8a8276]">OD Partner</p>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#8a8276]">OD Privilege Partner</p>
         <h1 className="mt-2 text-2xl font-semibold tracking-tight text-[#1b1813]">Business Login</h1>
         <p className="mt-2 text-sm text-[#6d6658]">Manage your shop, loyalty cards, and OD verification QR.</p>
 

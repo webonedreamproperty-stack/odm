@@ -72,7 +72,7 @@ export const OdHomeLandingPage: React.FC = () => {
       <header className="sticky top-0 z-50 border-b border-[#eceef4] bg-white/82 backdrop-blur-xl">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
           <Link to="/" className="flex items-center gap-3 outline-offset-4">
-            <img src="/odmember.png" alt="OD Member" className="h-15 w-auto sm:h-[5rem]" width={200} height={64} />
+            <img src="/odmember.png" alt="OD Gold Member" className="h-15 w-auto sm:h-[5rem]" width={200} height={64} />
           </Link>
           <div className="flex items-center gap-2 sm:gap-3">
             {/* <Button
@@ -132,7 +132,7 @@ export const OdHomeLandingPage: React.FC = () => {
               >
                 <span className="flex items-center gap-1.5 text-xs font-medium text-[#586072]">
                   <Users className="h-4 w-4 text-[#0f8f61]" aria-hidden />
-                  OD members
+                  OD Gold members
                 </span>
                 <span className="text-3xl font-medium">
                   <AnimatedStatValue value={stats.members} loaded={statsLoaded} />
@@ -140,7 +140,7 @@ export const OdHomeLandingPage: React.FC = () => {
               </div>
             </div>
             <p className="mt-3 text-xs text-[#80868b]">
-              Figures show active partner listings and members with valid OD membership.
+              Figures show active partner listings and members with valid OD Gold membership.
             </p>
           </div>
 
@@ -152,7 +152,7 @@ export const OdHomeLandingPage: React.FC = () => {
             >
               <img
                 src="https://images.pexels.com/photos/11792247/pexels-photo-11792247.jpeg?auto=format&fit=crop&w=960&q=80"
-                alt="Professional using a phone — representing members and partners connecting through ODMember"
+                alt="Professional using a phone — representing members and partners connecting through OD Gold Member"
                 className="h-full w-full object-cover object-[center_20%]"
                 loading="eager"
                 decoding="async"
@@ -252,7 +252,7 @@ export const OdHomeLandingPage: React.FC = () => {
         {/* Trust row */}
         <section className="mt-16 border-t border-[#e7eaf2] pt-12">
           <h2 className="text-center text-sm font-semibold uppercase tracking-[0.12em] text-[#636b78]">
-            Why teams choose ODMember
+            Why teams choose OD Gold Member
           </h2>
           <div className="mt-8 grid gap-4 sm:grid-cols-3">
             {[
@@ -289,7 +289,7 @@ export const OdHomeLandingPage: React.FC = () => {
       <footer className="border-t border-[#e7eaf2] bg-white py-8">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-4 text-center text-xs text-[#7a818f] sm:flex-row sm:text-left">
           <img src="/odmember.png" alt="" className="h-15 sm:h-12 opacity-50" />
-          <p>© {new Date().getFullYear()} ODMember. Professional loyalty for modern businesses.</p>
+          <p>© {new Date().getFullYear()} OD Gold Member. Professional loyalty for modern businesses.</p>
         </div>
       </footer>
     </div>

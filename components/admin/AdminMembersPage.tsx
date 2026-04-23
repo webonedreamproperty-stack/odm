@@ -152,7 +152,7 @@ export const AdminMembersPage: React.FC = () => {
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#6b7280]">Members</p>
-            <h1 className="mt-2 text-2xl font-semibold tracking-tight text-[#111827]">OD Members</h1>
+            <h1 className="mt-2 text-2xl font-semibold tracking-tight text-[#111827]">OD Gold Members</h1>
           </div>
           <Button onClick={() => setCreateDialogOpen(true)}>Create member</Button>
         </div>
@@ -243,7 +243,7 @@ export const AdminMembersPage: React.FC = () => {
             <DialogDescription>
               {editDialogTab === "details"
                 ? "Update member details or delete this account."
-                : "View OD membership for this member."}
+                : "View OD Gold membership for this member."}
             </DialogDescription>
           </DialogHeader>
 
@@ -385,7 +385,7 @@ export const AdminMembersPage: React.FC = () => {
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Create member</DialogTitle>
-            <DialogDescription>Create a new OD member account.</DialogDescription>
+            <DialogDescription>Create a new OD Gold member account.</DialogDescription>
           </DialogHeader>
           <form onSubmit={onCreate} className="grid gap-3">
             <div className="space-y-1.5">

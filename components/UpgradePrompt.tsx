@@ -22,13 +22,13 @@ interface UpgradePromptProps {
 const buildSubject = (reason?: UpgradePromptProps["reason"]) => {
   switch (reason) {
     case "campaign":
-      return "ODMember beta campaign limits";
+      return "OD Gold Member beta campaign limits";
     case "card":
-      return "ODMember beta issued card limits";
+      return "OD Gold Member beta issued card limits";
     case "staff":
-      return "ODMember beta staff limits";
+      return "OD Gold Member beta staff limits";
     default:
-      return "ODMember beta access";
+      return "OD Gold Member beta access";
   }
 };
 

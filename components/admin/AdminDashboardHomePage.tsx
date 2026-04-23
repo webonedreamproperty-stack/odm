@@ -53,7 +53,7 @@ export const AdminDashboardHomePage: React.FC = () => {
 
   const statCards = useMemo(
     () => [
-      { label: "Total members", value: memberCount.toLocaleString(), helper: "OD member accounts" },
+      { label: "Total members", value: memberCount.toLocaleString(), helper: "OD Gold member accounts" },
       { label: "Total partners", value: partnerCount.toLocaleString(), helper: "Business accounts" },
       { label: "Total subscriptions", value: subscriptionCount.toLocaleString(), helper: "Membership records" },
       { label: "Active subscriptions", value: activeSubscriptionCount.toLocaleString(), helper: "Currently valid" },
@@ -67,7 +67,9 @@ export const AdminDashboardHomePage: React.FC = () => {
       <div className="rounded-3xl border border-[#dfe6fb] bg-white/92 p-6 shadow-[0_24px_56px_-34px_rgba(37,99,235,0.32)]">
         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#6b7280]">Overview</p>
         <h1 className="mt-2 text-2xl font-semibold tracking-tight text-[#111827]">Admin Dashboard</h1>
-        <p className="mt-2 text-sm text-[#5f6673]">Manage OD members, partners, and subscriptions from the menu.</p>
+        <p className="mt-2 text-sm text-[#5f6673]">
+          Manage OD Gold members, OD Privilege Partners, and subscriptions from the menu.
+        </p>
       </div>
 
       {error ? <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div> : null}
@@ -93,7 +95,7 @@ export const AdminDashboardHomePage: React.FC = () => {
         >
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#6b7280]">Manage</p>
           <p className="mt-2 text-lg font-semibold text-[#111827]">Members</p>
-          <p className="mt-1 text-sm text-[#5f6673]">Create, edit, and delete OD member accounts.</p>
+          <p className="mt-1 text-sm text-[#5f6673]">Create, edit, and delete OD Gold member accounts.</p>
         </Link>
 
         <Link
@@ -102,7 +104,7 @@ export const AdminDashboardHomePage: React.FC = () => {
         >
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#6b7280]">Manage</p>
           <p className="mt-2 text-lg font-semibold text-[#111827]">Partners</p>
-          <p className="mt-1 text-sm text-[#5f6673]">Create, edit, and delete OD partner accounts.</p>
+          <p className="mt-1 text-sm text-[#5f6673]">Create, edit, and delete OD Privilege Partner accounts.</p>
         </Link>
 
         <Link
