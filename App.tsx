@@ -523,7 +523,7 @@ const DashboardLayout: React.FC = () => {
       <div className="flex min-h-screen flex-col bg-background font-sans text-foreground">
         <header className="sticky top-0 z-40 flex items-center justify-between border-b border-border/80 bg-card/95 px-4 py-3 backdrop-blur-sm md:px-8">
           <Link to="/dashboard" className="text-lg font-semibold tracking-tight text-foreground">
-            OD Gold Member
+            OD Privilege Partner
           </Link>
           <div className="flex min-w-0 items-center gap-3">
             {currentUser?.businessName ? (
