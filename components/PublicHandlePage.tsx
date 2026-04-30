@@ -100,7 +100,7 @@ export const PublicHandlePage: React.FC = () => {
         ? OD_INDUSTRY_FILTER_LABEL[vendor.business_category] ?? vendor.business_category
         : null;
     const showListing = vendor.directory_visible;
-    const publicVendorUrl = buildAppUrl(`/${vendor.slug}`);
+    const memberVerifyUrl = `https://odgoldmember.com/od/verify/${encodeURIComponent(vendor.slug)}`;
 
     const useGoogleCard = vendor.place_details != null && Object.keys(vendor.place_details).length > 0;
 
@@ -112,11 +112,11 @@ export const PublicHandlePage: React.FC = () => {
             <div className="mt-4 flex justify-center">
               <div className="inline-flex h-[206px] w-[206px] items-center justify-center rounded-full border border-[#d8d1c3] bg-[radial-gradient(circle,#ffffff_0%,#fbf8f2_100%)] shadow-[0_10px_26px_rgba(0,0,0,0.08)]">
                 <div className="rounded-full border border-[#ebe5d9] bg-white p-5">
-                  <QRCode value={publicVendorUrl} size={122} level="M" fgColor="#111827" bgColor="#ffffff" />
+                  <QRCode value={memberVerifyUrl} size={122} level="M" fgColor="#111827" bgColor="#ffffff" />
                 </div>
               </div>
             </div>
-            <p className="mt-3 break-all font-mono text-[11px] text-[#8a8276]">{publicVendorUrl}</p>
+            <p className="mt-3 break-all font-mono text-[11px] text-[#8a8276]">{memberVerifyUrl}</p>
           </section>
 
           {useGoogleCard && vendor.place_details ? (
