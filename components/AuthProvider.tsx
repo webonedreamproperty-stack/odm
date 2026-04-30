@@ -254,11 +254,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                   window.location.replace(`${MEMBER_PUBLIC_ORIGIN}${pendingMemberNext}`);
                   return;
                 }
+                const vendorProfile = await fetchProfile(session.user.id);
                 window.localStorage.removeItem(MEMBER_OAUTH_NEXT_KEY);
-                window.localStorage.setItem(
-                  MEMBER_OAUTH_ERROR_KEY,
-                  "This Google account is not registered as an OD Gold member. Please sign up as member first."
-                );
+                if (vendorProfile) {
+                  window.localStorage.setItem(
+                    MEMBER_OAUTH_ERROR_KEY,
+                    "This Google account is an OD Partner account and cannot be used to claim member discounts. Please sign in with your OD Gold member email instead."
+                  );
+                } else {
+                  window.localStorage.setItem(
+                    MEMBER_OAUTH_ERROR_KEY,
+                    "This Google account is not registered as an OD Gold member yet. Please register as a member and activate your membership before claiming partner discounts."
+                  );
+                }
                 await supabase.auth.signOut();
                 return;
               }
