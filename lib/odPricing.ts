@@ -14,22 +14,22 @@ export type OdRenewalPackage = {
 };
 
 export const OD_RENEWAL_PACKAGES: readonly OdRenewalPackage[] = [
-  {
-    plan: "hour",
-    title: "1 hour (test)",
-    priceRm: 5,
-    blurb: "Short test access for QA / sandbox",
-  },
+  // {
+  //   plan: "hour",
+  //   title: "1 hour (test)",
+  //   priceRm: 5,
+  //   blurb: "Short test access for QA / sandbox",
+  // },
   {
     plan: "month",
     title: "1 month",
-    priceRm: 19,
+    priceRm: 9.90,
     blurb: "Flexible monthly access",
   },
   {
     plan: "year",
     title: "1 year",
-    priceRm: 144,
+    priceRm: 59.00,
     blurb: "Best value for regular members",
   },
 ] as const;
@@ -46,13 +46,13 @@ export function formatRm(amount: number): string {
 /** Display label for a stored membership plan value. */
 export function odPlanLabel(plan: string | null | undefined): string {
   switch (plan) {
-    case "hour":
-      return "1 hour (test)";
+    // case "hour":
+    //   return "1 hour (test)";
     case "month":
       return "1 month";
     case "year":
       return "1 year";
     default:
-      return "—";
+      return "No plan";
   }
 }

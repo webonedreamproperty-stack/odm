@@ -112,7 +112,7 @@ export const LoginPage: React.FC = () => {
               setError("");
             }}
             className={cn(
-              "flex flex-1 items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold transition-colors",
+              "flex flex-wrap flex-1 items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold transition-colors",
               loginMode === "business"
                 ? "bg-[#1b1813] text-white shadow-sm"
                 : "text-[#6d6658] hover:bg-black/[0.04]"
@@ -128,7 +128,7 @@ export const LoginPage: React.FC = () => {
               setError("");
             }}
             className={cn(
-              "flex flex-1 items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold transition-colors",
+              "flex  flex-wrap flex-1 items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold transition-colors",
               loginMode === "member"
                 ? "bg-[#1b1813] text-white shadow-sm"
                 : "text-[#6d6658] hover:bg-black/[0.04]"

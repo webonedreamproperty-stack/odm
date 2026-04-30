@@ -103,7 +103,7 @@ export const OdMemberLoginPage: React.FC = () => {
         </form>
 
         <p hidden className="mt-8 text-center text-sm text-[#6d6658]">
-          New member?{" "}
+          New OD Gold member?{" "}
           <Link className="font-semibold text-[#1b1813] underline-offset-2 hover:underline" to="/od/member/signup">
             Create an account
           </Link>

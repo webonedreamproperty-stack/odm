@@ -120,7 +120,7 @@ export const OdHomeLandingPage: React.FC = () => {
               >
                 <span className="flex items-center gap-1.5 text-xs font-medium text-[#586072]">
                   <Store className="h-4 w-4 text-[#2b4fc7]" aria-hidden />
-                  Partner shops
+                  OD Privilege Partner shops
                 </span>
                 <span className="text-3xl font-medium">
                   <AnimatedStatValue value={stats.shops} loaded={statsLoaded} />
@@ -185,7 +185,7 @@ export const OdHomeLandingPage: React.FC = () => {
               <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/40 bg-white/45 text-[#0f8f61]">
                 <Gift className="h-6 w-6" aria-hidden />
               </div>
-              <h3 className="mt-6 text-[22px] font-semibold tracking-tight text-[#1f1a10]">New member</h3>
+              <h3 className="mt-6 text-[22px] font-semibold tracking-tight text-[#1f1a10]">New OD Gold member</h3>
               <p className="mt-2 flex-1 text-[15px] leading-relaxed text-[#4a4333]">
                 Enjoy member discounts and OD privileges at participating shops — one account, consistent benefits.
               </p>
@@ -209,7 +209,7 @@ export const OdHomeLandingPage: React.FC = () => {
               <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/40 bg-white/45 text-[#2b4fc7]">
                 <Store className="h-6 w-6" aria-hidden />
               </div>
-              <h3 className="mt-6 text-[22px] font-semibold tracking-tight text-[#1f1a10]">New partner</h3>
+              <h3 className="mt-6 text-[22px] font-semibold tracking-tight text-[#1f1a10]">New OD Privilege Partner</h3>
               <p className="mt-2 flex-1 text-[15px] leading-relaxed text-[#4a4333]">
                 Boost sales and bring customers back with offers they can trust — tuned for repeat visits, not one-off
                 deals.

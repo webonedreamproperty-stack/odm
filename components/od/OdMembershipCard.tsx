@@ -68,7 +68,7 @@ export const OdMembershipCard: React.FC<OdMembershipCardProps> = ({ memberCode, 
               <div className="text-right leading-tight text-[#2a1f0a]">
                 <div className="text-base font-semibold tracking-tight sm:text-[1.1rem]">OneDream</div>
                 <div className="mt-0.5 text-[9px] font-semibold tracking-[0.24em] text-[#2a1f0a]/70 sm:text-[10px]">
-                  MEMBER
+                  GOLD MEMBER
                 </div>
               </div>
             </div>
