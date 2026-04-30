@@ -57,6 +57,7 @@ interface AuthContextValue {
   accountKind: AccountKind | null;
   currentMember: MemberAccount | null;
   memberLogin: (email: string, password: string) => Promise<AuthResult>;
+  memberLoginWithGoogle: (nextPath?: string) => Promise<AuthResult>;
   memberSignup: (payload: { email: string; password: string; displayName?: string }) => Promise<AuthResult>;
   refreshMemberProfile: () => Promise<void>;
   updateMemberDisplayName: (displayName: string) => Promise<AuthResult>;
@@ -77,6 +78,7 @@ const STAFF_ACTION_ERROR = "Unable to complete this staff action right now. Plea
 const ACCOUNT_ACTION_ERROR = "Unable to complete this account action right now. Please try again.";
 const MEMBER_USE_OD_LOGIN = "This is an OD Gold member account. Sign in from the OD Gold member page.";
 const VENDOR_USE_BUSINESS_LOGIN = "This is a business account. Sign in from the business login page.";
+const MEMBER_PUBLIC_ORIGIN = "https://odgoldmember.com";
 
 const isDuplicateSignupError = (message: string | undefined) => {
   const normalized = (message || "").trim().toLowerCase();
@@ -473,6 +475,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [fetchProfileWithRetry, loadFullSession, waitForAuthUser]);
 
+  const memberLoginWithGoogle = useCallback(async (nextPath?: string): Promise<AuthResult> => {
+    if (!isSupabaseConfigured) {
+      return { ok: false, error: CONFIG_ERROR_MESSAGE };
+    }
+    const safeNextPath =
+      typeof nextPath === "string" && nextPath.startsWith("/") ? nextPath : "/od/account";
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${MEMBER_PUBLIC_ORIGIN}/od/member/login?next=${encodeURIComponent(safeNextPath)}`,
+          queryParams: {
+            prompt: "select_account",
+          },
+        },
+      });
+      if (error) {
+        return { ok: false, error: "Unable to continue with Google right now. Please try again." };
+      }
+      return { ok: true };
+    } catch {
+      return { ok: false, error: SIGNIN_ERROR_MESSAGE };
+    }
+  }, []);
+
   const memberSignup = useCallback(async (payload: {
     email: string;
     password: string;
@@ -813,6 +840,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       accountKind,
       currentMember,
       memberLogin,
+      memberLoginWithGoogle,
       memberSignup,
       refreshMemberProfile,
       updateMemberDisplayName,
@@ -825,7 +853,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       updateStaffPin, setStaffAccess, deleteStaff, deleteAccount, logout,
       resendVerificationEmail, isSlugAvailable, updateProfileInfo,
       updatePassword, resetPassword, refreshProfile,
-      memberLogin, memberSignup, refreshMemberProfile, updateMemberDisplayName,
+      memberLogin, memberLoginWithGoogle, memberSignup, refreshMemberProfile, updateMemberDisplayName,
       updateMemberPublicUsername,
     ]
   );
