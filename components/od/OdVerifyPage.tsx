@@ -3,22 +3,91 @@ import { Link, useParams } from "react-router-dom";
 import { CheckCircle2, XCircle } from "lucide-react";
 import { useAuth } from "../AuthProvider";
 import { getOdMemberShopVerification } from "../../lib/db/members";
-import { isSupabaseConfigured } from "../../lib/supabase";
+import { isSupabaseConfigured, supabase } from "../../lib/supabase";
+import { Button } from "../ui/button";
+import { Input } from "../ui/input";
+
+const inputCls =
+  "h-12 rounded-[1rem] border border-black/[0.08] bg-[#f4f1ea] px-4 text-[15px] text-[#171512] shadow-none placeholder:text-[#8a8276] focus-visible:border-black/25 focus-visible:bg-white focus-visible:ring-0";
+
+const GoogleIcon: React.FC<{ className?: string }> = ({ className }) => (
+  <svg viewBox="0 0 24 24" aria-hidden className={className}>
+    <path d="M21.35 11.1H12v2.98h5.33c-.23 1.52-1.14 2.8-2.43 3.65v2.42h3.93c2.3-2.12 3.63-5.25 3.63-8.98 0-.67-.06-1.31-.11-1.95Z" fill="#4285F4" />
+    <path d="M12 22c2.7 0 4.96-.9 6.61-2.45l-3.93-2.42c-1.09.73-2.48 1.15-4.02 1.15-3.09 0-5.71-2.09-6.64-4.91H0v2.5A10 10 0 0 0 12 22Z" fill="#34A853" />
+    <path d="M4.02 13.37A5.98 5.98 0 0 1 3.65 11c0-.82.14-1.61.37-2.37v-2.5H0A10 10 0 0 0 0 16l4.02-2.63Z" fill="#FBBC05" />
+    <path d="M12 3.72c1.47 0 2.8.51 3.84 1.52l2.88-2.88C16.96.72 14.7 0 12 0A10 10 0 0 0 0 6.13l4.02 2.5c.93-2.82 3.55-4.91 6.64-4.91Z" fill="#EA4335" />
+  </svg>
+);
 
 export const OdVerifyPage: React.FC = () => {
   const { shopSlug } = useParams<{ shopSlug: string }>();
-  const { currentMember, loading, accountKind } = useAuth();
+  const { currentMember, loading, accountKind, memberLogin, memberLoginWithGoogle } = useAuth();
   const [result, setResult] = useState<{
     qualified: boolean;
     memberCode: string;
     shopName: string;
     validUntil: string | null;
+    membershipStatus: string;
   } | null>(null);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [now, setNow] = useState(() => new Date());
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loginError, setLoginError] = useState("");
+  const [loginBusy, setLoginBusy] = useState(false);
+  const [googleBusy, setGoogleBusy] = useState(false);
+  const [sessionChecked, setSessionChecked] = useState(false);
+  const [needsRelogin, setNeedsRelogin] = useState(false);
 
   const nextPath = `/od/verify/${encodeURIComponent(shopSlug ?? "")}`;
+  const isLoginDisabled = loading || !sessionChecked || loginBusy || googleBusy;
+
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+    let active = true;
+    void (async () => {
+      const { data } = await supabase.auth.getSession();
+      if (!active) return;
+      const hasSession = Boolean(data.session?.user);
+      setNeedsRelogin(hasSession && (!currentMember || accountKind !== "member"));
+      setSessionChecked(true);
+    })();
+    return () => {
+      active = false;
+    };
+  }, [currentMember, accountKind]);
+
+  const handleMemberEmailLogin = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setLoginError("");
+    setLoginBusy(true);
+    try {
+      const result = await memberLogin(email, password);
+      if (result.ok === false) {
+        setLoginError(result.error);
+      }
+    } catch {
+      setLoginError("Unable to sign in right now. Please try again.");
+    } finally {
+      setLoginBusy(false);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    setLoginError("");
+    setGoogleBusy(true);
+    try {
+      const result = await memberLoginWithGoogle(nextPath);
+      if (result.ok === false) {
+        setLoginError(result.error);
+      }
+    } catch {
+      setLoginError("Unable to continue with Google right now. Please try again.");
+    } finally {
+      setGoogleBusy(false);
+    }
+  };
 
   useEffect(() => {
     if (!shopSlug || !isSupabaseConfigured) return;
@@ -46,6 +115,7 @@ export const OdVerifyPage: React.FC = () => {
         memberCode: res.data.memberCode,
         shopName: res.data.shopName,
         validUntil: res.data.validUntil,
+        membershipStatus: res.data.membershipStatus,
       });
     })();
 
@@ -83,6 +153,14 @@ export const OdVerifyPage: React.FC = () => {
     );
   }
 
+  if (!sessionChecked || loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#f5f3ef]">
+        <div className="h-10 w-10 animate-spin rounded-full border-4 border-[#1b1813] border-t-transparent" />
+      </div>
+    );
+  }
+
   if (!currentMember || accountKind !== "member") {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-[#f5f3ef] px-6 py-12">
@@ -92,13 +170,65 @@ export const OdVerifyPage: React.FC = () => {
             Show this screen to staff after you sign in. Your membership status appears as green (qualified) or red
             (not qualified).
           </p>
-          <Link
-            to={`/od/member/login?next=${encodeURIComponent(nextPath)}`}
-            className="mt-6 inline-flex h-12 items-center justify-center rounded-full bg-[#1b1813] px-8 text-sm font-semibold text-white transition hover:bg-[#11100d]"
-          >
-            OD Gold member sign in
-          </Link>
-          <p className="mt-6 text-sm text-[#8a8276]">
+          {needsRelogin && (
+            <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-left text-sm text-amber-900">
+              Your session has expired. Please sign in again to continue membership verification.
+            </div>
+          )}
+          <div className="mt-6">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={isLoginDisabled}
+              onClick={() => void handleGoogleLogin()}
+              className="h-12 w-full rounded-[1rem] border border-black/[0.1] bg-white text-sm font-semibold text-[#1b1813] hover:bg-[#faf8f3] disabled:opacity-60"
+            >
+              {googleBusy ? "Connecting to Google…" : (
+                <>
+                  <GoogleIcon className="mr-2 h-4 w-4 shrink-0" />
+                  Continue with Google
+                </>
+              )}
+            </Button>
+            <div className="relative mt-4 py-0.5">
+              <div className="border-t border-black/[0.08]" />
+              <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white px-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#777062]">
+                or
+              </span>
+            </div>
+            <form className="mt-4 space-y-3 text-left" onSubmit={handleMemberEmailLogin}>
+              <Input
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@email.com"
+                className={inputCls}
+                type="email"
+                autoComplete="email"
+                required
+              />
+              <Input
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className={inputCls}
+                type="password"
+                autoComplete="current-password"
+                required
+              />
+              <Button
+                type="submit"
+                disabled={isLoginDisabled}
+                className="h-12 w-full rounded-[1rem] bg-[#1b1813] text-sm font-semibold text-white hover:bg-[#11100d] disabled:opacity-60"
+              >
+                {loginBusy ? "Signing in…" : "Sign in with email"}
+              </Button>
+            </form>
+            {loginError && (
+              <div className="mt-3 rounded-[1rem] border border-red-200 bg-red-50/90 px-4 py-3 text-left text-sm text-red-600">
+                {loginError}
+              </div>
+            )}
+          </div>
+          <p className="mt-6 text-sm text-[#8a8276] hidden">
             <Link className="underline-offset-2 hover:underline" to="/od/member/signup">
               Create member account
             </Link>
@@ -128,6 +258,7 @@ export const OdVerifyPage: React.FC = () => {
   }
 
   const qualified = result.qualified;
+  const membershipInactive = result.membershipStatus !== "active";
 
   return (
     <div
@@ -154,6 +285,12 @@ export const OdVerifyPage: React.FC = () => {
             ? `Active OD Gold Member — staff may apply the shop’s manual discount for this visit.`
             : `No active OD Gold Member. Staff should not apply OD Gold Member discounts until this shows green.`}
         </p>
+        {membershipInactive && (
+          <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-left text-sm text-amber-900">
+            Your account is signed in, but membership is currently inactive. Please renew/reactivate your OD Gold
+            membership before claiming partner discounts.
+          </div>
+        )}
         <div className="mt-8 rounded-2xl bg-black/[0.04] px-4 py-3 text-left text-sm">
           <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#6b7280]">Verified at</div>
           <div className="mt-1 text-[#111827]">
