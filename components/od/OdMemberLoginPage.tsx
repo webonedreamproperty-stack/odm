@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Link, Navigate, useSearchParams } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
 import { Button } from "../ui/button";
@@ -10,6 +10,7 @@ const inputCls =
   "h-14 rounded-[1.2rem] border border-black/[0.08] bg-[#f4f1ea] px-4 text-[15px] text-[#171512] shadow-none placeholder:text-[#8a8276] focus-visible:border-black/25 focus-visible:bg-white focus-visible:ring-0";
 const labelCls =
   "block text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-[#777062]";
+const MEMBER_OAUTH_ERROR_KEY = "od_member_oauth_error_message";
 
 const GoogleIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg viewBox="0 0 24 24" aria-hidden className={className}>
@@ -46,6 +47,13 @@ export const OdMemberLoginPage: React.FC = () => {
   if (!loading && currentMember && accountKind === "member") {
     return <Navigate to={nextPath} replace />;
   }
+
+  useEffect(() => {
+    const oauthError = window.localStorage.getItem(MEMBER_OAUTH_ERROR_KEY);
+    if (!oauthError) return;
+    setError(oauthError);
+    window.localStorage.removeItem(MEMBER_OAUTH_ERROR_KEY);
+  }, []);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();

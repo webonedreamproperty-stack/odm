@@ -79,6 +79,8 @@ const ACCOUNT_ACTION_ERROR = "Unable to complete this account action right now. 
 const MEMBER_USE_OD_LOGIN = "This is an OD Gold member account. Sign in from the OD Gold member page.";
 const VENDOR_USE_BUSINESS_LOGIN = "This is a business account. Sign in from the business login page.";
 const MEMBER_PUBLIC_ORIGIN = "https://odgoldmember.com";
+const MEMBER_OAUTH_NEXT_KEY = "od_member_oauth_next_path";
+const MEMBER_OAUTH_ERROR_KEY = "od_member_oauth_error_message";
 
 const isDuplicateSignupError = (message: string | undefined) => {
   const normalized = (message || "").trim().toLowerCase();
@@ -243,6 +245,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           void (async () => {
             try {
               await loadFullSession(session.user.id, session.user);
+              const pendingMemberNext = window.localStorage.getItem(MEMBER_OAUTH_NEXT_KEY);
+              if (pendingMemberNext && pendingMemberNext.startsWith("/")) {
+                const member = await fetchMemberProfile(session.user.id);
+                if (member) {
+                  window.localStorage.removeItem(MEMBER_OAUTH_NEXT_KEY);
+                  window.localStorage.removeItem(MEMBER_OAUTH_ERROR_KEY);
+                  window.location.replace(`${MEMBER_PUBLIC_ORIGIN}${pendingMemberNext}`);
+                  return;
+                }
+                window.localStorage.removeItem(MEMBER_OAUTH_NEXT_KEY);
+                window.localStorage.setItem(
+                  MEMBER_OAUTH_ERROR_KEY,
+                  "This Google account is not registered as an OD Gold member. Please sign up as member first."
+                );
+                await supabase.auth.signOut();
+                return;
+              }
             } catch {
               // ignore
             } finally {
@@ -482,6 +501,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const safeNextPath =
       typeof nextPath === "string" && nextPath.startsWith("/") ? nextPath : "/od/account";
     try {
+      window.localStorage.removeItem(MEMBER_OAUTH_ERROR_KEY);
+      window.localStorage.setItem(MEMBER_OAUTH_NEXT_KEY, safeNextPath);
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
