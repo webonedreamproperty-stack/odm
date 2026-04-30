@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
 import { ExternalLink, MapPin, Sparkles, Store } from "lucide-react";
+import QRCode from "react-qr-code";
 import { Button } from "./ui/button";
 import { fetchPublicHandlePage, type PublicMemberHandle, type PublicVendorHandle } from "../lib/db/publicHandle";
 import { VendorPublicPlaceCard } from "./VendorPublicPlaceCard";
@@ -99,12 +100,25 @@ export const PublicHandlePage: React.FC = () => {
         ? OD_INDUSTRY_FILTER_LABEL[vendor.business_category] ?? vendor.business_category
         : null;
     const showListing = vendor.directory_visible;
+    const publicVendorUrl = buildAppUrl(`/${vendor.slug}`);
 
     const useGoogleCard = vendor.place_details != null && Object.keys(vendor.place_details).length > 0;
 
     return (
       <div className="min-h-screen bg-gradient-to-b from-[#f5f3ef] to-[#ebe8e2] px-4 py-12">
         <div className={useGoogleCard ? "mx-auto max-w-lg" : "mx-auto max-w-md"}>
+          <section className="mb-5 rounded-3xl bg-transparent p-5 text-center ">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#8a8276]">Scan for member access</p>
+            <div className="mt-4 flex justify-center">
+              <div className="inline-flex h-[206px] w-[206px] items-center justify-center rounded-full border border-[#d8d1c3] bg-[radial-gradient(circle,#ffffff_0%,#fbf8f2_100%)] shadow-[0_10px_26px_rgba(0,0,0,0.08)]">
+                <div className="rounded-full border border-[#ebe5d9] bg-white p-5">
+                  <QRCode value={publicVendorUrl} size={122} level="M" fgColor="#111827" bgColor="#ffffff" />
+                </div>
+              </div>
+            </div>
+            <p className="mt-3 break-all font-mono text-[11px] text-[#8a8276]">{publicVendorUrl}</p>
+          </section>
+
           {useGoogleCard && vendor.place_details ? (
             <VendorPublicPlaceCard vendor={vendor} placeDetails={vendor.place_details} />
           ) : (
