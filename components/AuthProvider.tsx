@@ -5,6 +5,7 @@ import { fetchProfile, fetchProfileDetailed, fetchStaffAccounts, updateProfile a
 import { fetchMemberProfile } from "../lib/db/members";
 import { normalizeSlug } from "../lib/slug";
 import { buildAppUrl, DEMO_WORKSPACE_ENABLED } from "../lib/siteConfig";
+import { MEMBER_OAUTH_ERROR_KEY, MEMBER_OAUTH_NEXT_KEY } from "../lib/memberOAuthUi";
 
 type AuthUserLike = {
   id: string;
@@ -79,8 +80,26 @@ const ACCOUNT_ACTION_ERROR = "Unable to complete this account action right now. 
 const MEMBER_USE_OD_LOGIN = "This is an OD Gold member account. Sign in from the OD Gold member page.";
 const VENDOR_USE_BUSINESS_LOGIN = "This is a business account. Sign in from the business login page.";
 const MEMBER_PUBLIC_ORIGIN = "https://odgoldmember.com";
-const MEMBER_OAUTH_NEXT_KEY = "od_member_oauth_next_path";
-const MEMBER_OAUTH_ERROR_KEY = "od_member_oauth_error_message";
+
+/**
+ * Google OAuth creates a default `profiles` row (owner) when metadata has no role=member.
+ * Real partners have onboarding signals; empty shells should see the member-registration message.
+ */
+function isLikelyRealOdPartnerVendor(profile: User): boolean {
+  if (profile.role === "staff") return true;
+  const business = profile.businessName?.trim() ?? "";
+  const slug = profile.slug?.trim() ?? "";
+  if (profile.vendorOnboardingCompleted === true) return true;
+  if (slug.length > 0) return true;
+  if (business.length > 0) return true;
+  const cat = profile.odBusinessCategory?.trim() ?? "";
+  if (cat.length > 0) return true;
+  const placeId = profile.odGooglePlaceId?.trim() ?? "";
+  if (placeId.length > 0) return true;
+  const summary = profile.odDiscountSummary?.trim() ?? "";
+  if (summary.length > 0) return true;
+  return false;
+}
 
 const isDuplicateSignupError = (message: string | undefined) => {
   const normalized = (message || "").trim().toLowerCase();
@@ -256,7 +275,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 }
                 const vendorProfile = await fetchProfile(session.user.id);
                 window.localStorage.removeItem(MEMBER_OAUTH_NEXT_KEY);
-                if (vendorProfile) {
+                if (vendorProfile && isLikelyRealOdPartnerVendor(vendorProfile)) {
                   window.localStorage.setItem(
                     MEMBER_OAUTH_ERROR_KEY,
                     "This Google account is an OD Partner account and cannot be used to claim member discounts. Please sign in with your OD Gold member email instead."

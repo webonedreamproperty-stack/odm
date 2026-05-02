@@ -5,13 +5,12 @@ import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { useAuth } from "../AuthProvider";
 import type { AuthResult } from "../AuthProvider";
+import { MEMBER_OAUTH_ERROR_KEY, memberAuthNoticeClassName } from "../../lib/memberOAuthUi";
 
 const inputCls =
   "h-14 rounded-[1.2rem] border border-black/[0.08] bg-[#f4f1ea] px-4 text-[15px] text-[#171512] shadow-none placeholder:text-[#8a8276] focus-visible:border-black/25 focus-visible:bg-white focus-visible:ring-0";
 const labelCls =
   "block text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-[#777062]";
-const MEMBER_OAUTH_ERROR_KEY = "od_member_oauth_error_message";
-
 const GoogleIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg viewBox="0 0 24 24" aria-hidden className={className}>
     <path
@@ -153,7 +152,7 @@ export const OdMemberLoginPage: React.FC = () => {
             />
           </div>
           {error && (
-            <div className="rounded-[1.2rem] border border-red-200 bg-red-50/90 px-4 py-3 text-sm text-red-600">
+            <div className={memberAuthNoticeClassName(error)}>
               {error}
             </div>
           )}

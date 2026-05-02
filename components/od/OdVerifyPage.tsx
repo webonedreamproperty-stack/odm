@@ -4,6 +4,7 @@ import { CheckCircle2, XCircle } from "lucide-react";
 import { useAuth } from "../AuthProvider";
 import { getOdMemberShopVerification } from "../../lib/db/members";
 import { isSupabaseConfigured, supabase } from "../../lib/supabase";
+import { MEMBER_OAUTH_ERROR_KEY, memberAuthNoticeClassName } from "../../lib/memberOAuthUi";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 
@@ -39,12 +40,14 @@ export const OdVerifyPage: React.FC = () => {
   const [googleBusy, setGoogleBusy] = useState(false);
   const [sessionChecked, setSessionChecked] = useState(false);
   const [needsRelogin, setNeedsRelogin] = useState(false);
+  const [oauthFlash, setOauthFlash] = useState<string | null>(null);
 
   const nextPath = `/od/verify/${encodeURIComponent(shopSlug ?? "")}`;
   const isLoginDisabled = loading || !sessionChecked || loginBusy || googleBusy;
 
   useEffect(() => {
     if (!isSupabaseConfigured) return;
+    if (loading) return;
     let active = true;
     void (async () => {
       const { data } = await supabase.auth.getSession();
@@ -56,7 +59,15 @@ export const OdVerifyPage: React.FC = () => {
     return () => {
       active = false;
     };
-  }, [currentMember, accountKind]);
+  }, [currentMember, accountKind, loading]);
+
+  useEffect(() => {
+    const oauthError = window.localStorage.getItem(MEMBER_OAUTH_ERROR_KEY);
+    if (!oauthError) return;
+    setOauthFlash(oauthError);
+    setLoginError("");
+    window.localStorage.removeItem(MEMBER_OAUTH_ERROR_KEY);
+  }, []);
 
   const handleMemberEmailLogin = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -145,15 +156,7 @@ export const OdVerifyPage: React.FC = () => {
     );
   }
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[#f5f3ef]">
-        <div className="h-10 w-10 animate-spin rounded-full border-4 border-[#1b1813] border-t-transparent" />
-      </div>
-    );
-  }
-
-  if (!sessionChecked || loading) {
+  if (loading || !sessionChecked) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#f5f3ef]">
         <div className="h-10 w-10 animate-spin rounded-full border-4 border-[#1b1813] border-t-transparent" />
@@ -174,6 +177,9 @@ export const OdVerifyPage: React.FC = () => {
             <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-left text-sm text-amber-900">
               Your session has expired. Please sign in again to continue membership verification.
             </div>
+          )}
+          {oauthFlash && (
+            <div className={`mt-4 ${memberAuthNoticeClassName(oauthFlash)}`}>{oauthFlash}</div>
           )}
           <div className="mt-6">
             <Button
@@ -223,9 +229,7 @@ export const OdVerifyPage: React.FC = () => {
               </Button>
             </form>
             {loginError && (
-              <div className="mt-3 rounded-[1rem] border border-red-200 bg-red-50/90 px-4 py-3 text-left text-sm text-red-600">
-                {loginError}
-              </div>
+              <div className={`mt-3 ${memberAuthNoticeClassName(loginError)}`}>{loginError}</div>
             )}
           </div>
           <p className="mt-6 text-sm text-[#8a8276] hidden">
