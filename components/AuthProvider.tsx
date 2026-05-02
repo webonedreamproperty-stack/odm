@@ -901,7 +901,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       updateStaffPin, setStaffAccess, deleteStaff, deleteAccount, logout,
       resendVerificationEmail, isSlugAvailable, updateProfileInfo,
       updatePassword, resetPassword, refreshProfile,
-      memberLogin, memberLoginWithGoogle, memberSignup, refreshMemberProfile, updateMemberDisplayName,
+      memberLogin, memberLoginWithGoogle, memberSignup,       refreshMemberProfile, updateMemberDisplayName,
       updateMemberPublicUsername,
     ]
   );

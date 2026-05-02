@@ -11,6 +11,21 @@
     },
     "api/od/bayarcash/return.ts": {
       "includeFiles": "api/od/bayarcash/lib/**"
+    },
+    "api/od/member/phone/send-tac.ts": {
+      "includeFiles": "api/od/member/lib/**"
+    },
+    "api/od/member/phone/verify-tac.ts": {
+      "includeFiles": "api/od/member/lib/**"
+    },
+    "api/od/member/phone/clear.ts": {
+      "includeFiles": "api/od/member/lib/**"
+    },
+    "api/od/member/verify-shop/send-tac.ts": {
+      "includeFiles": "api/od/member/lib/**"
+    },
+    "api/od/member/verify-shop/verify-tac.ts": {
+      "includeFiles": "api/od/member/lib/**"
     }
   }
 }

@@ -148,6 +148,8 @@ export interface MemberAccount {
   email: string;
   displayName: string;
   memberCode: string;
+  /** MSISDN digits (e.g. 60123456789); matches `member_profiles.phone_no`. */
+  phoneNo: string | null;
   /** Lowercase public URL segment for /:username (optional). */
   publicUsername: string | null;
   country: string;

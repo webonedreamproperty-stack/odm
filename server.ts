@@ -9,6 +9,12 @@ import {
   handleOdRenewalReturn,
   readSupabaseServerEnv,
 } from "./api/od/bayarcash/lib/bayarcashOdPayment";
+import {
+  handleMemberPhoneClear,
+  handleMemberPhoneSendTac,
+  handleMemberPhoneVerifyTac,
+} from "./api/od/member/lib/memberPhoneTac";
+import { handleVerifyShopSendTac, handleVerifyShopVerifyTac } from "./api/od/member/lib/memberVerifyShopLoginTac";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = process.cwd();
@@ -36,6 +42,77 @@ async function createApp() {
     const out = await handleCreateOdRenewalIntent({ accessToken, plan });
     if (out.ok === true) {
       res.json({ url: out.url });
+      return;
+    }
+    res.status(out.status).json({ error: out.error });
+  });
+
+  app.post("/api/od/member/phone/send-tac", async (req, res) => {
+    const auth = req.headers.authorization;
+    const accessToken =
+      typeof auth === "string" && auth.startsWith("Bearer ") ? auth.slice("Bearer ".length).trim() : "";
+    const phone = typeof req.body?.phone === "string" ? req.body.phone : "";
+    if (!accessToken) {
+      res.status(401).json({ error: "Missing access token." });
+      return;
+    }
+    const out = await handleMemberPhoneSendTac({ accessToken, rawPhone: phone });
+    if (out.ok === true) {
+      res.json({ ok: true });
+      return;
+    }
+    res.status(out.status).json({ error: out.error });
+  });
+
+  app.post("/api/od/member/phone/verify-tac", async (req, res) => {
+    const auth = req.headers.authorization;
+    const accessToken =
+      typeof auth === "string" && auth.startsWith("Bearer ") ? auth.slice("Bearer ".length).trim() : "";
+    const code = typeof req.body?.code === "string" ? req.body.code : "";
+    if (!accessToken) {
+      res.status(401).json({ error: "Missing access token." });
+      return;
+    }
+    const out = await handleMemberPhoneVerifyTac({ accessToken, rawCode: code });
+    if (out.ok === true) {
+      res.json({ ok: true });
+      return;
+    }
+    res.status(out.status).json({ error: out.error });
+  });
+
+  app.post("/api/od/member/verify-shop/send-tac", async (req, res) => {
+    const phone = typeof req.body?.phone === "string" ? req.body.phone : "";
+    const out = await handleVerifyShopSendTac({ rawPhone: phone });
+    if (out.ok === true) {
+      res.json({ ok: true });
+      return;
+    }
+    res.status(out.status).json({ error: out.error });
+  });
+
+  app.post("/api/od/member/verify-shop/verify-tac", async (req, res) => {
+    const phone = typeof req.body?.phone === "string" ? req.body.phone : "";
+    const code = typeof req.body?.code === "string" ? req.body.code : "";
+    const out = await handleVerifyShopVerifyTac({ rawPhone: phone, rawCode: code });
+    if (out.ok === true) {
+      res.json({ ok: true, token_hash: out.token_hash });
+      return;
+    }
+    res.status(out.status).json({ error: out.error });
+  });
+
+  app.post("/api/od/member/phone/clear", async (req, res) => {
+    const auth = req.headers.authorization;
+    const accessToken =
+      typeof auth === "string" && auth.startsWith("Bearer ") ? auth.slice("Bearer ".length).trim() : "";
+    if (!accessToken) {
+      res.status(401).json({ error: "Missing access token." });
+      return;
+    }
+    const out = await handleMemberPhoneClear({ accessToken });
+    if (out.ok === true) {
+      res.json({ ok: true });
       return;
     }
     res.status(out.status).json({ error: out.error });

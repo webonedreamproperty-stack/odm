@@ -7,9 +7,21 @@ type MemberRow = {
   display_name: string;
   member_code: string;
   public_username: string | null;
+  phone_no: string | number | null;
   country: string;
   created_at: string;
 };
+
+function phoneNoFromDb(value: unknown): string | null {
+  if (value == null) return null;
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return String(Math.trunc(value));
+  }
+  const s = String(value).trim();
+  if (!s) return null;
+  const head = s.split(/[.eE]/)[0];
+  return head || null;
+}
 
 type MembershipRow = {
   member_id: string;
@@ -28,6 +40,7 @@ export function rowToMemberAccount(
     email: profile.email,
     displayName: profile.display_name,
     memberCode: profile.member_code,
+    phoneNo: phoneNoFromDb(profile.phone_no),
     publicUsername: profile.public_username != null && String(profile.public_username).trim() !== ""
       ? String(profile.public_username).trim().toLowerCase()
       : null,
@@ -47,7 +60,7 @@ export function rowToMemberAccount(
 export async function fetchMemberProfile(userId: string): Promise<MemberAccount | null> {
   const { data: profile, error: pErr } = await supabase
     .from('member_profiles')
-    .select('id, email, display_name, member_code, public_username, country, created_at')
+    .select('id, email, display_name, member_code, public_username, phone_no, country, created_at')
     .eq('id', userId)
     .maybeSingle();
 

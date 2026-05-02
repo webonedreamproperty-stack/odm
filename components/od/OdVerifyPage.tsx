@@ -1,28 +1,26 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { CheckCircle2, XCircle } from "lucide-react";
+import { Check, CheckCircle2, Lock, MessageSquare, Phone, Smartphone, XCircle } from "lucide-react";
 import { useAuth } from "../AuthProvider";
-import { getOdMemberShopVerification } from "../../lib/db/members";
+import { fetchMemberProfile, getOdMemberShopVerification } from "../../lib/db/members";
+import { fetchProfile } from "../../lib/db/profiles";
+import { isMalaysiaSixtyMsisdn } from "../../lib/memberPhoneDigits";
+import { sendVerifyShopPhoneTac, verifyShopPhoneAndToken } from "../../lib/odVerifyShopLoginApi";
 import { isSupabaseConfigured, supabase } from "../../lib/supabase";
-import { MEMBER_OAUTH_ERROR_KEY, memberAuthNoticeClassName } from "../../lib/memberOAuthUi";
+import { memberAuthNoticeClassName } from "../../lib/memberOAuthUi";
+import { cn } from "../../lib/utils";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 
 const inputCls =
   "h-12 rounded-[1rem] border border-black/[0.08] bg-[#f4f1ea] px-4 text-[15px] text-[#171512] shadow-none placeholder:text-[#8a8276] focus-visible:border-black/25 focus-visible:bg-white focus-visible:ring-0";
 
-const GoogleIcon: React.FC<{ className?: string }> = ({ className }) => (
-  <svg viewBox="0 0 24 24" aria-hidden className={className}>
-    <path d="M21.35 11.1H12v2.98h5.33c-.23 1.52-1.14 2.8-2.43 3.65v2.42h3.93c2.3-2.12 3.63-5.25 3.63-8.98 0-.67-.06-1.31-.11-1.95Z" fill="#4285F4" />
-    <path d="M12 22c2.7 0 4.96-.9 6.61-2.45l-3.93-2.42c-1.09.73-2.48 1.15-4.02 1.15-3.09 0-5.71-2.09-6.64-4.91H0v2.5A10 10 0 0 0 12 22Z" fill="#34A853" />
-    <path d="M4.02 13.37A5.98 5.98 0 0 1 3.65 11c0-.82.14-1.61.37-2.37v-2.5H0A10 10 0 0 0 0 16l4.02-2.63Z" fill="#FBBC05" />
-    <path d="M12 3.72c1.47 0 2.8.51 3.84 1.52l2.88-2.88C16.96.72 14.7 0 12 0A10 10 0 0 0 0 6.13l4.02 2.5c.93-2.82 3.55-4.91 6.64-4.91Z" fill="#EA4335" />
-  </svg>
-);
+const VENDOR_BUSINESS_LOGIN =
+  "This is a business account. Sign in from the business login page instead.";
 
 export const OdVerifyPage: React.FC = () => {
   const { shopSlug } = useParams<{ shopSlug: string }>();
-  const { currentMember, loading, accountKind, memberLogin, memberLoginWithGoogle } = useAuth();
+  const { currentMember, loading, accountKind, memberLogin, refreshMemberProfile } = useAuth();
   const [result, setResult] = useState<{
     qualified: boolean;
     memberCode: string;
@@ -37,13 +35,17 @@ export const OdVerifyPage: React.FC = () => {
   const [password, setPassword] = useState("");
   const [loginError, setLoginError] = useState("");
   const [loginBusy, setLoginBusy] = useState(false);
-  const [googleBusy, setGoogleBusy] = useState(false);
+  const [verifyPhone, setVerifyPhone] = useState("");
+  const [verifyOtpStep, setVerifyOtpStep] = useState<"phone" | "code">("phone");
+  const [otpCells, setOtpCells] = useState(["", "", "", "", "", ""]);
+  const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const [verifyBusy, setVerifyBusy] = useState(false);
+  const [verifyMsg, setVerifyMsg] = useState("");
   const [sessionChecked, setSessionChecked] = useState(false);
   const [needsRelogin, setNeedsRelogin] = useState(false);
-  const [oauthFlash, setOauthFlash] = useState<string | null>(null);
 
-  const nextPath = `/od/verify/${encodeURIComponent(shopSlug ?? "")}`;
-  const isLoginDisabled = loading || !sessionChecked || loginBusy || googleBusy;
+  const isLoginDisabled = loading || !sessionChecked || loginBusy || verifyBusy;
+  const phoneLooksValid = isMalaysiaSixtyMsisdn(verifyPhone);
 
   useEffect(() => {
     if (!isSupabaseConfigured) return;
@@ -61,14 +63,6 @@ export const OdVerifyPage: React.FC = () => {
     };
   }, [currentMember, accountKind, loading]);
 
-  useEffect(() => {
-    const oauthError = window.localStorage.getItem(MEMBER_OAUTH_ERROR_KEY);
-    if (!oauthError) return;
-    setOauthFlash(oauthError);
-    setLoginError("");
-    window.localStorage.removeItem(MEMBER_OAUTH_ERROR_KEY);
-  }, []);
-
   const handleMemberEmailLogin = async (event: React.FormEvent) => {
     event.preventDefault();
     setLoginError("");
@@ -85,18 +79,99 @@ export const OdVerifyPage: React.FC = () => {
     }
   };
 
-  const handleGoogleLogin = async () => {
+  const handleSendVerifyShopTac = async () => {
     setLoginError("");
-    setGoogleBusy(true);
+    setVerifyMsg("");
+    if (!isMalaysiaSixtyMsisdn(verifyPhone)) {
+      setLoginError("Enter a Malaysia number starting with 60 (e.g. 60123456789 or 0123456789).");
+      return;
+    }
+    setVerifyBusy(true);
+    const out = await sendVerifyShopPhoneTac(verifyPhone);
+    setVerifyBusy(false);
+    if (out.ok === false) {
+      setLoginError(out.error);
+      return;
+    }
+    setOtpCells(["", "", "", "", "", ""]);
+    setVerifyOtpStep("code");
+    setVerifyMsg("Check WhatsApp for your code.");
+    window.setTimeout(() => setVerifyMsg(""), 6000);
+  };
+
+  const handleChangeVerifyNumber = () => {
+    setVerifyOtpStep("phone");
+    setOtpCells(["", "", "", "", "", ""]);
+    setVerifyMsg("");
+    setLoginError("");
+  };
+
+  useEffect(() => {
+    if (verifyOtpStep !== "code") return;
+    const id = window.setTimeout(() => otpRefs.current[0]?.focus(), 80);
+    return () => window.clearTimeout(id);
+  }, [verifyOtpStep]);
+
+  const handleVerifyShopSignIn = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setLoginError("");
+    setVerifyMsg("");
+    if (!isMalaysiaSixtyMsisdn(verifyPhone)) {
+      setLoginError("Enter a Malaysia number starting with 60.");
+      return;
+    }
+    const tacJoined = otpCells.join("");
+    if (tacJoined.length !== 6) {
+      setLoginError("Enter the 6-digit code from WhatsApp.");
+      return;
+    }
+    setVerifyBusy(true);
     try {
-      const result = await memberLoginWithGoogle(nextPath);
-      if (result.ok === false) {
-        setLoginError(result.error);
+      const tokenOut = await verifyShopPhoneAndToken(verifyPhone, tacJoined);
+      if (tokenOut.ok === false) {
+        setLoginError(tokenOut.error);
+        return;
       }
+
+      const { data: otpData, error: otpErr } = await supabase.auth.verifyOtp({
+        type: "magiclink",
+        token_hash: tokenOut.token_hash,
+      });
+
+      if (otpErr || !otpData.session?.user) {
+        setLoginError(otpErr?.message || "Could not sign in. Try again.");
+        return;
+      }
+
+      const userId = otpData.session.user.id;
+      const vendorProfile = await fetchProfile(userId);
+      if (vendorProfile) {
+        await supabase.auth.signOut();
+        setLoginError(VENDOR_BUSINESS_LOGIN);
+        return;
+      }
+
+      let member = await fetchMemberProfile(userId);
+      for (let attempt = 0; attempt < 5 && !member; attempt += 1) {
+        await new Promise<void>((resolve) => {
+          window.setTimeout(() => resolve(), 200);
+        });
+        member = await fetchMemberProfile(userId);
+      }
+
+      if (!member) {
+        await supabase.auth.signOut();
+        setLoginError("This account is not registered as an OD Gold member.");
+        return;
+      }
+
+      setOtpCells(["", "", "", "", "", ""]);
+      setVerifyOtpStep("phone");
+      await refreshMemberProfile();
     } catch {
-      setLoginError("Unable to continue with Google right now. Please try again.");
+      setLoginError("Unable to sign in right now. Please try again.");
     } finally {
-      setGoogleBusy(false);
+      setVerifyBusy(false);
     }
   };
 
@@ -178,31 +253,160 @@ export const OdVerifyPage: React.FC = () => {
               Your session has expired. Please sign in again to continue membership verification.
             </div>
           )}
-          {oauthFlash && (
-            <div className={`mt-4 ${memberAuthNoticeClassName(oauthFlash)}`}>{oauthFlash}</div>
-          )}
-          <div className="mt-6">
-            <Button
-              type="button"
-              variant="outline"
-              disabled={isLoginDisabled}
-              onClick={() => void handleGoogleLogin()}
-              className="h-12 w-full rounded-[1rem] border border-black/[0.1] bg-white text-sm font-semibold text-[#1b1813] hover:bg-[#faf8f3] disabled:opacity-60"
-            >
-              {googleBusy ? "Connecting to Google…" : (
-                <>
-                  <GoogleIcon className="mr-2 h-4 w-4 shrink-0" />
-                  Continue with Google
-                </>
+          <div className="mt-6 space-y-6 text-left">
+            <div className="space-y-4">
+              {verifyOtpStep === "phone" ? (
+                <div className="rounded-[1.35rem] border border-black/[0.06] bg-white px-5 pb-6 pt-6 shadow-[0_12px_40px_-24px_rgba(0,0,0,0.18)]">
+                  <div className="flex justify-center">
+                    <div className="relative flex h-[4.5rem] w-[4.5rem] items-center justify-center rounded-2xl bg-gradient-to-br from-[#fff7ed] to-[#ffedd5]">
+                      <Phone className="h-9 w-9 text-[#ea580c]" strokeWidth={1.75} aria-hidden />
+                      <span className="absolute -bottom-0.5 -right-0.5 flex h-8 w-8 items-center justify-center rounded-xl bg-white shadow-sm ring-1 ring-black/[0.06]">
+                        <Lock className="h-4 w-4 text-[#9a3412]" aria-hidden />
+                      </span>
+                    </div>
+                  </div>
+                  <h2 className="mt-5 text-center text-lg font-bold tracking-tight text-[#1b1813]">WhatsApp verification</h2>
+                  <p className="mt-1.5 text-center text-sm text-[#6d6658]">Enter your phone number</p>
+                  <p className="mt-2 text-center text-[13px] leading-snug text-[#8a8276]">
+                    Use the number on your OD Gold account (
+                    <span className="font-medium text-[#1b1813]">60…</span> Malaysia). We will WhatsApp you a code.
+                  </p>
+                  <div className="relative mt-5">
+                    <Input
+                      value={verifyPhone}
+                      onChange={(e) => setVerifyPhone(e.target.value)}
+                      placeholder="60123456789"
+                      className={cn(inputCls, "h-12 pr-11")}
+                      type="tel"
+                      inputMode="tel"
+                      autoComplete="tel"
+                    />
+                    {phoneLooksValid ? (
+                      <span
+                        className="pointer-events-none absolute right-3 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full bg-emerald-500 text-white shadow-sm"
+                        aria-hidden
+                      >
+                        <Check className="h-4 w-4" strokeWidth={3} />
+                      </span>
+                    ) : null}
+                  </div>
+                  <Button
+                    type="button"
+                    disabled={isLoginDisabled || !phoneLooksValid}
+                    className="mt-5 h-12 w-full rounded-xl bg-[#1b1813] text-sm font-semibold text-white hover:bg-[#11100d] disabled:opacity-50"
+                    onClick={() => void handleSendVerifyShopTac()}
+                  >
+                    {verifyBusy ? "Sending…" : "Send code"}
+                  </Button>
+                </div>
+              ) : (
+                <div className="rounded-[1.35rem] border border-black/[0.06] bg-white px-5 pb-6 pt-6 shadow-[0_12px_40px_-24px_rgba(0,0,0,0.18)]">
+                  <div className="flex justify-center">
+                    <div className="relative flex h-[4.5rem] w-[4.5rem] items-center justify-center rounded-2xl bg-gradient-to-br from-[#eff6ff] to-[#dbeafe]">
+                      <Smartphone className="h-9 w-9 text-[#2563eb]" strokeWidth={1.75} aria-hidden />
+                      <span className="absolute -right-1 -top-1 flex h-9 w-9 items-center justify-center rounded-xl bg-white shadow-md ring-1 ring-black/[0.06]">
+                        <MessageSquare className="h-5 w-5 text-[#2563eb]" aria-hidden />
+                      </span>
+                    </div>
+                  </div>
+                  <h2 className="mt-5 text-center text-lg font-bold tracking-tight text-[#1b1813]">Account verification</h2>
+                  <p className="mt-1.5 text-center text-sm text-[#6d6658]">Enter the code below</p>
+                  <div
+                    className="mt-6 grid grid-cols-6 gap-2 sm:gap-2.5"
+                    onPaste={(e) => {
+                      e.preventDefault();
+                      const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
+                      const chars = pasted.split("");
+                      setOtpCells(() => {
+                        const next: string[] = ["", "", "", "", "", ""];
+                        for (let i = 0; i < 6; i++) next[i] = chars[i] ?? "";
+                        return next;
+                      });
+                      const focusIdx = pasted.length >= 6 ? 5 : Math.max(0, pasted.length);
+                      window.requestAnimationFrame(() => otpRefs.current[focusIdx]?.focus());
+                    }}
+                  >
+                    {otpCells.map((digit, index) => (
+                      <Input
+                        key={index}
+                        ref={(el) => {
+                          otpRefs.current[index] = el;
+                        }}
+                        value={digit}
+                        onChange={(e) => {
+                          const v = e.target.value.replace(/\D/g, "").slice(-1);
+                          setOtpCells((prev) => {
+                            const next = [...prev];
+                            next[index] = v;
+                            return next;
+                          });
+                          if (v && index < 5) {
+                            window.requestAnimationFrame(() => otpRefs.current[index + 1]?.focus());
+                          }
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key !== "Backspace") return;
+                          e.preventDefault();
+                          setOtpCells((prev) => {
+                            const next = [...prev];
+                            if (next[index]) {
+                              next[index] = "";
+                              return next;
+                            }
+                            if (index > 0) {
+                              next[index - 1] = "";
+                              window.requestAnimationFrame(() => otpRefs.current[index - 1]?.focus());
+                            }
+                            return next;
+                          });
+                        }}
+                        inputMode="numeric"
+                        autoComplete={index === 0 ? "one-time-code" : "off"}
+                        maxLength={1}
+                        className="h-12 min-w-0 rounded-xl border border-black/[0.1] bg-[#f4f1ea] px-0 text-center text-lg font-semibold tabular-nums text-[#1b1813] shadow-none focus-visible:border-[#1b1813] focus-visible:bg-white focus-visible:ring-2 focus-visible:ring-[#1b1813]/15"
+                        aria-label={`Digit ${index + 1} of 6`}
+                      />
+                    ))}
+                  </div>
+                  <form className="mt-6" onSubmit={(e) => void handleVerifyShopSignIn(e)}>
+                    <Button
+                      type="submit"
+                      disabled={isLoginDisabled || otpCells.join("").length !== 6}
+                      className="h-12 w-full rounded-xl bg-[#1b1813] text-sm font-semibold text-white hover:bg-[#11100d] disabled:opacity-50"
+                    >
+                      {verifyBusy ? "Signing in…" : "Verify code"}
+                    </Button>
+                  </form>
+                  <div className="mt-4 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm">
+                    <button
+                      type="button"
+                      className="font-medium text-[#2563eb] underline-offset-4 hover:underline disabled:opacity-50"
+                      disabled={verifyBusy || !phoneLooksValid}
+                      onClick={() => void handleSendVerifyShopTac()}
+                    >
+                      Resend code
+                    </button>
+                    <button
+                      type="button"
+                      className="font-medium text-[#6d6658] underline-offset-4 hover:text-[#1b1813] hover:underline"
+                      onClick={handleChangeVerifyNumber}
+                    >
+                      Change number
+                    </button>
+                  </div>
+                </div>
               )}
-            </Button>
-            <div className="relative mt-4 py-0.5">
+              {verifyMsg ? <p className="text-center text-sm text-emerald-700">{verifyMsg}</p> : null}
+            </div>
+
+            <div className="relative py-0.5">
               <div className="border-t border-black/[0.08]" />
               <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white px-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#777062]">
-                or
+                or email
               </span>
             </div>
-            <form className="mt-4 space-y-3 text-left" onSubmit={handleMemberEmailLogin}>
+
+            <form className="space-y-3" onSubmit={handleMemberEmailLogin}>
               <Input
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -263,6 +467,8 @@ export const OdVerifyPage: React.FC = () => {
 
   const qualified = result.qualified;
   const membershipInactive = result.membershipStatus !== "active";
+  const signedInEmail = currentMember?.email?.trim() ?? "";
+  const showAccountCta = membershipInactive || !qualified;
 
   return (
     <div
@@ -290,12 +496,40 @@ export const OdVerifyPage: React.FC = () => {
             : `No active OD Gold Member. Staff should not apply OD Gold Member discounts until this shows green.`}
         </p>
         {membershipInactive && (
-          <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-left text-sm text-amber-900">
-            Your account is signed in, but membership is currently inactive. Please renew/reactivate your OD Gold
-            membership before claiming partner discounts.
+          <div className="mt-4 space-y-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-left text-sm text-amber-900">
+            <p>
+              Your account is signed in, but membership is currently inactive. Please renew/reactivate your OD Gold
+              membership before claiming partner discounts.
+            </p>
+            <Button
+              type="button"
+              className="h-11 w-full rounded-full bg-[#1b1813] text-sm font-semibold text-white hover:bg-[#11100d]"
+              asChild
+            >
+              <Link to="/od/account">Go to my account</Link>
+            </Button>
+          </div>
+        )}
+        {showAccountCta && !membershipInactive && (
+          <div className="mt-4">
+            <Button
+              type="button"
+              variant="outline"
+              className="h-11 w-full rounded-full border-black/15 text-[#1b1813]"
+              asChild
+            >
+              <Link to="/od/account">Go to my account</Link>
+            </Button>
           </div>
         )}
         <div className="mt-8 rounded-2xl bg-black/[0.04] px-4 py-3 text-left text-sm">
+          {signedInEmail ? (
+            <>
+              <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#6b7280]">Signed in as</div>
+              <div className="mt-1 break-all text-[#111827]">{signedInEmail}</div>
+              <div className="my-4 border-t border-black/[0.06]" />
+            </>
+          ) : null}
           <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#6b7280]">Verified at</div>
           <div className="mt-1 text-[#111827]">
             {now.toLocaleString(undefined, { dateStyle: "full", timeStyle: "medium" })}

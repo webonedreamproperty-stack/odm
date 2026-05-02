@@ -21,6 +21,12 @@ import {
   fetchOdPlaceSearchCacheExtrasBatch,
   type OdPlaceSearchExtras,
 } from "../../lib/odPlaceSearchCacheExtras";
+import {
+  clearMemberPhoneServer,
+  requestMemberPhoneTac,
+  verifyMemberPhoneTac,
+} from "../../lib/odMemberPhoneApi";
+import { isMalaysiaSixtyMsisdn } from "../../lib/memberPhoneDigits";
 import { startViewTransition } from "../../lib/viewTransition";
 import { OdDirectoryShopDetailDialog } from "./OdDirectoryShopDetailDialog";
 import { OdDirectoryShopCard } from "./OdDirectoryShopCard";
@@ -68,8 +74,7 @@ const OD_MEMBER_MAP_STYLES = {
 type OdMemberMapStyleKey = keyof typeof OD_MEMBER_MAP_STYLES;
 
 export const OdMemberAccountPage: React.FC = () => {
-  const { currentMember, logout, updateMemberDisplayName, updateMemberPublicUsername, refreshMemberProfile } =
-    useAuth();
+  const { currentMember, logout, updateMemberDisplayName, updateMemberPublicUsername, refreshMemberProfile } = useAuth();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [name, setName] = useState(currentMember?.displayName ?? "");
@@ -83,6 +88,11 @@ export const OdMemberAccountPage: React.FC = () => {
   const [publicUsernameMsg, setPublicUsernameMsg] = useState("");
   const [publicUsernameErr, setPublicUsernameErr] = useState("");
   const [publicUsernameBusy, setPublicUsernameBusy] = useState(false);
+  const [phoneInput, setPhoneInput] = useState("");
+  const [phoneTacInput, setPhoneTacInput] = useState("");
+  const [phoneErr, setPhoneErr] = useState("");
+  const [phoneMsg, setPhoneMsg] = useState("");
+  const [phoneBusy, setPhoneBusy] = useState(false);
 
   const [dirLoading, setDirLoading] = useState(false);
   const [dirShops, setDirShops] = useState<OdDirectoryShop[]>([]);
@@ -237,9 +247,14 @@ export const OdMemberAccountPage: React.FC = () => {
     setName(currentMember?.displayName ?? "");
   }, [currentMember?.displayName]);
 
-  React.useEffect(() => {
+  React.  useEffect(() => {
     setPublicUsernameInput(currentMember?.publicUsername ?? "");
   }, [currentMember?.publicUsername]);
+
+  useEffect(() => {
+    setPhoneInput(currentMember?.phoneNo ?? "");
+    setPhoneTacInput("");
+  }, [currentMember?.phoneNo]);
 
   useEffect(() => {
     const pay = searchParams.get("od_pay");
@@ -424,6 +439,64 @@ export const OdMemberAccountPage: React.FC = () => {
     setMsg("Saved.");
     void refreshMemberProfile();
     window.setTimeout(() => setMsg(""), 2500);
+  };
+
+  const onPhoneFieldChange = (value: string) => {
+    setPhoneInput(value);
+    setPhoneTacInput("");
+    setPhoneErr("");
+  };
+
+  const handleSendPhoneTac = async () => {
+    setPhoneErr("");
+    setPhoneMsg("");
+    if (!isMalaysiaSixtyMsisdn(phoneInput)) {
+      setPhoneErr("Enter a Malaysia number starting with 60 (e.g. 60123456789 or 0123456789).");
+      return;
+    }
+    setPhoneBusy(true);
+    const out = await requestMemberPhoneTac(phoneInput);
+    setPhoneBusy(false);
+    if (out.ok === false) {
+      setPhoneErr(out.error);
+      return;
+    }
+    setPhoneMsg("Code sent by WhatsApp. Enter the 6-digit code below.");
+    window.setTimeout(() => setPhoneMsg(""), 8000);
+  };
+
+  const handleVerifyPhoneTac = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setPhoneErr("");
+    setPhoneMsg("");
+    setPhoneBusy(true);
+    const out = await verifyMemberPhoneTac(phoneTacInput);
+    setPhoneBusy(false);
+    if (out.ok === false) {
+      setPhoneErr(out.error);
+      return;
+    }
+    setPhoneTacInput("");
+    setPhoneMsg("Mobile number verified and saved.");
+    void refreshMemberProfile();
+    window.setTimeout(() => setPhoneMsg(""), 4000);
+  };
+
+  const handleClearPhone = async () => {
+    setPhoneErr("");
+    setPhoneMsg("");
+    setPhoneBusy(true);
+    const out = await clearMemberPhoneServer();
+    setPhoneBusy(false);
+    if (out.ok === false) {
+      setPhoneErr(out.error);
+      return;
+    }
+    setPhoneInput("");
+    setPhoneTacInput("");
+    setPhoneMsg("Mobile number removed.");
+    void refreshMemberProfile();
+    window.setTimeout(() => setPhoneMsg(""), 3000);
   };
 
   const handleSavePublicUsername = async (event: React.FormEvent) => {
@@ -1191,6 +1264,77 @@ export const OdMemberAccountPage: React.FC = () => {
               {busy ? "Saving…" : "Save"}
             </Button>
           </form>
+
+          <div className="mt-8 space-y-4 border-t border-black/[0.06] pt-8">
+            <h3 className="text-xs font-semibold uppercase tracking-[0.12em] text-[#8a8276]">Mobile number</h3>
+            <p className="text-sm text-[#6d6658]">
+              Malaysia numbers only, stored as international digits starting with{" "}
+              <span className="font-medium text-[#1b1813]">60</span> (e.g.{" "}
+              <span className="font-mono text-[13px]">60123456789</span> or local{" "}
+              <span className="font-mono text-[13px]">0123456789</span>). We send a WhatsApp code to confirm before
+              saving
+            </p>
+            <div className="space-y-3">
+              <label className="text-xs font-medium text-[#6B7280]">WhatsApp number</label>
+              <Input
+                type="tel"
+                inputMode="tel"
+                autoComplete="tel"
+                value={phoneInput}
+                onChange={(e) => onPhoneFieldChange(e.target.value)}
+                className={inputCls}
+                placeholder="60123456789"
+              />
+              <Button
+                type="button"
+                disabled={phoneBusy}
+                variant="outline"
+                className="rounded-full border-black/12"
+                onClick={() => void handleSendPhoneTac()}
+              >
+                {phoneBusy ? "Working…" : "Send WhatsApp code"}
+              </Button>
+            </div>
+
+            <form className="space-y-3" onSubmit={(e) => void handleVerifyPhoneTac(e)}>
+              <label className="text-xs font-medium text-[#6B7280]">Verification code</label>
+              <Input
+                type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                maxLength={6}
+                value={phoneTacInput}
+                onChange={(e) => setPhoneTacInput(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                className={cn(inputCls, "tracking-[0.25em] font-mono text-base")}
+                placeholder="••••••"
+              />
+              <p className="text-[13px] text-[#8a8276]">
+                After tapping “Send WhatsApp code”, copy the 6-digit code from WhatsApp and paste it here.
+              </p>
+              <Button
+                type="submit"
+                disabled={phoneBusy || phoneTacInput.length !== 6}
+                className="rounded-full bg-[#1b1813] hover:bg-[#11100d]"
+              >
+                {phoneBusy ? "Checking…" : "Verify & save number"}
+              </Button>
+            </form>
+
+            {currentMember.phoneNo ? (
+              <Button
+                type="button"
+                variant="ghost"
+                disabled={phoneBusy}
+                className="rounded-full text-[#6d6658] hover:bg-black/[0.04] hover:text-[#1b1813]"
+                onClick={() => void handleClearPhone()}
+              >
+                Remove mobile number
+              </Button>
+            ) : null}
+
+            {phoneErr && <p className="text-sm text-red-600">{phoneErr}</p>}
+            {phoneMsg && <p className="text-sm text-emerald-700">{phoneMsg}</p>}
+          </div>
 
           <form className="mt-8 space-y-3 border-t border-black/[0.06] pt-8" onSubmit={(e) => void handleSavePublicUsername(e)}>
             <h3 className="text-xs font-semibold uppercase tracking-[0.12em] text-[#8a8276]">Public profile link</h3>
