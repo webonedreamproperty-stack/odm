@@ -34,7 +34,7 @@ export function rowToStoredTemplate(row: CampaignRow): StoredTemplate {
     showLogo: row.show_logo,
     titleSize: row.title_size ?? undefined,
     iconKey: row.icon_key,
-    colors: row.colors as StoredTemplate['colors'],
+    colors: row.colors as unknown as StoredTemplate["colors"],
     totalStamps: row.total_stamps,
     social: row.social as StoredTemplate['social'],
   };

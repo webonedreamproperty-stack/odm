@@ -43,7 +43,7 @@ export const OdVendorLoginPage: React.FC = () => {
     setBusy(true);
     try {
       const result = (await login(email, password)) as AuthResult;
-      if (!result.ok) {
+      if (result.ok === false) {
         setError(result.error);
       }
     } catch {

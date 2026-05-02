@@ -45,7 +45,7 @@ export const ScanQrDialog: React.FC<ScanQrDialogProps> = ({ isOpen, onClose, onD
       try {
         const result = await onDetected(value);
         if (!active) return;
-        if (!result.ok) {
+        if (result.ok === false) {
           setError(result.message);
           setStatus("Scanning...");
           detectingRef.current = false;
@@ -105,7 +105,7 @@ export const ScanQrDialog: React.FC<ScanQrDialogProps> = ({ isOpen, onClose, onD
 
     try {
       const result = await onDetected(manualValue.trim());
-      if (!result.ok) {
+      if (result.ok === false) {
         setError(result.message);
         setStatus("Scanning...");
         detectingRef.current = false;

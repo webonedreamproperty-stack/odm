@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Button } from "../ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../ui/dialog";
 import {
+  type AdminMemberRow,
   type AdminSubscriptionRow,
   adminCreateSubscription,
   adminDeleteSubscription,
@@ -43,7 +44,7 @@ const isActiveMembership = (status: string | null, validUntil: string | null) =>
 
 export const AdminSubscriptionsPage: React.FC = () => {
   const [rows, setRows] = useState<AdminSubscriptionRow[]>([]);
-  const [members, setMembers] = useState<Awaited<ReturnType<typeof adminListMembers>> extends { ok: true; data: infer T } ? T : never>([]);
+  const [members, setMembers] = useState<AdminMemberRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -70,12 +71,12 @@ export const AdminSubscriptionsPage: React.FC = () => {
     setLoading(true);
     setError("");
     const [subRes, memberRes] = await Promise.all([adminListSubscriptions(), adminListMembers()]);
-    if (!subRes.ok) {
+    if (subRes.ok === false) {
       setError(subRes.error);
       setLoading(false);
       return;
     }
-    if (!memberRes.ok) {
+    if (memberRes.ok === false) {
       setError(memberRes.error);
       setLoading(false);
       return;

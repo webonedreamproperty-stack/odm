@@ -60,8 +60,8 @@ export const OdVendorSignupPage: React.FC = () => {
         odDiscountValue: 10,
         emailRedirectTo: "/od/vendor/login",
       })) as AuthResult;
-      if (!result.ok) {
-        setError("error" in result ? result.error : "Could not create account.");
+      if (result.ok === false) {
+        setError(result.error);
         setBusy(false);
         return;
       }

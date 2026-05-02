@@ -132,7 +132,7 @@ export const IssuedCardsPage: React.FC<IssuedCardsPageProps> = ({ customers, cam
       setMutationError("");
       try {
         const result = await deleteIssuedCard(cardId);
-        if (!result.ok) {
+        if (result.ok === false) {
           throw new Error(result.error ?? "Failed to revoke the card.");
         }
         setCustomers(prev => prev.map(c => {

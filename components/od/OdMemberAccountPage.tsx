@@ -40,7 +40,7 @@ import {
   requestMemberPhoneTac,
   verifyMemberPhoneTac,
 } from "../../lib/odMemberPhoneApi";
-import { isMalaysiaSixtyMsisdn } from "../../lib/memberPhoneDigits";
+import { isMalaysiaSixtyMsisdn, smartNormalizeMalaysiaPhoneInput } from "../../lib/memberPhoneDigits";
 import { startViewTransition } from "../../lib/viewTransition";
 import { OdDirectoryShopDetailDialog } from "./OdDirectoryShopDetailDialog";
 import { OdDirectoryShopCard } from "./OdDirectoryShopCard";
@@ -271,7 +271,7 @@ export const OdMemberAccountPage: React.FC = () => {
   }, [currentMember?.publicUsername]);
 
   useEffect(() => {
-    setPhoneInput(currentMember?.phoneNo ?? "");
+    setPhoneInput(smartNormalizeMalaysiaPhoneInput(currentMember?.phoneNo ?? ""));
     setPhoneOtpStep("phone");
     setPhoneOtpCells(["", "", "", "", "", ""]);
   }, [currentMember?.phoneNo]);
@@ -465,7 +465,7 @@ export const OdMemberAccountPage: React.FC = () => {
   };
 
   const onPhoneFieldChange = (value: string) => {
-    setPhoneInput(value);
+    setPhoneInput(smartNormalizeMalaysiaPhoneInput(value));
     setPhoneOtpStep("phone");
     setPhoneOtpCells(["", "", "", "", "", ""]);
     setPhoneErr("");

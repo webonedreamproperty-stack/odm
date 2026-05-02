@@ -15,6 +15,26 @@ export function normalizeMalaysiaMsisdnDigits(input: string): string {
   return d;
 }
 
+/**
+ * Strips non-digits (+, spaces, dashes). Fixes MY mobile pasted without a leading 0
+ * (e.g. `184644305` → `0184644305` → `60184644305`), then applies {@link normalizeMalaysiaMsisdnDigits}.
+ */
+export function smartNormalizeMalaysiaPhoneInput(raw: string): string {
+  let d = digitsOnlyPhone(raw);
+  if (!d) return "";
+
+  if (
+    !d.startsWith("60") &&
+    !d.startsWith("0") &&
+    (d.length === 9 || d.length === 10) &&
+    d.startsWith("1")
+  ) {
+    d = `0${d}`;
+  }
+
+  return normalizeMalaysiaMsisdnDigits(d);
+}
+
 /** Normalized digits must start with `60` (Malaysia) and be 11–13 digits total. */
 export function isMalaysiaSixtyMsisdn(input: string): boolean {
   const digits = digitsOnlyPhone(normalizeMalaysiaMsisdnDigits(input));

@@ -96,7 +96,11 @@ export const CustomersPage: React.FC<CustomersPageProps> = ({ customers, campaig
     setIsIssueOpen(true);
   };
 
-  const handleIssueCard = (campaign: Template, customer: Customer | null, newCustomerData: {name: string, email: string, mobile: string}): IssuedCard => {
+  const handleIssueCard = async (
+    campaign: Template,
+    customer: Customer | null,
+    newCustomerData: { name: string; email: string; mobile: string },
+  ): Promise<IssuedCard> => {
       let targetCustomer = customer;
       const actorName = currentUser?.businessName ?? "Owner";
       const actorRole = currentUser?.role ?? "owner";

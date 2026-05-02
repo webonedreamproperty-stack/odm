@@ -19,7 +19,7 @@ export const VerifyBanner: React.FC = () => {
     setResending(true);
     const result = await resendVerificationEmail();
     setResending(false);
-    if (!result.ok) {
+    if (result.ok === false) {
       setError(result.error);
       return;
     }

@@ -2,7 +2,7 @@ import { writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { articles } from "../data/articles.data.js";
 
-const SITE_ORIGIN = "https://odmember.co";
+const SITE_ORIGIN = "https://odgoldmember.com";
 const OUTPUT_PATH = resolve(process.cwd(), "public", "sitemap.xml");
 
 const staticRoutes = [

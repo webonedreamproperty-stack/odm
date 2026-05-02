@@ -690,7 +690,7 @@ const AppRoutes: React.FC = () => {
       : { ...template, isEnabled: template.isEnabled ?? true };
     const stored = toStoredTemplate(saved);
     const result = await upsertCampaign(stored, currentOwner.id);
-    if (!result.ok) {
+    if (result.ok === false) {
       throw new Error(result.error ?? 'Failed to save the campaign.');
     }
 
@@ -703,7 +703,7 @@ const AppRoutes: React.FC = () => {
 
   const handleDeleteCard = async (cardId: string) => {
     const result = await dbDeleteCampaign(cardId);
-    if (!result.ok) {
+    if (result.ok === false) {
       throw new Error(result.error ?? 'Failed to delete the campaign.');
     }
     setCreatedCards(prev => prev.filter(c => c.id !== cardId));
@@ -714,7 +714,7 @@ const AppRoutes: React.FC = () => {
       throw new Error('No active owner account found.');
     }
     const result = await setCampaignEnabled(cardId, currentOwner.id, isEnabled);
-    if (!result.ok) {
+    if (result.ok === false) {
       throw new Error(result.error ?? 'Failed to update campaign status.');
     }
     setCreatedCards(prev => prev.map(card => (card.id === cardId ? { ...card, isEnabled } : card)));

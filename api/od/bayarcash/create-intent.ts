@@ -1,7 +1,8 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { handleCreateOdRenewalIntent } from "./lib/bayarcashOdPayment.js";
+import { withVercelHandler } from "../withVercelHandler.js";
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== "POST") {
     res.status(405).json({ error: "Method not allowed" });
     return;
@@ -25,3 +26,5 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
   res.status(out.status).json({ error: out.error });
 }
+
+export default withVercelHandler("od/bayarcash/create-intent", handler);

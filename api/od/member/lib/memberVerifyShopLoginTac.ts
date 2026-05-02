@@ -61,7 +61,7 @@ export async function handleVerifyShopSendTac(opts: {
   }
 
   const parsed = assertMalaysiaSixtyMsisdn(opts.rawPhone);
-  if (!parsed.ok) {
+  if (parsed.ok === false) {
     return { ok: false, status: 400, error: parsed.error };
   }
 
@@ -103,7 +103,7 @@ export async function handleVerifyShopSendTac(opts: {
     ttlMinutes: 10,
   });
 
-  if (!send.ok) {
+  if (send.ok === false) {
     return {
       ok: false,
       status: send.status === 0 ? 502 : send.status >= 400 ? send.status : 502,
@@ -137,7 +137,7 @@ export async function handleVerifyShopVerifyTac(opts: {
   }
 
   const parsed = assertMalaysiaSixtyMsisdn(opts.rawPhone);
-  if (!parsed.ok) {
+  if (parsed.ok === false) {
     return { ok: false, status: 400, error: parsed.error };
   }
 

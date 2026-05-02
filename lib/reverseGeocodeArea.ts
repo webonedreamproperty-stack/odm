@@ -28,7 +28,7 @@ async function reverseViaPhoton(lat: number, lon: number): Promise<string | null
 }
 
 async function reverseViaNominatim(lat: number, lon: number): Promise<string | null> {
-  const origin = typeof window !== "undefined" ? window.location.origin : "https://odmember.co";
+  const origin = typeof window !== "undefined" ? window.location.origin : "https://odgoldmember.com";
   const url = new URL("https://nominatim.openstreetmap.org/reverse");
   url.searchParams.set("lat", String(lat));
   url.searchParams.set("lon", String(lon));

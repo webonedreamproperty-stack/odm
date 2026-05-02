@@ -6,7 +6,7 @@ import { QrCodeDisplay } from './ui/qr-code-display';
 import { generateReward } from '../services/rewardService';
 import { Template, Transaction } from '../types';
 import { cn, resolveHexAndOpacity, hexToRgba } from '../lib/utils';
-import { QrCode, History, Gift, Plus, X, Minus, CreditCard, Globe } from 'lucide-react';
+import { QrCode, History, Gift, Plus, X, Minus, CreditCard, Globe, type LucideIcon } from 'lucide-react';
 import { siFacebook, siInstagram, siTiktok, siX, siYoutube } from 'simple-icons/icons';
 
 const LottiePlayer = lazy(() => import('lottie-react'));
@@ -462,7 +462,7 @@ export const LoyaltyCard: React.FC<LoyaltyCardProps> = ({
                     index={index}
                     active={index < stamps}
                     onClick={() => handleStampClick(index)}
-                    icon={Icon}
+                    icon={Icon as LucideIcon}
                     colors={colors}
                     sizeClassName={stampSizing.sizeClassName}
                     iconSize={stampSizing.iconSize}

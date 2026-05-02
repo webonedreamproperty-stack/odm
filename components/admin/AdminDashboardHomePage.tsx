@@ -22,17 +22,17 @@ export const AdminDashboardHomePage: React.FC = () => {
         adminListSubscriptions(),
       ]);
       if (!active) return;
-      if (!membersRes.ok) {
+      if (membersRes.ok === false) {
         setError(membersRes.error);
         setLoading(false);
         return;
       }
-      if (!partnersRes.ok) {
+      if (partnersRes.ok === false) {
         setError(partnersRes.error);
         setLoading(false);
         return;
       }
-      if (!subscriptionsRes.ok) {
+      if (subscriptionsRes.ok === false) {
         setError(subscriptionsRes.error);
         setLoading(false);
         return;

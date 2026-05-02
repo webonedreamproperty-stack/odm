@@ -4,7 +4,7 @@ import { Check, CheckCircle2, Lock, MessageSquare, Phone, Smartphone, XCircle } 
 import { useAuth } from "../AuthProvider";
 import { fetchMemberProfile, getOdMemberShopVerification } from "../../lib/db/members";
 import { fetchProfile } from "../../lib/db/profiles";
-import { digitsOnlyPhone, isMalaysiaSixtyMsisdn, normalizeMalaysiaMsisdnDigits } from "../../lib/memberPhoneDigits";
+import { isMalaysiaSixtyMsisdn, smartNormalizeMalaysiaPhoneInput } from "../../lib/memberPhoneDigits";
 import { sendVerifyShopPhoneTac, verifyShopPhoneAndToken } from "../../lib/odVerifyShopLoginApi";
 import { isSupabaseConfigured, supabase } from "../../lib/supabase";
 import { memberAuthNoticeClassName } from "../../lib/memberOAuthUi";
@@ -46,11 +46,6 @@ export const OdVerifyPage: React.FC = () => {
 
   const isLoginDisabled = loading || !sessionChecked || loginBusy || verifyBusy;
   const phoneLooksValid = isMalaysiaSixtyMsisdn(verifyPhone);
-
-  const normalizeVerifyPhoneInput = (raw: string): string => {
-    const digits = digitsOnlyPhone(raw);
-    return normalizeMalaysiaMsisdnDigits(digits);
-  };
 
   useEffect(() => {
     if (!isSupabaseConfigured) return;
@@ -291,8 +286,8 @@ export const OdVerifyPage: React.FC = () => {
                   <div className="relative mt-5">
                     <Input
                       value={verifyPhone}
-                      onChange={(e) => setVerifyPhone(normalizeVerifyPhoneInput(e.target.value))}
-                      onBlur={(e) => setVerifyPhone(normalizeVerifyPhoneInput(e.target.value))}
+                      onChange={(e) => setVerifyPhone(smartNormalizeMalaysiaPhoneInput(e.target.value))}
+                      onBlur={(e) => setVerifyPhone(smartNormalizeMalaysiaPhoneInput(e.target.value))}
                       placeholder="60123456789"
                       className={cn(inputCls, "h-12 pr-11")}
                       type="tel"

@@ -21,4 +21,4 @@ Disallow: /*/staff*
 Disallow: /*/scan/
 Disallow: /*/scan/*
 
-Sitemap: https://odmember.co/sitemap.xml
+Sitemap: https://odgoldmember.com/sitemap.xml

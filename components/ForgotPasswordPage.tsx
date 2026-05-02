@@ -36,7 +36,7 @@ export const ForgotPasswordPage: React.FC = () => {
     setBusy(true);
     const result = await resetPassword(email.trim(), nextPath.startsWith("/") ? nextPath : "/login");
     setBusy(false);
-    if (!result.ok) {
+    if (result.ok === false) {
       setError(result.error);
       return;
     }

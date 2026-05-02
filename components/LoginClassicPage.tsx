@@ -49,7 +49,7 @@ export const LoginClassicPage: React.FC = () => {
     setBusy(true);
     try {
       const result = await withTimeout(login(email, password));
-      if (!result.ok) {
+      if (result.ok === false) {
         setError(result.error);
       } else {
         trackEvent("Login Success", { role: result.user?.role ?? "owner" });

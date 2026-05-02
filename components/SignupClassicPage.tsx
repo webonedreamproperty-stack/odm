@@ -110,7 +110,7 @@ export const SignupClassicPage: React.FC = () => {
     setBusy(true);
     try {
       const result = await withTimeout(signup({ businessName, email, password, slug: normalizedSlug }));
-      if (!result.ok) {
+      if (result.ok === false) {
         setError(result.error);
         return;
       }
@@ -199,7 +199,7 @@ export const SignupClassicPage: React.FC = () => {
 
           <div className="flex items-center gap-2 rounded-xl border border-black/[0.1] bg-white px-4 py-3 focus-within:border-[#1d1d1f]">
             <Link2 className="h-4 w-4 shrink-0 text-[#6e6e73]" />
-            <span className="shrink-0 text-sm font-medium text-[#6e6e73]">odmember.co/</span>
+            <span className="shrink-0 text-sm font-medium text-[#6e6e73]">odgoldmember.com/</span>
             <input
               value={normalizedSlug}
               onChange={(e) => {
