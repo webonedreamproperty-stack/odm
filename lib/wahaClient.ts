@@ -3,7 +3,7 @@
  * Do not import from browser bundles — keep `WAHA_API_KEY` server-only (`.env.local` / hosting secrets).
  */
 
-import { digitsOnlyPhone, normalizeMalaysiaMsisdnDigits } from "./memberPhoneDigits";
+import { digitsOnlyPhone, normalizeMalaysiaMsisdnDigits } from "./memberPhoneDigits.js";
 
 export type WahaEnv = {
   /** Origin only, e.g. `https://api.dynamicdigital.guru` */
@@ -120,7 +120,7 @@ export async function sendWahaText(env: WahaEnv, input: SendWahaTextInput): Prom
   return { ok: true, status: res.status, data: parsed ?? {} };
 }
 
-export { digitsOnlyPhone, normalizeMalaysiaMsisdnDigits } from "./memberPhoneDigits";
+export { digitsOnlyPhone, normalizeMalaysiaMsisdnDigits } from "./memberPhoneDigits.js";
 
 /**
  * Builds `chatId` for a one-to-one WhatsApp chat (`{digits}@c.us`).

@@ -1,9 +1,9 @@
 import { createHash, randomInt, timingSafeEqual } from "node:crypto";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { readSupabaseServerEnv } from "../../bayarcash/lib/bayarcashOdPayment";
-import { digitsOnlyPhone } from "../../../../lib/memberPhoneDigits";
-import { assertMalaysiaSixtyMsisdn } from "./memberPhoneTac";
-import { readWahaEnv, sendTacWhatsApp } from "../../../../lib/wahaClient";
+import { readSupabaseServerEnv } from "../../bayarcash/lib/bayarcashOdPayment.js";
+import { digitsOnlyPhone } from "../../../../lib/memberPhoneDigits.js";
+import { assertMalaysiaSixtyMsisdn } from "./memberPhoneTac.js";
+import { readWahaEnv, sendTacWhatsApp } from "../../../../lib/wahaClient.js";
 
 const TAC_TTL_MS = 10 * 60 * 1000;
 
