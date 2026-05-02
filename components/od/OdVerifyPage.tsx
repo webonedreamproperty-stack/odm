@@ -1,6 +1,15 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { Check, CheckCircle2, Lock, MessageSquare, Phone, Smartphone, XCircle } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import {
+  ArrowLeft,
+  Check,
+  CheckCircle2,
+  ChevronRight,
+  Lock,
+  Mail,
+  XCircle,
+} from "lucide-react";
 import { useAuth } from "../AuthProvider";
 import { fetchMemberProfile, getOdMemberShopVerification } from "../../lib/db/members";
 import { fetchProfile } from "../../lib/db/profiles";
@@ -43,6 +52,8 @@ export const OdVerifyPage: React.FC = () => {
   const [verifyMsg, setVerifyMsg] = useState("");
   const [sessionChecked, setSessionChecked] = useState(false);
   const [needsRelogin, setNeedsRelogin] = useState(false);
+  /** SSO-style: pick a method, then show a focused detail view with back. */
+  const [signInView, setSignInView] = useState<"pick" | "whatsapp" | "email">("pick");
 
   const isLoginDisabled = loading || !sessionChecked || loginBusy || verifyBusy;
   const phoneLooksValid = isMalaysiaSixtyMsisdn(verifyPhone);
@@ -104,6 +115,37 @@ export const OdVerifyPage: React.FC = () => {
     setOtpCells(["", "", "", "", "", ""]);
     setVerifyMsg("");
     setLoginError("");
+  };
+
+  const openWhatsappSignIn = () => {
+    setSignInView("whatsapp");
+    setVerifyOtpStep("phone");
+    setLoginError("");
+    setVerifyMsg("");
+  };
+
+  const openEmailSignIn = () => {
+    setSignInView("email");
+    setLoginError("");
+  };
+
+  const handleSignInBack = () => {
+    if (signInView === "email") {
+      setSignInView("pick");
+      return;
+    }
+    if (signInView === "whatsapp") {
+      if (verifyOtpStep === "code") {
+        handleChangeVerifyNumber();
+        return;
+      }
+      setSignInView("pick");
+      setVerifyPhone("");
+      setVerifyOtpStep("phone");
+      setOtpCells(["", "", "", "", "", ""]);
+      setVerifyMsg("");
+      setLoginError("");
+    }
   };
 
   useEffect(() => {
@@ -242,226 +284,353 @@ export const OdVerifyPage: React.FC = () => {
   if (!currentMember || accountKind !== "member") {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-[#f5f3ef] px-6 py-12">
-        <div className="w-full max-w-lg rounded-[1.75rem] border border-black/[0.06] bg-white p-8 text-center shadow-sm">
-          <h1 className="text-xl font-semibold text-[#1b1813]">Sign in to verify</h1>
-          <p className="mt-2 text-sm text-[#6d6658]">
-            Show this screen to staff after you sign in. Your membership status appears as green (qualified) or red
-            (not qualified).
-          </p>
-          {needsRelogin && (
-            <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-left text-sm text-amber-900">
-              Your session has expired. Please sign in again to continue membership verification.
-            </div>
-          )}
-          <div className="mt-6 space-y-6 text-left">
-            <div className="space-y-4">
-              {verifyOtpStep === "phone" ? (
-                <div className="rounded-[1.35rem] border border-black/[0.06] bg-white px-5 pb-6 pt-6 shadow-[0_12px_40px_-24px_rgba(0,0,0,0.18)]">
-                  <div className="flex justify-center">
-                    <div className="relative flex h-[4.5rem] w-[4.5rem] items-center justify-center rounded-2xl bg-gradient-to-br from-[#fff7ed] to-[#ffedd5]">
-                      <Phone className="h-9 w-9 text-[#ea580c]" strokeWidth={1.75} aria-hidden />
-                      <span className="absolute -bottom-0.5 -right-0.5 flex h-8 w-8 items-center justify-center rounded-xl bg-white shadow-sm ring-1 ring-black/[0.06]">
-                        <Lock className="h-4 w-4 text-[#9a3412]" aria-hidden />
-                      </span>
-                    </div>
+        <div className="w-full max-w-lg overflow-hidden rounded-[1.75rem] border border-black/[0.06] bg-white shadow-[0_24px_80px_-36px_rgba(0,0,0,0.22)] ring-1 ring-black/[0.03]">
+          <div className="border-b border-black/[0.06] bg-gradient-to-b from-[#fafaf8] to-white px-8 pb-6 pt-8 text-center">
+            <img
+              src="/odmember.png"
+              alt="OD Gold Member"
+              width={200}
+              height={64}
+              className="mx-auto h-21 w-auto sm:h-21"
+              decoding="async"
+            />
+          </div>
+          <AnimatePresence mode="wait">
+            {signInView === "pick" ? (
+              <motion.div
+                key="pick"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.22, ease: [0.25, 0.1, 0.25, 1] }}
+                className="p-8 text-center"
+              >
+                <h1 className="text-xl font-semibold tracking-tight text-[#1b1813]">Sign in to verify</h1>
+                <p className="mt-2 text-sm leading-relaxed text-[#6d6658]">
+                  Show this screen to staff after you sign in. Your membership status appears as green (qualified) or red
+                  (not qualified).
+                </p>
+                {needsRelogin ? (
+                  <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-left text-sm text-amber-900">
+                    Your session has expired. Please sign in again to continue membership verification.
                   </div>
-
-                  {/* show whatsapp logo brand icon */}
-
-                  <h2 className="mt-5 text-center text-lg font-bold tracking-tight text-[#1b1813]"
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'center',
-                      gap: '1rem',
-                      alignItems: 'center',
-                      paddingBottom: '1rem',
-                    }}>
-                    WhatsApp verification                   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-message-circle-check-icon lucide-message-circle-check"><path d="M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719" /><path d="m9 12 2 2 4-4" /></svg> </h2>
-                  <p className="mt-1.5 text-center text-sm text-[#6d6658]">Enter your phone number</p>
-
-                  <p className="mt-2 text-center text-[13px] leading-snug text-[#8a8276]">
-                    Use the number on your OD Gold account (
-                    <span className="font-medium text-[#1b1813]">60…</span> Malaysia). We will WhatsApp you a code.
-                  </p>
-                  <div className="relative mt-5">
-                    <Input
-                      value={verifyPhone}
-                      onChange={(e) => setVerifyPhone(smartNormalizeMalaysiaPhoneInput(e.target.value))}
-                      onBlur={(e) => setVerifyPhone(smartNormalizeMalaysiaPhoneInput(e.target.value))}
-                      placeholder="60123456789"
-                      className={cn(inputCls, "h-12 pr-11")}
-                      type="tel"
-                      inputMode="tel"
-                      autoComplete="tel"
-                    />
-                    {phoneLooksValid ? (
-                      <span
-                        className="pointer-events-none absolute right-3 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full bg-emerald-500 text-white shadow-sm"
-                        aria-hidden
-                      >
-                        <Check className="h-4 w-4" strokeWidth={3} />
-                      </span>
-                    ) : null}
-                  </div>
-                  <Button
+                ) : null}
+                <div className="mt-8 space-y-3 text-left">
+                  <button
                     type="button"
-                    disabled={isLoginDisabled || !phoneLooksValid}
-                    className="mt-5 h-12 w-full rounded-xl bg-[#1b1813] text-sm font-semibold text-white hover:bg-[#11100d] disabled:opacity-50"
+                    onClick={openWhatsappSignIn}
+                    className="group flex w-full items-center gap-4 rounded-2xl border border-black/[0.07] bg-[#fafaf8] p-4 text-left shadow-[0_10px_36px_-28px_rgba(0,0,0,0.15)] ring-1 ring-black/[0.04] transition-all duration-200 hover:border-[#128C7E]/30 hover:bg-white hover:shadow-[0_14px_44px_-26px_rgba(18,140,126,0.28)] active:scale-[0.992]"
+                  >
+                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white ring-1 ring-[#128C7E]/20">
+                      <img
+                        src="/whatsapp-logo.png"
+                        alt=""
+                        className="h-9 w-9 object-contain"
+                        width={36}
+                        height={36}
+                        decoding="async"
+                      />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="font-semibold text-[#1b1813]">Continue with WhatsApp</div>
+                      <p className="mt-0.5 text-sm text-[#6d6658]">We&apos;ll send a code to your Malaysia mobile number</p>
+                    </div>
+                    <ChevronRight
+                      className="h-5 w-5 shrink-0 text-[#b8b1a6] transition-transform group-hover:translate-x-0.5"
+                      aria-hidden
+                    />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={openEmailSignIn}
+                    className="group flex w-full items-center gap-4 rounded-2xl border border-black/[0.07] bg-[#fafaf8] p-4 text-left shadow-[0_10px_36px_-28px_rgba(0,0,0,0.15)] ring-1 ring-black/[0.04] transition-all duration-200 hover:border-black/15 hover:bg-white hover:shadow-[0_14px_44px_-26px_rgba(0,0,0,0.12)] active:scale-[0.992]"
+                  >
+                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-black/[0.05] ring-1 ring-black/[0.06]">
+                      <Mail className="h-7 w-7 text-[#1b1813]" strokeWidth={2} aria-hidden />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="font-semibold text-[#1b1813]">Continue with email</div>
+                      <p className="mt-0.5 text-sm text-[#6d6658]">Password for your OD Gold member account</p>
+                    </div>
+                    <ChevronRight
+                      className="h-5 w-5 shrink-0 text-[#b8b1a6] transition-transform group-hover:translate-x-0.5"
+                      aria-hidden
+                    />
+                  </button>
+                </div>
+              </motion.div>
+            ) : signInView === "email" ? (
+              <motion.div
+                key="email"
+                initial={{ opacity: 0, x: 16 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -12 }}
+                transition={{ duration: 0.22, ease: [0.25, 0.1, 0.25, 1] }}
+                className="p-8 text-left"
+              >
+                <button
+                  type="button"
+                  onClick={handleSignInBack}
+                  className="-ml-1 mb-5 flex items-center gap-1.5 rounded-lg py-1.5 pl-1 pr-2 text-sm font-medium text-[#6d6658] transition-colors hover:bg-black/[0.04] hover:text-[#1b1813]"
+                >
+                  <ArrowLeft className="h-4 w-4 shrink-0" aria-hidden />
+                  Back
+                </button>
+                <div className="text-center">
+                  <div className="mx-auto flex h-[4.25rem] w-[4.25rem] items-center justify-center rounded-2xl bg-gradient-to-br from-[#f4f1ea] to-[#e8e4dc] ring-1 ring-black/[0.06]">
+                    <Mail className="h-10 w-10 text-[#1b1813]" strokeWidth={1.75} aria-hidden />
+                  </div>
+                  <h2 className="mt-5 text-lg font-bold tracking-tight text-[#1b1813]">Sign in with email</h2>
+                  <p className="mt-1.5 text-sm text-[#6d6658]">Use the email linked to your OD Gold account.</p>
+                </div>
+                <form className="mt-8 space-y-3" onSubmit={handleMemberEmailLogin}>
+                  <Input
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="you@email.com"
+                    className={inputCls}
+                    type="email"
+                    autoComplete="email"
+                    required
+                  />
+                  <Input
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className={inputCls}
+                    type="password"
+                    autoComplete="current-password"
+                    required
+                  />
+                  <Button
+                    type="submit"
+                    disabled={isLoginDisabled}
+                    className="h-12 w-full rounded-xl bg-[#1b1813] text-sm font-semibold text-white hover:bg-[#11100d] disabled:opacity-60"
+                  >
+                    {loginBusy ? "Signing in…" : "Sign in"}
+                  </Button>
+                </form>
+              </motion.div>
+            ) : verifyOtpStep === "phone" ? (
+              <motion.div
+                key="wa-phone"
+                initial={{ opacity: 0, x: 16 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -12 }}
+                transition={{ duration: 0.22, ease: [0.25, 0.1, 0.25, 1] }}
+                className="p-8 text-left"
+              >
+                <button
+                  type="button"
+                  onClick={handleSignInBack}
+                  className="-ml-1 mb-5 flex items-center gap-1.5 rounded-lg py-1.5 pl-1 pr-2 text-sm font-medium text-[#6d6658] transition-colors hover:bg-black/[0.04] hover:text-[#1b1813]"
+                >
+                  <ArrowLeft className="h-4 w-4 shrink-0" aria-hidden />
+                  Back
+                </button>
+                <div className="flex justify-center">
+                  <div className="relative flex h-[4.75rem] w-[4.75rem] items-center justify-center rounded-2xl bg-white shadow-[0_8px_28px_-12px_rgba(37,211,102,0.45)] ring-1 ring-[#25D366]/25">
+                    <img
+                      src="/whatsapp-logo.png"
+                      alt=""
+                      className="h-14 w-14 object-contain"
+                      width={56}
+                      height={56}
+                      decoding="async"
+                    />
+                    <span className="absolute -bottom-0.5 -right-0.5 flex h-8 w-8 items-center justify-center rounded-xl bg-white shadow-sm ring-1 ring-black/[0.06]">
+                      <Lock className="h-4 w-4 text-[#9a3412]" aria-hidden />
+                    </span>
+                  </div>
+                </div>
+                <div className="mt-5 text-center">
+                  <h2 className="text-lg font-bold tracking-tight text-[#1b1813]">WhatsApp</h2>
+                  <p className="mt-1.5 text-sm text-[#6d6658]">Enter your phone number</p>
+                  <p className="mt-2 text-[13px] leading-snug text-[#8a8276]">
+                    Use the number on your OD Gold account (<span className="font-medium text-[#1b1813]">60…</span>{" "}
+                    Malaysia). We will WhatsApp you a code.
+                  </p>
+                </div>
+                <div className="relative mt-6">
+                  <span
+                    className="pointer-events-none absolute left-3 top-1/2 z-[1] flex h-9 w-9 -translate-y-1/2 items-center justify-center"
+                    aria-hidden
+                  >
+                    <img
+                      src="/whatsapp-logo.png"
+                      alt=""
+                      className="h-8 w-8 object-contain opacity-95"
+                      width={32}
+                      height={32}
+                      decoding="async"
+                    />
+                  </span>
+                  <Input
+                    value={verifyPhone}
+                    onChange={(e) => setVerifyPhone(smartNormalizeMalaysiaPhoneInput(e.target.value))}
+                    onBlur={(e) => setVerifyPhone(smartNormalizeMalaysiaPhoneInput(e.target.value))}
+                    placeholder="60123456789"
+                    className={cn(inputCls, "h-12 pl-12 pr-11")}
+                    type="tel"
+                    inputMode="tel"
+                    autoComplete="tel"
+                  />
+                  {phoneLooksValid ? (
+                    <span
+                      className="pointer-events-none absolute right-3 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full bg-emerald-500 text-white shadow-sm"
+                      aria-hidden
+                    >
+                      <Check className="h-4 w-4" strokeWidth={3} />
+                    </span>
+                  ) : null}
+                </div>
+                <Button
+                  type="button"
+                  disabled={isLoginDisabled || !phoneLooksValid}
+                  className="mt-6 h-12 w-full rounded-xl bg-[#1b1813] text-sm font-semibold text-white hover:bg-[#11100d] disabled:opacity-50"
+                  onClick={() => void handleSendVerifyShopTac()}
+                >
+                  {verifyBusy ? "Sending…" : "Send code"}
+                </Button>
+              </motion.div>
+            ) : (
+              <motion.div
+                key="wa-code"
+                initial={{ opacity: 0, x: 16 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -12 }}
+                transition={{ duration: 0.22, ease: [0.25, 0.1, 0.25, 1] }}
+                className="p-8 text-left"
+              >
+                <button
+                  type="button"
+                  onClick={handleSignInBack}
+                  className="-ml-1 mb-5 flex items-center gap-1.5 rounded-lg py-1.5 pl-1 pr-2 text-sm font-medium text-[#6d6658] transition-colors hover:bg-black/[0.04] hover:text-[#1b1813]"
+                >
+                  <ArrowLeft className="h-4 w-4 shrink-0" aria-hidden />
+                  Back
+                </button>
+                <div className="flex justify-center">
+                  <div className="relative flex h-[4.75rem] w-[4.75rem] items-center justify-center rounded-2xl bg-white shadow-[0_8px_28px_-12px_rgba(37,211,102,0.35)] ring-1 ring-[#25D366]/25">
+                    <img
+                      src="/whatsapp-logo.png"
+                      alt=""
+                      className="h-14 w-14 object-contain"
+                      width={56}
+                      height={56}
+                      decoding="async"
+                    />
+                  </div>
+                </div>
+                <div className="mt-5 text-center">
+                  <h2 className="text-lg font-bold tracking-tight text-[#1b1813]">Enter your code</h2>
+                  <p className="mt-1.5 text-sm text-[#6d6658]">Check WhatsApp for the 6-digit code.</p>
+                </div>
+                <div
+                  className="mt-6 grid grid-cols-6 gap-2 sm:gap-2.5"
+                  onPaste={(e) => {
+                    e.preventDefault();
+                    const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
+                    const chars = pasted.split("");
+                    setOtpCells(() => {
+                      const next: string[] = ["", "", "", "", "", ""];
+                      for (let i = 0; i < 6; i++) next[i] = chars[i] ?? "";
+                      return next;
+                    });
+                    const focusIdx = pasted.length >= 6 ? 5 : Math.max(0, pasted.length);
+                    window.requestAnimationFrame(() => otpRefs.current[focusIdx]?.focus());
+                  }}
+                >
+                  {otpCells.map((digit, index) => (
+                    <Input
+                      key={index}
+                      ref={(el) => {
+                        otpRefs.current[index] = el;
+                      }}
+                      value={digit}
+                      onChange={(e) => {
+                        const v = e.target.value.replace(/\D/g, "").slice(-1);
+                        setOtpCells((prev) => {
+                          const next = [...prev];
+                          next[index] = v;
+                          return next;
+                        });
+                        if (v && index < 5) {
+                          window.requestAnimationFrame(() => otpRefs.current[index + 1]?.focus());
+                        }
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key !== "Backspace") return;
+                        e.preventDefault();
+                        setOtpCells((prev) => {
+                          const next = [...prev];
+                          if (next[index]) {
+                            next[index] = "";
+                            return next;
+                          }
+                          if (index > 0) {
+                            next[index - 1] = "";
+                            window.requestAnimationFrame(() => otpRefs.current[index - 1]?.focus());
+                          }
+                          return next;
+                        });
+                      }}
+                      inputMode="numeric"
+                      autoComplete={index === 0 ? "one-time-code" : "off"}
+                      maxLength={1}
+                      className="h-12 min-w-0 rounded-xl border border-black/[0.1] bg-[#f4f1ea] px-0 text-center text-lg font-semibold tabular-nums text-[#1b1813] shadow-none focus-visible:border-[#1b1813] focus-visible:bg-white focus-visible:ring-2 focus-visible:ring-[#1b1813]/15"
+                      aria-label={`Digit ${index + 1} of 6`}
+                    />
+                  ))}
+                </div>
+                <form className="mt-6" onSubmit={(e) => void handleVerifyShopSignIn(e)}>
+                  <Button
+                    type="submit"
+                    disabled={isLoginDisabled || otpCells.join("").length !== 6}
+                    className="h-12 w-full rounded-xl bg-[#1b1813] text-sm font-semibold text-white hover:bg-[#11100d] disabled:opacity-50"
+                  >
+                    {verifyBusy ? "Signing in…" : "Verify code"}
+                  </Button>
+                </form>
+                <div className="mt-4 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm">
+                  <button
+                    type="button"
+                    className="font-medium text-[#2563eb] underline-offset-4 hover:underline disabled:opacity-50"
+                    disabled={verifyBusy || !phoneLooksValid}
                     onClick={() => void handleSendVerifyShopTac()}
                   >
-                    {verifyBusy ? "Sending…" : "Send code"}
-                  </Button>
-                </div>
-              ) : (
-                <div className="rounded-[1.35rem] border border-black/[0.06] bg-white px-5 pb-6 pt-6 shadow-[0_12px_40px_-24px_rgba(0,0,0,0.18)]">
-                  <div className="flex justify-center">
-                    <div className="relative flex h-[4.5rem] w-[4.5rem] items-center justify-center rounded-2xl bg-gradient-to-br from-[#eff6ff] to-[#dbeafe]">
-                      <Smartphone className="h-9 w-9 text-[#2563eb]" strokeWidth={1.75} aria-hidden />
-                      <span className="absolute -right-1 -top-1 flex h-9 w-9 items-center justify-center rounded-xl bg-white shadow-md ring-1 ring-black/[0.06]">
-                        <MessageSquare className="h-5 w-5 text-[#2563eb]" aria-hidden />
-                      </span>
-                    </div>
-                  </div>
-                  <h2 className="mt-5 text-center text-lg font-bold tracking-tight text-[#1b1813]">Account verification</h2>
-                  <p className="mt-1.5 text-center text-sm text-[#6d6658]">Enter the code below</p>
-                  <div
-                    className="mt-6 grid grid-cols-6 gap-2 sm:gap-2.5"
-                    onPaste={(e) => {
-                      e.preventDefault();
-                      const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
-                      const chars = pasted.split("");
-                      setOtpCells(() => {
-                        const next: string[] = ["", "", "", "", "", ""];
-                        for (let i = 0; i < 6; i++) next[i] = chars[i] ?? "";
-                        return next;
-                      });
-                      const focusIdx = pasted.length >= 6 ? 5 : Math.max(0, pasted.length);
-                      window.requestAnimationFrame(() => otpRefs.current[focusIdx]?.focus());
-                    }}
+                    Resend code
+                  </button>
+                  <button
+                    type="button"
+                    className="font-medium text-[#6d6658] underline-offset-4 hover:text-[#1b1813] hover:underline"
+                    onClick={handleChangeVerifyNumber}
                   >
-                    {otpCells.map((digit, index) => (
-                      <Input
-                        key={index}
-                        ref={(el) => {
-                          otpRefs.current[index] = el;
-                        }}
-                        value={digit}
-                        onChange={(e) => {
-                          const v = e.target.value.replace(/\D/g, "").slice(-1);
-                          setOtpCells((prev) => {
-                            const next = [...prev];
-                            next[index] = v;
-                            return next;
-                          });
-                          if (v && index < 5) {
-                            window.requestAnimationFrame(() => otpRefs.current[index + 1]?.focus());
-                          }
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key !== "Backspace") return;
-                          e.preventDefault();
-                          setOtpCells((prev) => {
-                            const next = [...prev];
-                            if (next[index]) {
-                              next[index] = "";
-                              return next;
-                            }
-                            if (index > 0) {
-                              next[index - 1] = "";
-                              window.requestAnimationFrame(() => otpRefs.current[index - 1]?.focus());
-                            }
-                            return next;
-                          });
-                        }}
-                        inputMode="numeric"
-                        autoComplete={index === 0 ? "one-time-code" : "off"}
-                        maxLength={1}
-                        className="h-12 min-w-0 rounded-xl border border-black/[0.1] bg-[#f4f1ea] px-0 text-center text-lg font-semibold tabular-nums text-[#1b1813] shadow-none focus-visible:border-[#1b1813] focus-visible:bg-white focus-visible:ring-2 focus-visible:ring-[#1b1813]/15"
-                        aria-label={`Digit ${index + 1} of 6`}
-                      />
-                    ))}
-                  </div>
-                  <form className="mt-6" onSubmit={(e) => void handleVerifyShopSignIn(e)}>
-                    <Button
-                      type="submit"
-                      disabled={isLoginDisabled || otpCells.join("").length !== 6}
-                      className="h-12 w-full rounded-xl bg-[#1b1813] text-sm font-semibold text-white hover:bg-[#11100d] disabled:opacity-50"
-                    >
-                      {verifyBusy ? "Signing in…" : "Verify code"}
-                    </Button>
-                  </form>
-                  <div className="mt-4 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm">
-                    <button
-                      type="button"
-                      className="font-medium text-[#2563eb] underline-offset-4 hover:underline disabled:opacity-50"
-                      disabled={verifyBusy || !phoneLooksValid}
-                      onClick={() => void handleSendVerifyShopTac()}
-                    >
-                      Resend code
-                    </button>
-                    <button
-                      type="button"
-                      className="font-medium text-[#6d6658] underline-offset-4 hover:text-[#1b1813] hover:underline"
-                      onClick={handleChangeVerifyNumber}
-                    >
-                      Change number
-                    </button>
-                  </div>
+                    Change number
+                  </button>
                 </div>
-              )}
-              {verifyMsg ? <p className="text-center text-sm text-emerald-700">{verifyMsg}</p> : null}
-            </div>
-
-            <div className="relative py-0.5">
-              <div className="border-t border-black/[0.08]" />
-              <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white px-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#777062]">
-                or email
-              </span>
-            </div>
-
-            <form className="space-y-3" onSubmit={handleMemberEmailLogin}>
-              <Input
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@email.com"
-                className={inputCls}
-                type="email"
-                autoComplete="email"
-                required
-              />
-              <Input
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className={inputCls}
-                type="password"
-                autoComplete="current-password"
-                required
-              />
-              <Button
-                type="submit"
-                disabled={isLoginDisabled}
-                className="h-12 w-full rounded-[1rem] bg-[#1b1813] text-sm font-semibold text-white hover:bg-[#11100d] disabled:opacity-60"
-              >
-                {loginBusy ? "Signing in…" : "Sign in with email"}
-              </Button>
-            </form>
-            {loginError && (
-              <div className={`mt-3 ${memberAuthNoticeClassName(loginError)}`}>{loginError}</div>
+              </motion.div>
             )}
-          </div>
-          <p className="mt-6 text-sm text-[#8a8276] hidden">
+          </AnimatePresence>
+          {verifyMsg ? (
+            <p className="border-t border-black/[0.05] bg-emerald-50/80 px-8 py-3 text-center text-sm text-emerald-800">{verifyMsg}</p>
+          ) : null}
+          {loginError ? (
+            <div className={`border-t border-black/[0.05] px-8 pb-8 pt-3 ${memberAuthNoticeClassName(loginError)}`}>{loginError}</div>
+          ) : null}
+          <p className="hidden px-8 pb-8 text-sm text-[#8a8276]">
             <Link className="underline-offset-2 hover:underline" to="/od/member/signup">
               Create member account
             </Link>
           </p>
         </div>
-      </div >
+      </div>
     );
   }
 
   if (pending || fetchError) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-[#f5f3ef] px-6">
+      <div className="min-h-screen flex flex-col items-center justify-center gap-6 bg-[#f5f3ef] px-6">
+        <img src="/odmember.png" alt="OD Gold Member" className="h-9 w-auto opacity-90 sm:h-10" width={160} height={48} />
         {pending && (
           <div className="h-10 w-10 animate-spin rounded-full border-4 border-[#1b1813] border-t-transparent" />
         )}
@@ -493,6 +662,14 @@ export const OdVerifyPage: React.FC = () => {
       }}
     >
       <div className="w-full max-w-md rounded-[2rem] border border-black/[0.06] bg-white/90 p-8 text-center shadow-[0_24px_80px_-32px_rgba(0,0,0,0.2)] backdrop-blur-sm">
+        <img
+          src="/odmember.png"
+          alt="OD Gold Member"
+          width={200}
+          height={64}
+          className="mx-auto mb-6 h-20 w-auto opacity-95 sm:h-19"
+          decoding="async"
+        />
         <div
           className={`mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full ${qualified ? "bg-emerald-500/15 text-emerald-600" : "bg-red-500/15 text-red-600"
             }`}
