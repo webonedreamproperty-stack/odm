@@ -38,8 +38,8 @@ export function formatRm(amount: number): string {
   return new Intl.NumberFormat("en-MY", {
     style: "currency",
     currency: "MYR",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
+    // minimumFractionDigits: 0,
+    // maximumFractionDigits: 0,
   }).format(amount);
 }
 

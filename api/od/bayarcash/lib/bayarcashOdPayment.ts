@@ -287,7 +287,7 @@ export async function handleCreateOdRenewalIntent(opts: {
   const admin: SupabaseClient = createClient(sb.url, sb.serviceRoleKey);
   const { data: profile, error: pErr } = await admin
     .from("member_profiles")
-    .select("id, display_name, email")
+    .select("id, display_name, email, phone_no")
     .eq("id", user.id)
     .maybeSingle();
 
@@ -307,6 +307,13 @@ export async function handleCreateOdRenewalIntent(opts: {
     (typeof profile.display_name === "string" && profile.display_name.trim()) ||
     payerEmail.split("@")[0] ||
     "Member";
+  const rawPhone = profile.phone_no;
+  const payerTelephoneNumber =
+    rawPhone == null
+      ? ""
+      : typeof rawPhone === "number"
+        ? String(Math.trunc(rawPhone))
+        : String(rawPhone).trim().split(/[.eE]/)[0];
 
   if (!payerEmail) {
     return { ok: false, status: 400, error: "Missing payer email on your account." };
@@ -339,6 +346,7 @@ export async function handleCreateOdRenewalIntent(opts: {
     currency: "MYR",
     payer_name: payerName,
     payer_email: payerEmail,
+    ...(payerTelephoneNumber ? { payer_telephone_number: payerTelephoneNumber } : {}),
     return_url: returnUrl,
     checksum,
     payment_channel: bc.paymentChannels.map(String),

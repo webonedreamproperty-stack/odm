@@ -4,7 +4,7 @@ import { Check, CheckCircle2, Lock, MessageSquare, Phone, Smartphone, XCircle } 
 import { useAuth } from "../AuthProvider";
 import { fetchMemberProfile, getOdMemberShopVerification } from "../../lib/db/members";
 import { fetchProfile } from "../../lib/db/profiles";
-import { isMalaysiaSixtyMsisdn } from "../../lib/memberPhoneDigits";
+import { digitsOnlyPhone, isMalaysiaSixtyMsisdn, normalizeMalaysiaMsisdnDigits } from "../../lib/memberPhoneDigits";
 import { sendVerifyShopPhoneTac, verifyShopPhoneAndToken } from "../../lib/odVerifyShopLoginApi";
 import { isSupabaseConfigured, supabase } from "../../lib/supabase";
 import { memberAuthNoticeClassName } from "../../lib/memberOAuthUi";
@@ -46,6 +46,11 @@ export const OdVerifyPage: React.FC = () => {
 
   const isLoginDisabled = loading || !sessionChecked || loginBusy || verifyBusy;
   const phoneLooksValid = isMalaysiaSixtyMsisdn(verifyPhone);
+
+  const normalizeVerifyPhoneInput = (raw: string): string => {
+    const digits = digitsOnlyPhone(raw);
+    return normalizeMalaysiaMsisdnDigits(digits);
+  };
 
   useEffect(() => {
     if (!isSupabaseConfigured) return;
@@ -265,8 +270,20 @@ export const OdVerifyPage: React.FC = () => {
                       </span>
                     </div>
                   </div>
-                  <h2 className="mt-5 text-center text-lg font-bold tracking-tight text-[#1b1813]">WhatsApp verification</h2>
+
+                  {/* show whatsapp logo brand icon */}
+
+                  <h2 className="mt-5 text-center text-lg font-bold tracking-tight text-[#1b1813]"
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'center',
+                      gap: '1rem',
+                      alignItems: 'center',
+                      paddingBottom: '1rem',
+                    }}>
+                    WhatsApp verification                   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-message-circle-check-icon lucide-message-circle-check"><path d="M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719" /><path d="m9 12 2 2 4-4" /></svg> </h2>
                   <p className="mt-1.5 text-center text-sm text-[#6d6658]">Enter your phone number</p>
+
                   <p className="mt-2 text-center text-[13px] leading-snug text-[#8a8276]">
                     Use the number on your OD Gold account (
                     <span className="font-medium text-[#1b1813]">60…</span> Malaysia). We will WhatsApp you a code.
@@ -274,7 +291,8 @@ export const OdVerifyPage: React.FC = () => {
                   <div className="relative mt-5">
                     <Input
                       value={verifyPhone}
-                      onChange={(e) => setVerifyPhone(e.target.value)}
+                      onChange={(e) => setVerifyPhone(normalizeVerifyPhoneInput(e.target.value))}
+                      onBlur={(e) => setVerifyPhone(normalizeVerifyPhoneInput(e.target.value))}
                       placeholder="60123456789"
                       className={cn(inputCls, "h-12 pr-11")}
                       type="tel"
@@ -442,7 +460,7 @@ export const OdVerifyPage: React.FC = () => {
             </Link>
           </p>
         </div>
-      </div>
+      </div >
     );
   }
 
@@ -481,9 +499,8 @@ export const OdVerifyPage: React.FC = () => {
     >
       <div className="w-full max-w-md rounded-[2rem] border border-black/[0.06] bg-white/90 p-8 text-center shadow-[0_24px_80px_-32px_rgba(0,0,0,0.2)] backdrop-blur-sm">
         <div
-          className={`mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full ${
-            qualified ? "bg-emerald-500/15 text-emerald-600" : "bg-red-500/15 text-red-600"
-          }`}
+          className={`mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full ${qualified ? "bg-emerald-500/15 text-emerald-600" : "bg-red-500/15 text-red-600"
+            }`}
         >
           {qualified ? <CheckCircle2 className="h-11 w-11" strokeWidth={2} /> : <XCircle className="h-11 w-11" strokeWidth={2} />}
         </div>

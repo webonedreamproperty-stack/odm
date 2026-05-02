@@ -1,6 +1,20 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { Check, CheckCircle2, ChevronLeft, ChevronRight, LogOut, MapPin, PartyPopper, RefreshCw, Store } from "lucide-react";
+import {
+  Check,
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  Lock,
+  LogOut,
+  MapPin,
+  MessageSquare,
+  PartyPopper,
+  Phone,
+  RefreshCw,
+  Smartphone,
+  Store,
+} from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "../ui/accordion";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -89,7 +103,9 @@ export const OdMemberAccountPage: React.FC = () => {
   const [publicUsernameErr, setPublicUsernameErr] = useState("");
   const [publicUsernameBusy, setPublicUsernameBusy] = useState(false);
   const [phoneInput, setPhoneInput] = useState("");
-  const [phoneTacInput, setPhoneTacInput] = useState("");
+  const [phoneOtpStep, setPhoneOtpStep] = useState<"phone" | "code">("phone");
+  const [phoneOtpCells, setPhoneOtpCells] = useState(["", "", "", "", "", ""]);
+  const phoneOtpRefs = useRef<(HTMLInputElement | null)[]>([]);
   const [phoneErr, setPhoneErr] = useState("");
   const [phoneMsg, setPhoneMsg] = useState("");
   const [phoneBusy, setPhoneBusy] = useState(false);
@@ -199,7 +215,10 @@ export const OdMemberAccountPage: React.FC = () => {
     if (!currentMember) return;
     if (typeof window === "undefined") return;
     const id = currentMember.id;
-    const profileReady = Boolean(currentMember.displayName?.trim()) && Boolean(currentMember.publicUsername?.trim());
+    const profileReady =
+      Boolean(currentMember.displayName?.trim()) &&
+      Boolean(currentMember.publicUsername?.trim()) &&
+      Boolean(currentMember.phoneNo?.trim());
 
     const stored = loadMemberGeoFromLocalStorage(id);
     if (stored) {
@@ -253,7 +272,8 @@ export const OdMemberAccountPage: React.FC = () => {
 
   useEffect(() => {
     setPhoneInput(currentMember?.phoneNo ?? "");
-    setPhoneTacInput("");
+    setPhoneOtpStep("phone");
+    setPhoneOtpCells(["", "", "", "", "", ""]);
   }, [currentMember?.phoneNo]);
 
   useEffect(() => {
@@ -294,7 +314,10 @@ export const OdMemberAccountPage: React.FC = () => {
     m.validUntil &&
     new Date(m.validUntil) > new Date() &&
     (!m.validFrom || new Date(m.validFrom) <= new Date());
-  const memberProfileStepDone = Boolean(currentMember.displayName.trim()) && Boolean(currentMember.publicUsername?.trim());
+  const memberProfileStepDone =
+    Boolean(currentMember.displayName.trim()) &&
+    Boolean(currentMember.publicUsername?.trim()) &&
+    Boolean(currentMember.phoneNo?.trim());
   const memberLocationStepDone = Boolean(geoCoords);
   const memberSubscriptionStepDone = active;
   const memberOnboardingDone = memberProfileStepDone && memberLocationStepDone && memberSubscriptionStepDone;
@@ -443,7 +466,8 @@ export const OdMemberAccountPage: React.FC = () => {
 
   const onPhoneFieldChange = (value: string) => {
     setPhoneInput(value);
-    setPhoneTacInput("");
+    setPhoneOtpStep("phone");
+    setPhoneOtpCells(["", "", "", "", "", ""]);
     setPhoneErr("");
   };
 
@@ -461,22 +485,30 @@ export const OdMemberAccountPage: React.FC = () => {
       setPhoneErr(out.error);
       return;
     }
-    setPhoneMsg("Code sent by WhatsApp. Enter the 6-digit code below.");
-    window.setTimeout(() => setPhoneMsg(""), 8000);
+    setPhoneOtpCells(["", "", "", "", "", ""]);
+    setPhoneOtpStep("code");
+    setPhoneMsg("Check WhatsApp for your code.");
+    window.setTimeout(() => setPhoneMsg(""), 6000);
   };
 
   const handleVerifyPhoneTac = async (event: React.FormEvent) => {
     event.preventDefault();
     setPhoneErr("");
     setPhoneMsg("");
+    const tacCode = phoneOtpCells.join("");
+    if (tacCode.length !== 6) {
+      setPhoneErr("Enter the 6-digit code from WhatsApp.");
+      return;
+    }
     setPhoneBusy(true);
-    const out = await verifyMemberPhoneTac(phoneTacInput);
+    const out = await verifyMemberPhoneTac(tacCode);
     setPhoneBusy(false);
     if (out.ok === false) {
       setPhoneErr(out.error);
       return;
     }
-    setPhoneTacInput("");
+    setPhoneOtpCells(["", "", "", "", "", ""]);
+    setPhoneOtpStep("phone");
     setPhoneMsg("Mobile number verified and saved.");
     void refreshMemberProfile();
     window.setTimeout(() => setPhoneMsg(""), 4000);
@@ -493,11 +525,25 @@ export const OdMemberAccountPage: React.FC = () => {
       return;
     }
     setPhoneInput("");
-    setPhoneTacInput("");
+    setPhoneOtpCells(["", "", "", "", "", ""]);
+    setPhoneOtpStep("phone");
     setPhoneMsg("Mobile number removed.");
     void refreshMemberProfile();
     window.setTimeout(() => setPhoneMsg(""), 3000);
   };
+
+  const handleChangePhoneNumber = () => {
+    setPhoneOtpStep("phone");
+    setPhoneOtpCells(["", "", "", "", "", ""]);
+    setPhoneErr("");
+    setPhoneMsg("");
+  };
+
+  useEffect(() => {
+    if (phoneOtpStep !== "code") return;
+    const id = window.setTimeout(() => phoneOtpRefs.current[0]?.focus(), 80);
+    return () => window.clearTimeout(id);
+  }, [phoneOtpStep]);
 
   const handleSavePublicUsername = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -527,6 +573,10 @@ export const OdMemberAccountPage: React.FC = () => {
     }
     if (!nextPublic) {
       setMemberOnboardingErr("Public profile username is required.");
+      return;
+    }
+    if (!currentMember.phoneNo?.trim()) {
+      setMemberOnboardingErr("Verify your mobile number with WhatsApp code first.");
       return;
     }
     setMemberOnboardingBusy(true);
@@ -620,7 +670,7 @@ export const OdMemberAccountPage: React.FC = () => {
               <div className="space-y-4">
                 <div>
                   <p className="text-sm font-medium text-[#1b1813]">1. Update basic profile</p>
-                  <p className="text-sm text-[#6d6658]">Set your display name and public username so your member profile can be shared.</p>
+                  <p className="text-sm text-[#6d6658]">Set display name, public username, and verify mobile number via TAC.</p>
                 </div>
                 <div className="space-y-2">
                   <label className="text-xs font-medium text-[#6B7280]">Display name</label>
@@ -639,8 +689,118 @@ export const OdMemberAccountPage: React.FC = () => {
                     />
                   </div>
                 </div>
+                <div className="space-y-2 rounded-xl border border-black/[0.08] bg-[palegreen] p-3">
+                  <label className="text-xs font-medium text-[#6B7280]">WhatsApp number (6012345678)</label>
+                  {phoneOtpStep === "phone" ? (
+                    <>
+                      <Input
+                        type="tel"
+                        inputMode="tel"
+                        autoComplete="tel"
+                        value={phoneInput}
+                        onChange={(e) => onPhoneFieldChange(e.target.value)}
+                        className={inputCls}
+                        placeholder="60123456789"
+                      />
+                      <Button
+                        type="button"
+                        disabled={phoneBusy || !isMalaysiaSixtyMsisdn(phoneInput)}
+                        className="w-full rounded-full bg-[#1b1813] hover:bg-[#11100d] disabled:opacity-50"
+                        onClick={() => void handleSendPhoneTac()}
+                      >
+                        {phoneBusy ? "Sending…" : "Send WhatsApp code"}
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <div className="grid grid-cols-6 gap-2">
+                        {phoneOtpCells.map((digit, index) => (
+                          <Input
+                            key={index}
+                            ref={(el) => {
+                              phoneOtpRefs.current[index] = el;
+                            }}
+                            value={digit}
+                            onChange={(e) => {
+                              const v = e.target.value.replace(/\D/g, "").slice(-1);
+                              setPhoneOtpCells((prev) => {
+                                const next = [...prev];
+                                next[index] = v;
+                                return next;
+                              });
+                              if (v && index < 5) {
+                                window.requestAnimationFrame(() => phoneOtpRefs.current[index + 1]?.focus());
+                              }
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key !== "Backspace") return;
+                              e.preventDefault();
+                              setPhoneOtpCells((prev) => {
+                                const next = [...prev];
+                                if (next[index]) {
+                                  next[index] = "";
+                                  return next;
+                                }
+                                if (index > 0) {
+                                  next[index - 1] = "";
+                                  window.requestAnimationFrame(() => phoneOtpRefs.current[index - 1]?.focus());
+                                }
+                                return next;
+                              });
+                            }}
+                            inputMode="numeric"
+                            autoComplete={index === 0 ? "one-time-code" : "off"}
+                            maxLength={1}
+                            className="h-11 rounded-lg border border-black/[0.1] bg-[#f4f1ea] px-0 text-center text-base font-semibold"
+                            aria-label={`Digit ${index + 1} of 6`}
+                          />
+                        ))}
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          disabled={phoneBusy}
+                          className="flex-1 rounded-full border-black/12"
+                          onClick={() => void handleSendPhoneTac()}
+                        >
+                          Resend
+                        </Button>
+                        <Button
+                          type="button"
+                          disabled={phoneBusy || phoneOtpCells.join("").length !== 6}
+                          className="flex-1 rounded-full bg-[#1b1813] hover:bg-[#11100d]"
+                          onClick={(e) => void handleVerifyPhoneTac(e as unknown as React.FormEvent)}
+                        >
+                          {phoneBusy ? "Checking…" : "Verify code"}
+                        </Button>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        disabled={phoneBusy}
+                        className="w-full rounded-full text-[#6d6658] hover:bg-black/[0.04] hover:text-[#1b1813]"
+                        onClick={handleChangePhoneNumber}
+                      >
+                        Change number
+                      </Button>
+                    </>
+                  )}
+                  {phoneErr && <p className="text-sm text-red-600">{phoneErr}</p>}
+                  {phoneMsg && <p className="text-sm text-emerald-700">{phoneMsg}</p>}
+                  {currentMember.phoneNo ? (
+                    <p className="text-[12px] text-emerald-700">Verified number: {currentMember.phoneNo}</p>
+                  ) : (
+                    <p className="text-[12px] text-[#8a8276]">Verify your number to continue onboarding.</p>
+                  )}
+                </div>
                 <div className="flex justify-end">
-                  <Button type="button" disabled={memberOnboardingBusy} className="rounded-full bg-[#1b1813] hover:bg-[#11100d]" onClick={() => void handleOnboardingSaveProfile()}>
+                  <Button
+                    type="button"
+                    disabled={memberOnboardingBusy || !currentMember.phoneNo?.trim()}
+                    className="rounded-full bg-[#1b1813] hover:bg-[#11100d] disabled:opacity-50"
+                    onClick={() => void handleOnboardingSaveProfile()}
+                  >
                     {memberOnboardingBusy ? "Saving…" : <>Save & continue <ChevronRight className="ml-1 h-4 w-4" /></>}
                   </Button>
                 </div>
@@ -1274,51 +1434,143 @@ export const OdMemberAccountPage: React.FC = () => {
               <span className="font-mono text-[13px]">0123456789</span>). We send a WhatsApp code to confirm before
               saving
             </p>
-            <div className="space-y-3">
-              <label className="text-xs font-medium text-[#6B7280]">WhatsApp number</label>
-              <Input
-                type="tel"
-                inputMode="tel"
-                autoComplete="tel"
-                value={phoneInput}
-                onChange={(e) => onPhoneFieldChange(e.target.value)}
-                className={inputCls}
-                placeholder="60123456789"
-              />
-              <Button
-                type="button"
-                disabled={phoneBusy}
-                variant="outline"
-                className="rounded-full border-black/12"
-                onClick={() => void handleSendPhoneTac()}
-              >
-                {phoneBusy ? "Working…" : "Send WhatsApp code"}
-              </Button>
-            </div>
-
-            <form className="space-y-3" onSubmit={(e) => void handleVerifyPhoneTac(e)}>
-              <label className="text-xs font-medium text-[#6B7280]">Verification code</label>
-              <Input
-                type="text"
-                inputMode="numeric"
-                autoComplete="one-time-code"
-                maxLength={6}
-                value={phoneTacInput}
-                onChange={(e) => setPhoneTacInput(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                className={cn(inputCls, "tracking-[0.25em] font-mono text-base")}
-                placeholder="••••••"
-              />
-              <p className="text-[13px] text-[#8a8276]">
-                After tapping “Send WhatsApp code”, copy the 6-digit code from WhatsApp and paste it here.
-              </p>
-              <Button
-                type="submit"
-                disabled={phoneBusy || phoneTacInput.length !== 6}
-                className="rounded-full bg-[#1b1813] hover:bg-[#11100d]"
-              >
-                {phoneBusy ? "Checking…" : "Verify & save number"}
-              </Button>
-            </form>
+            {phoneOtpStep === "phone" ? (
+              <div className="rounded-[1.35rem] border border-black/[0.06] bg-white px-5 pb-6 pt-6 shadow-[0_12px_40px_-24px_rgba(0,0,0,0.18)]">
+                <div className="flex justify-center">
+                  <div className="relative flex h-[4.5rem] w-[4.5rem] items-center justify-center rounded-2xl bg-gradient-to-br from-[#fff7ed] to-[#ffedd5]">
+                    <Phone className="h-9 w-9 text-[#ea580c]" strokeWidth={1.75} aria-hidden />
+                    <span className="absolute -bottom-0.5 -right-0.5 flex h-8 w-8 items-center justify-center rounded-xl bg-white shadow-sm ring-1 ring-black/[0.06]">
+                      <Lock className="h-4 w-4 text-[#9a3412]" aria-hidden />
+                    </span>
+                  </div>
+                </div>
+                <h4 className="mt-5 text-center text-lg font-bold tracking-tight text-[#1b1813]">WhatsApp verification</h4>
+                <p className="mt-1.5 text-center text-sm text-[#6d6658]">Enter your phone number</p>
+                <div className="relative mt-5">
+                  <Input
+                    type="tel"
+                    inputMode="tel"
+                    autoComplete="tel"
+                    value={phoneInput}
+                    onChange={(e) => onPhoneFieldChange(e.target.value)}
+                    className={cn(inputCls, "pr-11")}
+                    placeholder="60123456789"
+                  />
+                  {isMalaysiaSixtyMsisdn(phoneInput) ? (
+                    <span
+                      className="pointer-events-none absolute right-3 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full bg-emerald-500 text-white shadow-sm"
+                      aria-hidden
+                    >
+                      <Check className="h-4 w-4" strokeWidth={3} />
+                    </span>
+                  ) : null}
+                </div>
+                <Button
+                  type="button"
+                  disabled={phoneBusy || !isMalaysiaSixtyMsisdn(phoneInput)}
+                  className="mt-5 h-12 w-full rounded-xl bg-[#1b1813] text-sm font-semibold text-white hover:bg-[#11100d] disabled:opacity-50"
+                  onClick={() => void handleSendPhoneTac()}
+                >
+                  {phoneBusy ? "Sending…" : "Send code"}
+                </Button>
+              </div>
+            ) : (
+              <div className="rounded-[1.35rem] border border-black/[0.06] bg-white px-5 pb-6 pt-6 shadow-[0_12px_40px_-24px_rgba(0,0,0,0.18)]">
+                <div className="flex justify-center">
+                  <div className="relative flex h-[4.5rem] w-[4.5rem] items-center justify-center rounded-2xl bg-gradient-to-br from-[#eff6ff] to-[#dbeafe]">
+                    <Smartphone className="h-9 w-9 text-[#2563eb]" strokeWidth={1.75} aria-hidden />
+                    <span className="absolute -right-1 -top-1 flex h-9 w-9 items-center justify-center rounded-xl bg-white shadow-md ring-1 ring-black/[0.06]">
+                      <MessageSquare className="h-5 w-5 text-[#2563eb]" aria-hidden />
+                    </span>
+                  </div>
+                </div>
+                <h4 className="mt-5 text-center text-lg font-bold tracking-tight text-[#1b1813]">Account verification</h4>
+                <p className="mt-1.5 text-center text-sm text-[#6d6658]">Enter the code below</p>
+                <form className="mt-6" onSubmit={(e) => void handleVerifyPhoneTac(e)}>
+                  <div
+                    className="grid grid-cols-6 gap-2 sm:gap-2.5"
+                    onPaste={(e) => {
+                      e.preventDefault();
+                      const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
+                      const chars = pasted.split("");
+                      setPhoneOtpCells(() => {
+                        const next = ["", "", "", "", "", ""];
+                        for (let i = 0; i < 6; i += 1) next[i] = chars[i] ?? "";
+                        return next;
+                      });
+                      const focusIdx = pasted.length >= 6 ? 5 : Math.max(0, pasted.length);
+                      window.requestAnimationFrame(() => phoneOtpRefs.current[focusIdx]?.focus());
+                    }}
+                  >
+                    {phoneOtpCells.map((digit, index) => (
+                      <Input
+                        key={index}
+                        ref={(el) => {
+                          phoneOtpRefs.current[index] = el;
+                        }}
+                        value={digit}
+                        onChange={(e) => {
+                          const v = e.target.value.replace(/\D/g, "").slice(-1);
+                          setPhoneOtpCells((prev) => {
+                            const next = [...prev];
+                            next[index] = v;
+                            return next;
+                          });
+                          if (v && index < 5) {
+                            window.requestAnimationFrame(() => phoneOtpRefs.current[index + 1]?.focus());
+                          }
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key !== "Backspace") return;
+                          e.preventDefault();
+                          setPhoneOtpCells((prev) => {
+                            const next = [...prev];
+                            if (next[index]) {
+                              next[index] = "";
+                              return next;
+                            }
+                            if (index > 0) {
+                              next[index - 1] = "";
+                              window.requestAnimationFrame(() => phoneOtpRefs.current[index - 1]?.focus());
+                            }
+                            return next;
+                          });
+                        }}
+                        inputMode="numeric"
+                        autoComplete={index === 0 ? "one-time-code" : "off"}
+                        maxLength={1}
+                        className="h-12 min-w-0 rounded-xl border border-black/[0.1] bg-[#f4f1ea] px-0 text-center text-lg font-semibold tabular-nums text-[#1b1813] shadow-none focus-visible:border-[#1b1813] focus-visible:bg-white focus-visible:ring-2 focus-visible:ring-[#1b1813]/15"
+                        aria-label={`Digit ${index + 1} of 6`}
+                      />
+                    ))}
+                  </div>
+                  <Button
+                    type="submit"
+                    disabled={phoneBusy || phoneOtpCells.join("").length !== 6}
+                    className="mt-6 h-12 w-full rounded-xl bg-[#1b1813] text-sm font-semibold text-white hover:bg-[#11100d] disabled:opacity-50"
+                  >
+                    {phoneBusy ? "Checking…" : "Verify & save number"}
+                  </Button>
+                </form>
+                <div className="mt-4 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm">
+                  <button
+                    type="button"
+                    className="font-medium text-[#2563eb] underline-offset-4 hover:underline disabled:opacity-50"
+                    disabled={phoneBusy || !isMalaysiaSixtyMsisdn(phoneInput)}
+                    onClick={() => void handleSendPhoneTac()}
+                  >
+                    Resend code
+                  </button>
+                  <button
+                    type="button"
+                    className="font-medium text-[#6d6658] underline-offset-4 hover:text-[#1b1813] hover:underline"
+                    onClick={handleChangePhoneNumber}
+                  >
+                    Change number
+                  </button>
+                </div>
+              </div>
+            )}
 
             {currentMember.phoneNo ? (
               <Button
