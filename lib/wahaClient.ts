@@ -141,26 +141,21 @@ export type WahaTacMessageOptions = {
   ttlMinutes?: number;
 };
 
-/**
- * User-facing TAC / OTP copy for WhatsApp (English), multiline for readability.
- */
-export function formatWahaTacMessage(code: string, options?: WahaTacMessageOptions): string {
-  const c = code.trim();
+/** First WhatsApp message only; {@link formatWahaTacCodeMessage} is sent immediately after. */
+export function formatWahaTacPreamble(options?: WahaTacMessageOptions): string {
   const brand = options?.brandName?.trim();
-  const intro = brand
-    ? `${brand}: Your verification code is`
-    : "Your verification code is";
-  const lines = [
-    intro,
-    "",
-    `code: ${c}`,
-    "",
-    "Do not share this code with anyone.",
-  ];
-  if (options?.ttlMinutes != null && options.ttlMinutes > 0) {
-    lines.push(`This code expires in ${options.ttlMinutes} minutes.`);
-  }
-  return lines.join("\n");
+  const header = brand ? `TAC Code: ${brand}:` : "TAC Code:";
+  const ttlPart =
+    options?.ttlMinutes != null && options.ttlMinutes > 0
+      ? `code expires ${options.ttlMinutes} min code is 👇`
+      : "code is 👇";
+  const body = `Your verification Do not share this code with anyone. ${ttlPart}`;
+  return [header, "", body].join("\n");
+}
+
+/** Second WhatsApp message: the TAC digits only. */
+export function formatWahaTacCodeMessage(code: string): string {
+  return code.trim();
 }
 
 export type SendTacWhatsAppInput = {
@@ -182,14 +177,15 @@ export async function sendTacWhatsApp(
 ): Promise<WahaResult<unknown>> {
   const digits = normalizeMalaysiaMsisdnDigits(input.toPhone);
   const chatId = phoneDigitsToWahaChatId(digits);
-  const text = formatWahaTacMessage(input.tacCode, {
-    brandName: input.brandName,
-    ttlMinutes: input.ttlMinutes,
-  });
-  return sendWahaText(env, {
+  const opts = { brandName: input.brandName, ttlMinutes: input.ttlMinutes };
+  const preamble = formatWahaTacPreamble(opts);
+  const codeText = formatWahaTacCodeMessage(input.tacCode);
+  const base = {
     session: input.session,
     chatId,
-    text,
     linkPreview: input.linkPreview ?? false,
-  });
+  };
+  const first = await sendWahaText(env, { ...base, text: preamble });
+  if (!first.ok) return first;
+  return sendWahaText(env, { ...base, text: codeText });
 }

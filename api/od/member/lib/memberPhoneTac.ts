@@ -64,6 +64,28 @@ async function clearPendingTac(admin: SupabaseClient, userId: string): Promise<v
     .eq("id", userId);
 }
 
+const DUPLICATE_PHONE_MSG =
+  "This mobile number is already linked to another OD Gold account. Use a different number or sign in with that account.";
+
+/** True if another member row already has this verified `phone_no`. */
+async function isPhoneNoTakenByOtherMember(
+  admin: SupabaseClient,
+  msisdn: number,
+  exceptUserId: string,
+): Promise<{ ok: true; taken: boolean } | { ok: false; error: string }> {
+  const { data, error } = await admin
+    .from("member_profiles")
+    .select("id")
+    .eq("phone_no", msisdn)
+    .neq("id", exceptUserId)
+    .maybeSingle();
+
+  if (error) {
+    return { ok: false, error: error.message || "Could not verify phone availability." };
+  }
+  return { ok: true, taken: data != null };
+}
+
 export async function handleMemberPhoneSendTac(opts: {
   accessToken: string;
   rawPhone: string;
@@ -102,6 +124,14 @@ export async function handleMemberPhoneSendTac(opts: {
 
   if (pErr || !profile) {
     return { ok: false, status: 403, error: "OD Gold member account required." };
+  }
+
+  const dupCheck = await isPhoneNoTakenByOtherMember(admin, parsed.numeric, user.id);
+  if (dupCheck.ok === false) {
+    return { ok: false, status: 500, error: dupCheck.error };
+  }
+  if (dupCheck.taken) {
+    return { ok: false, status: 409, error: DUPLICATE_PHONE_MSG };
   }
 
   const code = String(randomInt(100000, 999999));
@@ -204,6 +234,15 @@ export async function handleMemberPhoneVerifyTac(opts: {
   if (!Number.isFinite(numeric)) {
     await clearPendingTac(admin, user.id);
     return { ok: false, status: 500, error: "Invalid pending phone state." };
+  }
+
+  const dupCheck = await isPhoneNoTakenByOtherMember(admin, numeric, user.id);
+  if (dupCheck.ok === false) {
+    return { ok: false, status: 500, error: dupCheck.error };
+  }
+  if (dupCheck.taken) {
+    await clearPendingTac(admin, user.id);
+    return { ok: false, status: 409, error: DUPLICATE_PHONE_MSG };
   }
 
   const { error: finErr } = await admin
