@@ -6,6 +6,8 @@ import {
   Check,
   CheckCircle2,
   ChevronRight,
+  Eye,
+  EyeOff,
   Lock,
   Mail,
   XCircle,
@@ -42,6 +44,7 @@ export const OdVerifyPage: React.FC = () => {
   const [now, setNow] = useState(() => new Date());
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showEmailPassword, setShowEmailPassword] = useState(false);
   const [loginError, setLoginError] = useState("");
   const [loginBusy, setLoginBusy] = useState(false);
   const [verifyPhone, setVerifyPhone] = useState("");
@@ -393,14 +396,29 @@ export const OdVerifyPage: React.FC = () => {
                     autoComplete="email"
                     required
                   />
-                  <Input
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className={inputCls}
-                    type="password"
-                    autoComplete="current-password"
-                    required
-                  />
+                  <div className="relative">
+                    <Input
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className={cn(inputCls, "pr-12")}
+                      type={showEmailPassword ? "text" : "password"}
+                      autoComplete="current-password"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowEmailPassword((prev) => !prev)}
+                      className="absolute inset-y-0 right-3 inline-flex items-center rounded-md text-[#8a8276] transition-colors hover:text-[#1b1813]"
+                      aria-label={showEmailPassword ? "Hide password" : "Show password"}
+                      aria-pressed={showEmailPassword}
+                    >
+                      {showEmailPassword ? (
+                        <EyeOff className="h-4 w-4 shrink-0" aria-hidden />
+                      ) : (
+                        <Eye className="h-4 w-4 shrink-0" aria-hidden />
+                      )}
+                    </button>
+                  </div>
                   <Button
                     type="submit"
                     disabled={isLoginDisabled}
