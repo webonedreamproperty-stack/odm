@@ -715,7 +715,7 @@ export const OdMemberAccountPage: React.FC = () => {
                       value={publicUsernameInput}
                       onChange={(e) => setPublicUsernameInput(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ""))}
                       className={cn(inputCls, "flex-1")}
-                      placeholder="mykluang"
+                      placeholder="username"
                       autoComplete="off"
                     />
                   </div>
@@ -1594,7 +1594,7 @@ export const OdMemberAccountPage: React.FC = () => {
                 value={publicUsernameInput}
                 onChange={(e) => setPublicUsernameInput(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ""))}
                 className={cn(inputCls, "max-w-[220px] flex-1")}
-                placeholder="mykluang"
+                placeholder="username"
                 autoComplete="off"
               />
             </div>
