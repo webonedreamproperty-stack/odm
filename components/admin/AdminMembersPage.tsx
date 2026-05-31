@@ -12,8 +12,15 @@ import {
   adminListSubscriptions,
   adminUpdateMember,
 } from "../../lib/db/adminPortal";
+import { isMalaysiaSixtyMsisdn, smartNormalizeMalaysiaPhoneInput } from "../../lib/memberPhoneDigits";
 
-type DialogFormState = { displayName: string; country: string; publicUsername: string };
+type DialogFormState = {
+  email: string;
+  displayName: string;
+  country: string;
+  publicUsername: string;
+  phoneNo: string;
+};
 type EditDialogTab = "details" | "subscription";
 
 export const AdminMembersPage: React.FC = () => {
@@ -35,7 +42,19 @@ export const AdminMembersPage: React.FC = () => {
   const [editDialogTab, setEditDialogTab] = useState<EditDialogTab>("details");
   const [subscriptionRow, setSubscriptionRow] = useState<AdminSubscriptionRow | null>(null);
   const [subscriptionLoading, setSubscriptionLoading] = useState(false);
-  const [dialogForm, setDialogForm] = useState<DialogFormState>({ displayName: "", country: "MY", publicUsername: "" });
+  const [dialogForm, setDialogForm] = useState<DialogFormState>({
+    email: "",
+    displayName: "",
+    country: "MY",
+    publicUsername: "",
+    phoneNo: "",
+  });
+
+  const phoneNoFromRow = (value: AdminMemberRow["phone_no"]) => {
+    if (value == null) return "";
+    if (typeof value === "number" && Number.isFinite(value)) return String(Math.trunc(value));
+    return String(value).trim().split(/[.eE]/)[0];
+  };
 
   const load = async () => {
     setLoading(true);
@@ -60,9 +79,11 @@ export const AdminMembersPage: React.FC = () => {
     setEditDialogTab("details");
     setSubscriptionRow(null);
     setDialogForm({
+      email: row.email ?? "",
       displayName: row.display_name ?? "",
       country: row.country ?? "MY",
       publicUsername: row.public_username ?? "",
+      phoneNo: phoneNoFromRow(row.phone_no),
     });
     setDialogOpen(true);
   };
@@ -111,6 +132,11 @@ export const AdminMembersPage: React.FC = () => {
 
   const onSave = async () => {
     if (!selected) return;
+    const normalizedPhone = smartNormalizeMalaysiaPhoneInput(dialogForm.phoneNo);
+    if (normalizedPhone && !isMalaysiaSixtyMsisdn(normalizedPhone)) {
+      setError("Enter a valid Malaysia WhatsApp number (e.g. 60123456789).");
+      return;
+    }
     setBusyRow(selected.id);
     setError("");
     setNotice("");
@@ -119,6 +145,8 @@ export const AdminMembersPage: React.FC = () => {
       displayName: dialogForm.displayName,
       country: dialogForm.country,
       publicUsername: dialogForm.publicUsername.trim() === "" ? null : dialogForm.publicUsername.trim().toLowerCase(),
+      email: dialogForm.email.trim().toLowerCase(),
+      phoneNo: normalizedPhone || null,
     });
     setBusyRow(null);
     if (!res.ok) {
@@ -184,6 +212,7 @@ export const AdminMembersPage: React.FC = () => {
                   <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-[#6b7280]">
                     <span>Country: {row.country ?? "-"}</span>
                     <span>Username: {row.public_username ?? "-"}</span>
+                    <span>Phone: {phoneNoFromRow(row.phone_no) || "-"}</span>
                   </div>
                   <p className="mt-2 text-xs text-[#6b7280]">
                     {row.membership_status ?? "none"}
@@ -201,6 +230,7 @@ export const AdminMembersPage: React.FC = () => {
                   <th className="py-2 pr-3">Display</th>
                   <th className="py-2 pr-3">Country</th>
                   <th className="py-2 pr-3">Public username</th>
+                  <th className="py-2 pr-3">Phone</th>
                   <th className="py-2 pr-3">Membership</th>
                   <th className="py-2 pr-3">Actions</th>
                 </tr>
@@ -217,6 +247,7 @@ export const AdminMembersPage: React.FC = () => {
                     <td className="py-3 pr-3">{row.display_name ?? "-"}</td>
                     <td className="py-3 pr-3">{row.country ?? "-"}</td>
                     <td className="py-3 pr-3">{row.public_username ?? "-"}</td>
+                    <td className="py-3 pr-3 font-mono text-xs">{phoneNoFromRow(row.phone_no) || "-"}</td>
                     <td className="py-3 pr-3 text-xs">
                       {row.membership_status ?? "none"}
                       {row.valid_until ? ` · ${new Date(row.valid_until).toLocaleDateString()}` : ""}
@@ -268,7 +299,24 @@ export const AdminMembersPage: React.FC = () => {
             <div className="grid gap-3">
               <div className="space-y-1.5">
                 <label htmlFor="member-email" className="text-xs font-semibold uppercase tracking-[0.12em] text-[#6b7280]">Email</label>
-                <Input id="member-email" value={selected?.email ?? ""} disabled />
+                <Input
+                  id="member-email"
+                  type="email"
+                  value={dialogForm.email}
+                  onChange={(e) => setDialogForm((prev) => ({ ...prev, email: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label htmlFor="member-phone" className="text-xs font-semibold uppercase tracking-[0.12em] text-[#6b7280]">Phone (WhatsApp)</label>
+                <Input
+                  id="member-phone"
+                  type="tel"
+                  inputMode="tel"
+                  value={dialogForm.phoneNo}
+                  onChange={(e) => setDialogForm((prev) => ({ ...prev, phoneNo: smartNormalizeMalaysiaPhoneInput(e.target.value) }))}
+                  placeholder="60123456789"
+                />
+                <p className="text-xs text-[#6b7280]">Leave empty to clear the verified number.</p>
               </div>
               <div className="space-y-1.5">
                 <label htmlFor="member-display-name" className="text-xs font-semibold uppercase tracking-[0.12em] text-[#6b7280]">Display name</label>

@@ -6,6 +6,7 @@ export type AdminMemberRow = {
   display_name: string;
   member_code: string;
   public_username?: string | null;
+  phone_no?: string | number | null;
   country: string;
   created_at: string;
   membership_status: string | null;
@@ -78,12 +79,16 @@ export async function adminUpdateMember(input: {
   displayName: string;
   country: string;
   publicUsername: string | null;
+  email: string;
+  phoneNo: string | null;
 }) {
   const { data, error } = await supabase.rpc("admin_update_member_account", {
     p_member_id: input.memberId,
     p_display_name: input.displayName,
     p_country: input.country,
     p_public_username: input.publicUsername,
+    p_email: input.email,
+    p_phone_no: input.phoneNo,
   });
   if (error) return { ok: false as const, error: error.message };
   return { ok: true as const, data };
