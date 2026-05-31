@@ -3,13 +3,16 @@ import { Button } from "../ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../ui/dialog";
 import {
   type AdminMemberRow,
+  type AdminPackageRow,
   type AdminSubscriptionRow,
   adminCreateSubscription,
   adminDeleteSubscription,
   adminListMembers,
+  adminListPackages,
   adminListSubscriptions,
   adminUpdateSubscription,
 } from "../../lib/db/adminPortal";
+import { odPlanLabel, type OdRenewalPackage } from "../../lib/odPricing";
 
 type SubscriptionFormState = {
   memberId: string;
@@ -20,7 +23,6 @@ type SubscriptionFormState = {
 };
 
 const STATUS_OPTIONS = ["active", "suspended"] as const;
-const PLAN_OPTIONS = ["hour", "month", "year"] as const;
 
 const toDateInputValue = (value: string | null) => {
   if (!value) return "";
@@ -45,6 +47,7 @@ const isActiveMembership = (status: string | null, validUntil: string | null) =>
 export const AdminSubscriptionsPage: React.FC = () => {
   const [rows, setRows] = useState<AdminSubscriptionRow[]>([]);
   const [members, setMembers] = useState<AdminMemberRow[]>([]);
+  const [packages, setPackages] = useState<AdminPackageRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -70,7 +73,11 @@ export const AdminSubscriptionsPage: React.FC = () => {
   const load = async () => {
     setLoading(true);
     setError("");
-    const [subRes, memberRes] = await Promise.all([adminListSubscriptions(), adminListMembers()]);
+    const [subRes, memberRes, packageRes] = await Promise.all([
+      adminListSubscriptions(),
+      adminListMembers(),
+      adminListPackages(),
+    ]);
     if (subRes.ok === false) {
       setError(subRes.error);
       setLoading(false);
@@ -81,8 +88,14 @@ export const AdminSubscriptionsPage: React.FC = () => {
       setLoading(false);
       return;
     }
+    if (packageRes.ok === false) {
+      setError(packageRes.error);
+      setLoading(false);
+      return;
+    }
     setRows(subRes.data);
     setMembers(memberRes.data);
+    setPackages(packageRes.data);
     setLoading(false);
   };
 
@@ -110,6 +123,43 @@ export const AdminSubscriptionsPage: React.FC = () => {
       setCreateForm((prev) => ({ ...prev, memberId: eligibleMembers[0].id }));
     }
   }, [createOpen, eligibleMembers, createForm.memberId]);
+
+  const packageLabels = useMemo<OdRenewalPackage[]>(
+    () =>
+      packages.map((pkg) => ({
+        plan: pkg.plan,
+        title: pkg.title,
+        priceRm: Number(pkg.price_rm ?? 0),
+        blurb: pkg.blurb ?? "",
+      })),
+    [packages]
+  );
+
+  const activePlanOptions = useMemo(
+    () =>
+      [...packages]
+        .filter((pkg) => pkg.is_active)
+        .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+        .map((pkg) => ({ plan: pkg.plan, title: pkg.title })),
+    [packages]
+  );
+
+  const editPlanOptions = useMemo(() => {
+    const currentPlan = editForm.plan;
+    if (!currentPlan || activePlanOptions.some((p) => p.plan === currentPlan)) {
+      return activePlanOptions;
+    }
+    const currentPkg = packages.find((p) => p.plan === currentPlan);
+    if (!currentPkg) return activePlanOptions;
+    return [...activePlanOptions, { plan: currentPkg.plan, title: `${currentPkg.title} (inactive)` }];
+  }, [activePlanOptions, packages, editForm.plan]);
+
+  useEffect(() => {
+    if (!createOpen || activePlanOptions.length === 0) return;
+    if (!activePlanOptions.some((p) => p.plan === createForm.plan)) {
+      setCreateForm((prev) => ({ ...prev, plan: activePlanOptions[0].plan }));
+    }
+  }, [createOpen, activePlanOptions, createForm.plan]);
 
   const sorted = useMemo(() => [...rows].sort((a, b) => b.updated_at.localeCompare(a.updated_at)), [rows]);
 
@@ -225,7 +275,7 @@ export const AdminSubscriptionsPage: React.FC = () => {
                   <p className="mt-0.5 text-sm text-[#4b5563]">{row.email}</p>
                   <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-[#6b7280]">
                     <span>Status: {row.status}</span>
-                    <span>Plan: {row.plan}</span>
+                    <span>Plan: {odPlanLabel(row.plan, packageLabels)}</span>
                     <span>Until: {new Date(row.valid_until).toLocaleDateString()}</span>
                   </div>
                 </button>
@@ -255,7 +305,7 @@ export const AdminSubscriptionsPage: React.FC = () => {
                     <td className="py-3 pr-3">{row.email}</td>
                     <td className="py-3 pr-3">{row.display_name || "-"}</td>
                     <td className="py-3 pr-3">{row.status}</td>
-                    <td className="py-3 pr-3">{row.plan}</td>
+                    <td className="py-3 pr-3">{odPlanLabel(row.plan, packageLabels)}</td>
                     <td className="py-3 pr-3 text-xs">{new Date(row.valid_from).toLocaleDateString()}</td>
                     <td className="py-3 pr-3 text-xs">{new Date(row.valid_until).toLocaleDateString()}</td>
                   </tr>
@@ -315,9 +365,13 @@ export const AdminSubscriptionsPage: React.FC = () => {
                   onChange={(e) => setCreateForm((prev) => ({ ...prev, plan: e.target.value }))}
                   className="h-11 w-full rounded-xl border border-input bg-background px-3 text-sm"
                 >
-                  {PLAN_OPTIONS.map((plan) => (
-                    <option key={plan} value={plan}>{plan}</option>
-                  ))}
+                  {activePlanOptions.length > 0 ? (
+                    activePlanOptions.map((plan) => (
+                      <option key={plan.plan} value={plan.plan}>{plan.title}</option>
+                    ))
+                  ) : (
+                    <option value="" disabled>No active packages</option>
+                  )}
                 </select>
               </div>
             </div>
@@ -347,7 +401,7 @@ export const AdminSubscriptionsPage: React.FC = () => {
             </div>
             <DialogFooter className="gap-2">
               <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
-              <Button type="submit" disabled={!!busyRow || eligibleMembers.length === 0}>
+              <Button type="submit" disabled={!!busyRow || eligibleMembers.length === 0 || activePlanOptions.length === 0}>
                 {busyRow ? "Creating..." : "Create subscription"}
               </Button>
             </DialogFooter>
@@ -390,9 +444,13 @@ export const AdminSubscriptionsPage: React.FC = () => {
                   onChange={(e) => setEditForm((prev) => ({ ...prev, plan: e.target.value }))}
                   className="h-11 w-full rounded-xl border border-input bg-background px-3 text-sm"
                 >
-                  {PLAN_OPTIONS.map((plan) => (
-                    <option key={plan} value={plan}>{plan}</option>
-                  ))}
+                  {editPlanOptions.length > 0 ? (
+                    editPlanOptions.map((plan) => (
+                      <option key={plan.plan} value={plan.plan}>{plan.title}</option>
+                    ))
+                  ) : (
+                    <option value="" disabled>No active packages</option>
+                  )}
                 </select>
               </div>
             </div>

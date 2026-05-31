@@ -26,14 +26,15 @@ function phoneNoFromDb(value: unknown): string | null {
 type MembershipRow = {
   member_id: string;
   status: 'active' | 'suspended';
-  plan: 'month' | 'year' | 'hour' | null;
+  plan: string | null;
   valid_from: string | null;
   valid_until: string | null;
 };
 
 export function rowToMemberAccount(
   profile: MemberRow,
-  membership: MembershipRow | null
+  membership: MembershipRow | null,
+  usedRenewalPlans: string[] = []
 ): MemberAccount {
   return {
     id: profile.id,
@@ -46,6 +47,7 @@ export function rowToMemberAccount(
       : null,
     country: profile.country,
     createdAt: profile.created_at,
+    usedRenewalPlans,
     membership: membership
       ? {
           status: membership.status,
@@ -72,7 +74,24 @@ export async function fetchMemberProfile(userId: string): Promise<MemberAccount 
     .eq('member_id', userId)
     .maybeSingle();
 
-  return rowToMemberAccount(profile as MemberRow, om as MembershipRow | null);
+  const { data: renewals } = await supabase
+    .from('od_membership_renewals')
+    .select('plan')
+    .eq('member_id', userId);
+
+  const usedRenewalPlans = Array.from(
+    new Set(
+      (renewals ?? [])
+        .map((row) => (typeof row.plan === 'string' ? row.plan.trim() : ''))
+        .filter(Boolean)
+    )
+  );
+
+  return rowToMemberAccount(
+    profile as MemberRow,
+    om as MembershipRow | null,
+    usedRenewalPlans
+  );
 }
 
 export async function fetchIsOdAdmin(userId: string): Promise<boolean> {
@@ -130,7 +149,7 @@ export async function getOdMemberShopVerification(
   };
 }
 
-export type OdRenewPlan = 'month' | 'year' | 'hour';
+export type OdRenewPlan = string;
 
 export async function memberSelfRenewOdMembership(
   plan: OdRenewPlan

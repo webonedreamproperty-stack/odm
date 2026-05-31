@@ -154,9 +154,11 @@ export interface MemberAccount {
   publicUsername: string | null;
   country: string;
   createdAt: string;
+  /** Plan keys this member has already redeemed (for one-time packages). */
+  usedRenewalPlans: string[];
   membership: {
     status: 'active' | 'suspended';
-    plan: 'month' | 'year' | 'hour' | null;
+    plan: string | null;
     validFrom: string | null;
     validUntil: string | null;
   } | null;

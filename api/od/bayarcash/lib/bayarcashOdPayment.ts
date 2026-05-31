@@ -2,6 +2,37 @@ import { createHmac, randomBytes } from "node:crypto";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { OD_RENEWAL_PACKAGES, type OdRenewalPlanKey } from "./renewalPackages.js";
 
+type ServerRenewalPackage = {
+  plan: string;
+  title: string;
+  priceRm: number;
+  blurb: string;
+};
+
+async function loadActiveRenewalPackages(admin: SupabaseClient): Promise<ServerRenewalPackage[]> {
+  const { data, error } = await admin
+    .from("od_renewal_packages")
+    .select("plan, title, price_rm, blurb, sort_order")
+    .eq("is_active", true)
+    .order("sort_order", { ascending: true });
+
+  if (error || !data?.length) {
+    return OD_RENEWAL_PACKAGES.map((p) => ({
+      plan: p.plan,
+      title: p.title,
+      priceRm: p.priceRm,
+      blurb: p.blurb,
+    }));
+  }
+
+  return data.map((row) => ({
+    plan: String(row.plan),
+    title: String(row.title ?? row.plan),
+    priceRm: Number(row.price_rm ?? 0),
+    blurb: String(row.blurb ?? ""),
+  }));
+}
+
 const FPX = 1;
 const DUITNOW_DOBW = 5;
 const DUITNOW_QR = 6;
@@ -272,7 +303,9 @@ export async function handleCreateOdRenewalIntent(opts: {
     return { ok: false, status: 503, error: "Payment server is not configured." };
   }
 
-  if (!OD_RENEWAL_PACKAGES.some((p) => p.plan === opts.plan)) {
+  const admin: SupabaseClient = createClient(sb.url, sb.serviceRoleKey);
+  const packages = await loadActiveRenewalPackages(admin);
+  if (!packages.some((p) => p.plan === opts.plan)) {
     return { ok: false, status: 400, error: "Invalid plan." };
   }
   const plan = opts.plan as OdRenewalPlanKey;
@@ -284,7 +317,6 @@ export async function handleCreateOdRenewalIntent(opts: {
   }
   const user = userData.user;
 
-  const admin: SupabaseClient = createClient(sb.url, sb.serviceRoleKey);
   const { data: profile, error: pErr } = await admin
     .from("member_profiles")
     .select("id, display_name, email, phone_no")
@@ -295,9 +327,12 @@ export async function handleCreateOdRenewalIntent(opts: {
     return { ok: false, status: 403, error: "OD Gold member account required." };
   }
 
-  const pkg = OD_RENEWAL_PACKAGES.find((p) => p.plan === plan);
+  const pkg = packages.find((p) => p.plan === plan);
   if (!pkg) {
     return { ok: false, status: 400, error: "Unknown package." };
+  }
+  if (pkg.priceRm <= 0) {
+    return { ok: false, status: 400, error: "This package does not require payment." };
   }
 
   const amount = pkg.priceRm.toFixed(2);

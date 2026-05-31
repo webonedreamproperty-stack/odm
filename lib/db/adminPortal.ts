@@ -201,3 +201,78 @@ export async function adminDeleteSubscription(memberId: string) {
   return { ok: true as const, data };
 }
 
+export type AdminPackageRow = {
+  plan: string;
+  title: string;
+  price_rm: number;
+  blurb: string;
+  duration_label: string;
+  is_active: boolean;
+  sort_order: number;
+  one_time_per_member: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export async function adminListPackages(): Promise<{ ok: true; data: AdminPackageRow[] } | { ok: false; error: string }> {
+  const { data, error } = await supabase.rpc("admin_list_od_renewal_packages");
+  if (error) return { ok: false as const, error: error.message };
+  return { ok: true as const, data: asArray<AdminPackageRow>(data) };
+}
+
+export async function adminCreatePackage(input: {
+  plan: string;
+  title: string;
+  priceRm: number;
+  blurb: string;
+  durationLabel: string;
+  isActive: boolean;
+  sortOrder: number;
+  oneTimePerMember: boolean;
+}) {
+  const { data, error } = await supabase.rpc("admin_create_od_renewal_package", {
+    p_plan: input.plan,
+    p_title: input.title,
+    p_price_rm: input.priceRm,
+    p_blurb: input.blurb,
+    p_duration_label: input.durationLabel,
+    p_is_active: input.isActive,
+    p_sort_order: input.sortOrder,
+    p_one_time_per_member: input.oneTimePerMember,
+  });
+  if (error) return { ok: false as const, error: error.message };
+  return { ok: true as const, data };
+}
+
+export async function adminUpdatePackage(input: {
+  plan: string;
+  title: string;
+  priceRm: number;
+  blurb: string;
+  durationLabel: string;
+  isActive: boolean;
+  sortOrder: number;
+  oneTimePerMember: boolean;
+}) {
+  const { data, error } = await supabase.rpc("admin_update_od_renewal_package", {
+    p_plan: input.plan,
+    p_title: input.title,
+    p_price_rm: input.priceRm,
+    p_blurb: input.blurb,
+    p_duration_label: input.durationLabel,
+    p_is_active: input.isActive,
+    p_sort_order: input.sortOrder,
+    p_one_time_per_member: input.oneTimePerMember,
+  });
+  if (error) return { ok: false as const, error: error.message };
+  return { ok: true as const, data };
+}
+
+export async function adminDeletePackage(plan: string) {
+  const { data, error } = await supabase.rpc("admin_delete_od_renewal_package", {
+    p_plan: plan,
+  });
+  if (error) return { ok: false as const, error: error.message };
+  return { ok: true as const, data };
+}
+

@@ -58,7 +58,7 @@ export const OdMemberSignupPage: React.FC = () => {
         {/* // make background light red  and text red-600 add padding 10px border rounded-md*/}
         <div className="mt-2 text-sm leading-relaxed bg-[#ffcccc] py-2 px-4 border rounded-md">
           <p className="mt-2 text-sm leading-relaxed text-[red]">
-            Website ini adalah untuk kegunaan Member dibawah OD Network sahaja. ahli selain OD Network tidak dibenarkan berdaftar. Jika pihak admin dapat mengesan ahli selain OD Network, akaun anda akan dipadam dan tiada sebarang pulangan bayaran.
+            This website is for OD Network members only. Registration is not permitted for anyone outside the OD Network. If admin detects a non-OD Network member, your account will be deleted and no refund will be issued.
           </p>
         </div>
 

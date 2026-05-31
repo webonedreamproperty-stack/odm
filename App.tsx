@@ -107,6 +107,7 @@ const AdminDashboardHomePage = lazy(() => import('./components/admin/AdminDashbo
 const AdminMembersPage = lazy(() => import('./components/admin/AdminMembersPage').then((module) => ({ default: module.AdminMembersPage })));
 const AdminPartnersPage = lazy(() => import('./components/admin/AdminPartnersPage').then((module) => ({ default: module.AdminPartnersPage })));
 const AdminSubscriptionsPage = lazy(() => import('./components/admin/AdminSubscriptionsPage').then((module) => ({ default: module.AdminSubscriptionsPage })));
+const AdminPackagesPage = lazy(() => import('./components/admin/AdminPackagesPage').then((module) => ({ default: module.AdminPackagesPage })));
 const PublicHandlePage = lazy(() => import('./components/PublicHandlePage').then((module) => ({ default: module.PublicHandlePage })));
 
 const RouteLoader: React.FC = () => (
@@ -754,6 +755,7 @@ const AppRoutes: React.FC = () => {
             <Route path="/admin/members" element={withSuspense(<AdminMembersPage />)} />
             <Route path="/admin/partners" element={withSuspense(<AdminPartnersPage />)} />
             <Route path="/admin/subscriptions" element={withSuspense(<AdminSubscriptionsPage />)} />
+            <Route path="/admin/packages" element={withSuspense(<AdminPackagesPage />)} />
           </Route>
         </Route>
 

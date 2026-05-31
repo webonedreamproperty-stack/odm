@@ -88,7 +88,7 @@ export const AdminDashboardHomePage: React.FC = () => {
         ))}
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <Link
           to="/admin/members"
           className="rounded-2xl border border-[#dfe6fb] bg-white/92 p-5 shadow-[0_16px_34px_-30px_rgba(37,99,235,0.28)] transition hover:-translate-y-0.5"
@@ -105,6 +105,15 @@ export const AdminDashboardHomePage: React.FC = () => {
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#6b7280]">Manage</p>
           <p className="mt-2 text-lg font-semibold text-[#111827]">Partners</p>
           <p className="mt-1 text-sm text-[#5f6673]">Create, edit, and delete OD Privilege Partner accounts.</p>
+        </Link>
+
+        <Link
+          to="/admin/packages"
+          className="rounded-2xl border border-[#dfe6fb] bg-white/92 p-5 shadow-[0_16px_34px_-30px_rgba(37,99,235,0.28)] transition hover:-translate-y-0.5"
+        >
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#6b7280]">Manage</p>
+          <p className="mt-2 text-lg font-semibold text-[#111827]">Packages</p>
+          <p className="mt-1 text-sm text-[#5f6673]">Create, edit, and remove subscription package options.</p>
         </Link>
 
         <Link

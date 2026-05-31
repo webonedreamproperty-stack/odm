@@ -35,6 +35,7 @@ export const AdminShell: React.FC = () => {
               { to: "/admin/dashboard", label: "Overview" },
               { to: "/admin/members", label: "Members" },
               { to: "/admin/partners", label: "Partners" },
+              { to: "/admin/packages", label: "Packages" },
               { to: "/admin/subscriptions", label: "Subscriptions" },
             ].map((item) => (
               <NavLink

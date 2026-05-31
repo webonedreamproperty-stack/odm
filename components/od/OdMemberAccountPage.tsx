@@ -20,7 +20,13 @@ import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "../ui/dialog";
 import { useAuth } from "../AuthProvider";
-import { OD_RENEWAL_PACKAGES, formatRm, odPlanLabel, type OdRenewalPackage } from "../../lib/odPricing";
+import {
+  formatPackagePrice,
+  isFreeOdPackage,
+  odPlanLabel,
+  type OdRenewalPackage,
+} from "../../lib/odPricing";
+import { fetchOdRenewalPackages, filterOdPackagesForMember } from "../../lib/db/odPackages";
 import { memberSelfRenewOdMembership } from "../../lib/db/members";
 import { startOdRenewalViaBayarcash } from "../../lib/odRenewalCheckout";
 import {
@@ -98,6 +104,7 @@ export const OdMemberAccountPage: React.FC = () => {
   const [renewDialogPkg, setRenewDialogPkg] = useState<OdRenewalPackage | null>(null);
   const [renewSubmitting, setRenewSubmitting] = useState(false);
   const [renewError, setRenewError] = useState("");
+  const [renewalPackages, setRenewalPackages] = useState<OdRenewalPackage[]>([]);
   const [publicUsernameInput, setPublicUsernameInput] = useState("");
   const [publicUsernameMsg, setPublicUsernameMsg] = useState("");
   const [publicUsernameErr, setPublicUsernameErr] = useState("");
@@ -278,6 +285,17 @@ export const OdMemberAccountPage: React.FC = () => {
   }, [currentMember?.phoneNo]);
 
   useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const packages = await fetchOdRenewalPackages();
+      if (!cancelled) setRenewalPackages(packages);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
     const pay = searchParams.get("od_pay");
     if (!pay) return;
 
@@ -306,6 +324,14 @@ export const OdMemberAccountPage: React.FC = () => {
     next.delete("detail");
     setSearchParams(next, { replace: true });
   }, [searchParams, setSearchParams, refreshMemberProfile]);
+
+  const availablePackages = useMemo(
+    () =>
+      filterOdPackagesForMember(renewalPackages, {
+        usedOneTimePlans: currentMember?.usedRenewalPlans ?? [],
+      }),
+    [renewalPackages, currentMember?.usedRenewalPlans]
+  );
 
   if (!currentMember) return null;
 
@@ -423,7 +449,7 @@ export const OdMemberAccountPage: React.FC = () => {
     setRenewError("");
     setRenewSubmitting(true);
     try {
-      if (odPaymentsEnabled) {
+      if (odPaymentsEnabled && !isFreeOdPackage(renewDialogPkg)) {
         const payOut = await startOdRenewalViaBayarcash(renewDialogPkg.plan);
         setRenewSubmitting(false);
         if (payOut.ok !== true) {
@@ -839,14 +865,14 @@ export const OdMemberAccountPage: React.FC = () => {
                 </div>
                 {active ? (
                   <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
-                    Active package: {m?.plan ? odPlanLabel(m.plan) : "Active"}
+                    Active package: {m?.plan ? odPlanLabel(m.plan, renewalPackages) : "Active"}
                   </div>
                 ) : (
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    {OD_RENEWAL_PACKAGES.map((pkg) => (
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    {availablePackages.map((pkg) => (
                       <div key={pkg.plan} className="rounded-xl border border-black/[0.08] bg-[#fafbfa] p-3">
                         <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#8a8276]">{pkg.title}</p>
-                        <p className="mt-1 text-xl font-semibold text-[#1b1813]">{formatRm(pkg.priceRm)}</p>
+                        <p className="mt-1 text-xl font-semibold text-[#1b1813]">{formatPackagePrice(pkg.priceRm)}</p>
                         <p className="mt-1 text-sm text-[#6d6658]">{pkg.blurb}</p>
                         <Button
                           type="button"
@@ -1125,7 +1151,7 @@ export const OdMemberAccountPage: React.FC = () => {
                   )}
                   {m?.plan && (
                     <p className="text-sm text-[#6d6658]">
-                      Plan: <span className="font-medium"> {odPlanLabel(m.plan)}</span>
+                      Plan: <span className="font-medium"> {odPlanLabel(m.plan, renewalPackages)}</span>
                     </p>
                   )}
 
@@ -1145,8 +1171,8 @@ export const OdMemberAccountPage: React.FC = () => {
                         trip planning with maps and service details. Member pricing can save your costs across frequent
                         visits.
                       </div>
-                      <div className="grid gap-4 sm:grid-cols-2">
-                        {OD_RENEWAL_PACKAGES.map((pkg) => (
+                      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                        {availablePackages.map((pkg) => (
                           <div
                             key={pkg.plan}
                             className="flex flex-col rounded-2xl border border-black/[0.08] bg-[#fafbfa] p-4 transition hover:border-black/15"
@@ -1155,7 +1181,7 @@ export const OdMemberAccountPage: React.FC = () => {
                               {pkg.title}
                             </div>
                             <div className="mt-2 text-2xl font-semibold tabular-nums text-[#1b1813]">
-                              {formatRm(pkg.priceRm)}
+                              {formatPackagePrice(pkg.priceRm)}
                             </div>
                             <p className="mt-1 flex-1 text-sm text-[#6d6658]">{pkg.blurb}</p>
                             <Button
@@ -1334,16 +1360,26 @@ export const OdMemberAccountPage: React.FC = () => {
               <DialogContent className="rounded-[1.25rem] sm:max-w-md">
                 <DialogHeader>
                   <DialogTitle className="text-lg font-semibold text-[#1b1813]">
-                    {odPaymentsEnabled ? `Pay for ${renewDialogPkg.title}?` : `Activate ${renewDialogPkg.title}?`}
+                    {renewDialogPkg && isFreeOdPackage(renewDialogPkg)
+                      ? `Start ${renewDialogPkg.title}?`
+                      : odPaymentsEnabled
+                        ? `Pay for ${renewDialogPkg?.title}?`
+                        : `Activate ${renewDialogPkg?.title}?`}
                   </DialogTitle>
                 </DialogHeader>
                 <div className="space-y-3 text-sm text-[#6d6658]">
                   <p>
                     <span className="font-semibold text-[#1b1813]">{renewDialogPkg.title}</span> ·{" "}
-                    <span className="font-semibold text-[#1b1813]">{formatRm(renewDialogPkg.priceRm)}</span>
+                    <span className="font-semibold text-[#1b1813]">{formatPackagePrice(renewDialogPkg.priceRm)}</span>
                   </p>
                   <p>
-                    {odPaymentsEnabled ? (
+                    {isFreeOdPackage(renewDialogPkg) ? (
+                      <>
+                        Your OD Gold membership becomes{" "}
+                        <span className="font-medium text-emerald-700">active</span> for one year right away. This free
+                        trial can only be used once per account.
+                      </>
+                    ) : odPaymentsEnabled ? (
                       <>
                         You will be redirected to <span className="font-medium text-[#1b1813]">Bayarcash</span> to pay.
                         When payment succeeds, your OD Gold membership becomes{" "}
@@ -1379,12 +1415,16 @@ export const OdMemberAccountPage: React.FC = () => {
                     onClick={() => void handleConfirmRenew()}
                   >
                     {renewSubmitting
-                      ? odPaymentsEnabled
-                        ? "Redirecting…"
-                        : "Activating…"
-                      : odPaymentsEnabled
-                        ? "Continue to payment"
-                        : "Confirm & activate"}
+                      ? isFreeOdPackage(renewDialogPkg)
+                        ? "Activating…"
+                        : odPaymentsEnabled
+                          ? "Redirecting…"
+                          : "Activating…"
+                      : isFreeOdPackage(renewDialogPkg)
+                        ? "Start free trial"
+                        : odPaymentsEnabled
+                          ? "Continue to payment"
+                          : "Confirm & activate"}
                   </Button>
                 </DialogFooter>
               </DialogContent>
