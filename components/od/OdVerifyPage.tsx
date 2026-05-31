@@ -157,15 +157,27 @@ export const OdVerifyPage: React.FC = () => {
     return () => window.clearTimeout(id);
   }, [verifyOtpStep]);
 
-  const handleVerifyShopSignIn = async (event: React.FormEvent) => {
-    event.preventDefault();
+  const applyOtpFromText = (raw: string) => {
+    const pasted = raw.replace(/\D/g, "").slice(0, 6);
+    const chars = pasted.split("");
+    setOtpCells(() => {
+      const next: string[] = ["", "", "", "", "", ""];
+      for (let i = 0; i < 6; i++) next[i] = chars[i] ?? "";
+      return next;
+    });
+    const focusIdx = pasted.length >= 6 ? 5 : Math.max(0, pasted.length);
+    window.requestAnimationFrame(() => otpRefs.current[focusIdx]?.focus());
+    return pasted;
+  };
+
+  const verifyShopCode = async (codeOverride?: string) => {
     setLoginError("");
     setVerifyMsg("");
     if (!isMalaysiaSixtyMsisdn(verifyPhone)) {
       setLoginError("Enter a Malaysia number starting with 60.");
       return;
     }
-    const tacJoined = otpCells.join("");
+    const tacJoined = (codeOverride ?? otpCells.join("")).replace(/\D/g, "").slice(0, 6);
     if (tacJoined.length !== 6) {
       setLoginError("Enter the 6-digit code from WhatsApp.");
       return;
@@ -217,6 +229,31 @@ export const OdVerifyPage: React.FC = () => {
       setLoginError("Unable to sign in right now. Please try again.");
     } finally {
       setVerifyBusy(false);
+    }
+  };
+
+  const handleVerifyShopSignIn = (event: React.FormEvent) => {
+    event.preventDefault();
+    void verifyShopCode();
+  };
+
+  const handlePasteOtpCode = async () => {
+    if (isLoginDisabled) return;
+    setLoginError("");
+    try {
+      const raw = await navigator.clipboard.readText();
+      const pasted = applyOtpFromText(raw);
+      if (pasted.length === 6) {
+        await verifyShopCode(pasted);
+        return;
+      }
+      if (pasted.length > 0) {
+        setLoginError("Paste a complete 6-digit code.");
+        return;
+      }
+      setLoginError("Clipboard does not contain a code.");
+    } catch {
+      setLoginError("Could not read clipboard. Paste into a box or allow clipboard access.");
     }
   };
 
@@ -547,15 +584,10 @@ export const OdVerifyPage: React.FC = () => {
                   className="mt-6 grid grid-cols-6 gap-2 sm:gap-2.5"
                   onPaste={(e) => {
                     e.preventDefault();
-                    const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
-                    const chars = pasted.split("");
-                    setOtpCells(() => {
-                      const next: string[] = ["", "", "", "", "", ""];
-                      for (let i = 0; i < 6; i++) next[i] = chars[i] ?? "";
-                      return next;
-                    });
-                    const focusIdx = pasted.length >= 6 ? 5 : Math.max(0, pasted.length);
-                    window.requestAnimationFrame(() => otpRefs.current[focusIdx]?.focus());
+                    const pasted = applyOtpFromText(e.clipboardData.getData("text"));
+                    if (pasted.length === 6) {
+                      void verifyShopCode(pasted);
+                    }
                   }}
                 >
                   {otpCells.map((digit, index) => (
@@ -600,7 +632,16 @@ export const OdVerifyPage: React.FC = () => {
                     />
                   ))}
                 </div>
-                <form className="mt-6" onSubmit={(e) => void handleVerifyShopSignIn(e)}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={isLoginDisabled}
+                  className="mt-3 h-10 w-full rounded-xl border-black/12 text-sm font-medium text-[#1b1813] hover:bg-black/[0.03]"
+                  onClick={() => void handlePasteOtpCode()}
+                >
+                  Paste code
+                </Button>
+                <form className="mt-4" onSubmit={handleVerifyShopSignIn}>
                   <Button
                     type="submit"
                     disabled={isLoginDisabled || otpCells.join("").length !== 6}
